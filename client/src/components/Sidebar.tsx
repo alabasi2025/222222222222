@@ -9,7 +9,8 @@ import {
   Settings, 
   PieChart,
   Wallet,
-  BookOpen
+  BookOpen,
+  FolderTree
 } from "lucide-react";
 
 const menuItems = [
@@ -21,6 +22,7 @@ const menuItems = [
   { icon: Wallet, label: "السندات المالية", href: "/payments" },
   { icon: FileText, label: "قيود اليومية", href: "/journals" },
   { icon: BookOpen, label: "دفتر الأستاذ", href: "/ledger" },
+  { icon: FolderTree, label: "شجرة الحسابات", href: "/coa" },
   { icon: PieChart, label: "التقارير", href: "/reports" },
   { icon: Settings, label: "الإعدادات", href: "/settings" },
 ];
