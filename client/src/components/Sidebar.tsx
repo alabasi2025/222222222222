@@ -18,7 +18,8 @@ import {
   Network,
   ChevronDown,
   Building,
-  Store
+  Store,
+  ChevronLeft
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,6 +28,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useEntity } from "@/contexts/EntityContext";
@@ -55,13 +59,24 @@ export function Sidebar() {
   const [location] = useLocation();
   const { currentEntity, setCurrentEntity, entities, getThemeColor } = useEntity();
 
+  // Get holding company
+  const holdingCompany = entities.find(e => e.type === 'holding');
+  
+  // Get all units
+  const units = entities.filter(e => e.type === 'unit');
+
+  // Get branches for a specific unit
+  const getUnitBranches = (unitId: string) => {
+    return entities.filter(e => e.type === 'branch' && e.parentId === unitId);
+  };
+
   return (
     <aside className="hidden md:flex flex-col w-64 bg-sidebar border-l border-sidebar-border h-screen sticky top-0">
       <div 
         className="p-4 border-b border-sidebar-border transition-colors duration-300"
         style={{ backgroundColor: `${getThemeColor()}15` }} // 15 is roughly 8% opacity
       >
-        <DropdownMenu>
+        <DropdownMenu dir="rtl">
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-between h-auto py-3 px-2 hover:bg-sidebar-accent">
               <div className="flex items-center gap-3 text-right overflow-hidden">
@@ -87,28 +102,93 @@ export function Sidebar() {
               <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end">
-            <DropdownMenuLabel>تبديل الكيان</DropdownMenuLabel>
+          <DropdownMenuContent className="w-64" align="end">
+            <DropdownMenuLabel>تحديد الكيان</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {entities.map((entity) => (
+            
+            {/* Holding Company Option */}
+            {holdingCompany && (
               <DropdownMenuItem 
-                key={entity.id} 
-                onClick={() => setCurrentEntity(entity)}
-                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => setCurrentEntity(holdingCompany)}
+                className="flex items-center gap-2 cursor-pointer py-2"
               >
                 <div 
                   className="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0" 
-                  style={{ backgroundColor: entity.logo ? 'transparent' : getThemeColor(entity.id) }}
+                  style={{ backgroundColor: holdingCompany.logo ? 'transparent' : getThemeColor(holdingCompany.id) }}
                 >
-                  {entity.logo ? (
-                    <img src={entity.logo} alt="Logo" className="w-full h-full object-cover" />
+                  {holdingCompany.logo ? (
+                    <img src={holdingCompany.logo} alt="Logo" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-2 h-2 rounded-full bg-white" />
+                    <Building2 className="w-3 h-3 text-white" />
                   )}
                 </div>
-                <span className={currentEntity.id === entity.id ? "font-bold" : ""}>{entity.name}</span>
+                <span className={currentEntity.id === holdingCompany.id ? "font-bold" : ""}>
+                  {holdingCompany.name}
+                </span>
               </DropdownMenuItem>
-            ))}
+            )}
+
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground">وحدات الأعمال والفروع</DropdownMenuLabel>
+
+            {/* Units with Submenu for Branches */}
+            {units.map((unit) => {
+              const branches = getUnitBranches(unit.id);
+              
+              return (
+                <DropdownMenuSub key={unit.id}>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2 py-2 cursor-pointer">
+                    <div 
+                      className="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0" 
+                      style={{ backgroundColor: unit.logo ? 'transparent' : getThemeColor(unit.id) }}
+                    >
+                      {unit.logo ? (
+                        <img src={unit.logo} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <Building className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    <span className={currentEntity.id === unit.id ? "font-bold flex-1" : "flex-1"}>
+                      {unit.name}
+                    </span>
+                  </DropdownMenuSubTrigger>
+                  
+                  <DropdownMenuSubContent className="w-56 ml-1">
+                    {/* Option to select the Unit itself */}
+                    <DropdownMenuItem 
+                      onClick={() => setCurrentEntity(unit)}
+                      className="flex items-center gap-2 cursor-pointer py-2 bg-accent/50"
+                    >
+                      <Building className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">إدارة الوحدة (الكل)</span>
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
+                    
+                    {/* Branches List */}
+                    {branches.length > 0 ? (
+                      branches.map(branch => (
+                        <DropdownMenuItem 
+                          key={branch.id}
+                          onClick={() => setCurrentEntity(branch)}
+                          className="flex items-center gap-2 cursor-pointer py-2"
+                        >
+                          <Store className="w-4 h-4 text-muted-foreground" />
+                          <span className={currentEntity.id === branch.id ? "font-bold" : ""}>
+                            {branch.name}
+                          </span>
+                        </DropdownMenuItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-xs text-muted-foreground text-center">
+                        لا توجد فروع
+                      </div>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              );
+            })}
+
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <Link href="/organization" className="flex items-center w-full">
