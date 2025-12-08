@@ -18,7 +18,8 @@ import {
   ArrowDownRight,
   CreditCard,
   Wallet,
-  Banknote
+  Banknote,
+  Calendar as CalendarIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,8 +31,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useState } from "react";
+import { toast } from "sonner";
 
-const payments = [
+// Initial data
+const initialPayments = [
   { id: "PAY-001", party: "شركة التقنية الحديثة", type: "in", amount: 1200.00, date: "2025-01-18", method: "bank_transfer", reference: "REF-123456" },
   { id: "PAY-002", party: "شركة التوريدات العالمية", type: "out", amount: 5000.00, date: "2025-01-17", method: "check", reference: "CHK-987" },
   { id: "PAY-003", party: "سوبر ماركت السلام", type: "in", amount: 850.00, date: "2025-01-16", method: "cash", reference: "-" },
@@ -47,6 +68,65 @@ const methodMap: Record<string, { label: string, icon: any }> = {
 };
 
 export default function Payments() {
+  const [payments, setPayments] = useState(initialPayments);
+  const [isReceiveOpen, setIsReceiveOpen] = useState(false);
+  const [isPayOpen, setIsPayOpen] = useState(false);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    party: "",
+    amount: "",
+    date: new Date().toISOString().split('T')[0],
+    method: "cash",
+    reference: ""
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({ ...prev, method: value }));
+  };
+
+  const handleSubmit = (type: 'in' | 'out') => {
+    if (!formData.party || !formData.amount) {
+      toast.error("الرجاء تعبئة الحقول المطلوبة");
+      return;
+    }
+
+    const newPayment = {
+      id: `PAY-00${payments.length + 1}`,
+      party: formData.party,
+      type: type,
+      amount: parseFloat(formData.amount),
+      date: formData.date,
+      method: formData.method,
+      reference: formData.reference || "-"
+    };
+
+    setPayments([newPayment, ...payments]);
+    toast.success(type === 'in' ? "تم إنشاء سند القبض بنجاح" : "تم إنشاء سند الصرف بنجاح");
+    
+    // Reset form and close dialog
+    setFormData({
+      party: "",
+      amount: "",
+      date: new Date().toISOString().split('T')[0],
+      method: "cash",
+      reference: ""
+    });
+    
+    if (type === 'in') setIsReceiveOpen(false);
+    else setIsPayOpen(false);
+  };
+
+  // Calculate totals
+  const totalIn = payments.filter(p => p.type === 'in').reduce((sum, p) => sum + p.amount, 0);
+  const totalOut = payments.filter(p => p.type === 'out').reduce((sum, p) => sum + p.amount, 0);
+  const netFlow = totalIn - totalOut;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -59,14 +139,112 @@ export default function Payments() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="w-4 h-4 ml-2" />
-            سند قبض جديد
-          </Button>
-          <Button size="sm" variant="destructive">
-            <Plus className="w-4 h-4 ml-2" />
-            سند صرف جديد
-          </Button>
+          
+          {/* Receive Payment Dialog */}
+          <Dialog open={isReceiveOpen} onOpenChange={setIsReceiveOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 ml-2" />
+                سند قبض جديد
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>إنشاء سند قبض جديد</DialogTitle>
+                <DialogDescription>
+                  أدخل تفاصيل المبلغ المستلم من العميل أو الطرف الآخر.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="party" className="text-right">مستلم من</Label>
+                  <Input id="party" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم العميل / الشركة" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="amount" className="text-right">المبلغ</Label>
+                  <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleInputChange} className="col-span-3" placeholder="0.00" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="date" className="text-right">التاريخ</Label>
+                  <Input id="date" name="date" type="date" value={formData.date} onChange={handleInputChange} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="method" className="text-right">طريقة الدفع</Label>
+                  <Select onValueChange={handleSelectChange} defaultValue={formData.method}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر طريقة الدفع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">نقدي</SelectItem>
+                      <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
+                      <SelectItem value="check">شيك</SelectItem>
+                      <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="reference" className="text-right">المرجع</Label>
+                  <Input id="reference" name="reference" value={formData.reference} onChange={handleInputChange} className="col-span-3" placeholder="رقم الشيك / التحويل" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleSubmit('in')}>حفظ سند القبض</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Pay Payment Dialog */}
+          <Dialog open={isPayOpen} onOpenChange={setIsPayOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="destructive">
+                <Plus className="w-4 h-4 ml-2" />
+                سند صرف جديد
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>إنشاء سند صرف جديد</DialogTitle>
+                <DialogDescription>
+                  أدخل تفاصيل المبلغ المدفوع للمورد أو المصروفات.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="party-out" className="text-right">مدفوع لـ</Label>
+                  <Input id="party-out" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم المورد / المستفيد" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="amount-out" className="text-right">المبلغ</Label>
+                  <Input id="amount-out" name="amount" type="number" value={formData.amount} onChange={handleInputChange} className="col-span-3" placeholder="0.00" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="date-out" className="text-right">التاريخ</Label>
+                  <Input id="date-out" name="date" type="date" value={formData.date} onChange={handleInputChange} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="method-out" className="text-right">طريقة الدفع</Label>
+                  <Select onValueChange={handleSelectChange} defaultValue={formData.method}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر طريقة الدفع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">نقدي</SelectItem>
+                      <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
+                      <SelectItem value="check">شيك</SelectItem>
+                      <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="reference-out" className="text-right">المرجع</Label>
+                  <Input id="reference-out" name="reference" value={formData.reference} onChange={handleInputChange} className="col-span-3" placeholder="رقم الشيك / التحويل" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" variant="destructive" onClick={() => handleSubmit('out')}>حفظ سند الصرف</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -77,7 +255,7 @@ export default function Payments() {
             <ArrowUpRight className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">24,500.00 ر.س</div>
+            <div className="text-2xl font-bold text-emerald-600">{totalIn.toLocaleString()} ر.س</div>
           </CardContent>
         </Card>
         <Card>
@@ -86,7 +264,7 @@ export default function Payments() {
             <ArrowDownRight className="h-4 w-4 text-rose-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-600">12,234.00 ر.س</div>
+            <div className="text-2xl font-bold text-rose-600">{totalOut.toLocaleString()} ر.س</div>
           </CardContent>
         </Card>
         <Card>
@@ -95,7 +273,9 @@ export default function Payments() {
             <Wallet className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">12,266.00 ر.س</div>
+            <div className={`text-2xl font-bold ${netFlow >= 0 ? 'text-primary' : 'text-rose-600'}`}>
+              {netFlow.toLocaleString()} ر.س
+            </div>
           </CardContent>
         </Card>
       </div>
