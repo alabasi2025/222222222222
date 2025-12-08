@@ -51,23 +51,11 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-// Mock data for Cash Boxes
-const cashBoxes = [
-  { id: "1111", name: "الصندوق الرئيسي" },
-  { id: "1112", name: "البنك الأهلي" },
-  { id: "1113", name: "صندوق الفرع - الرياض" },
-  { id: "1114", name: "صندوق الفرع - جدة" },
-  { id: "1115", name: "العهدة النثرية" },
-];
+// Mock data for Cash Boxes - should be fetched from API/Context in real app
+const cashBoxes: any[] = [];
 
-// Initial data
-const initialPayments = [
-  { id: "PAY-001", party: "شركة التقنية الحديثة", type: "in", amount: 1200.00, date: "2025-01-18", method: "bank_transfer", reference: "REF-123456", box: "البنك الأهلي" },
-  { id: "PAY-002", party: "شركة التوريدات العالمية", type: "out", amount: 5000.00, date: "2025-01-17", method: "check", reference: "CHK-987", box: "البنك الأهلي" },
-  { id: "PAY-003", party: "سوبر ماركت السلام", type: "in", amount: 850.00, date: "2025-01-16", method: "cash", reference: "-", box: "الصندوق الرئيسي" },
-  { id: "PAY-004", party: "فاتورة كهرباء", type: "out", amount: 450.00, date: "2025-01-15", method: "bank_transfer", reference: "BILL-JAN", box: "البنك الأهلي" },
-  { id: "PAY-005", party: "مكتبة المعرفة", type: "in", amount: 450.00, date: "2025-01-14", method: "credit_card", reference: "TXN-778899", box: "البنك الأهلي" },
-];
+// Initial clean data
+const initialPayments: any[] = [];
 
 const methodMap: Record<string, { label: string, icon: any }> = {
   bank_transfer: { label: "تحويل بنكي", icon: CreditCard },
@@ -177,9 +165,13 @@ export default function Payments() {
                       <SelectValue placeholder="اختر الصندوق أو البنك" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cashBoxes.map(box => (
-                        <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
-                      ))}
+                      {cashBoxes.length === 0 ? (
+                        <SelectItem value="none" disabled>لا توجد صناديق متاحة</SelectItem>
+                      ) : (
+                        cashBoxes.map(box => (
+                          <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -243,9 +235,13 @@ export default function Payments() {
                       <SelectValue placeholder="اختر الصندوق أو البنك" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cashBoxes.map(box => (
-                        <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
-                      ))}
+                      {cashBoxes.length === 0 ? (
+                        <SelectItem value="none" disabled>لا توجد صناديق متاحة</SelectItem>
+                      ) : (
+                        cashBoxes.map(box => (
+                          <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -347,49 +343,57 @@ export default function Payments() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {payments.map((payment) => {
-              const MethodIcon = methodMap[payment.method]?.icon || Wallet;
-              return (
-                <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{payment.id}</TableCell>
-                  <TableCell>{payment.party}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-normal">
-                      {payment.box || "الصندوق الرئيسي"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{payment.date}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <MethodIcon className="w-4 h-4 text-muted-foreground" />
-                      <span>{methodMap[payment.method]?.label || payment.method}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`font-bold ${payment.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {payment.type === 'in' ? '+' : '-'}{payment.amount.toLocaleString()} ر.س
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-left">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
-                        <DropdownMenuItem>طباعة السند</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">إلغاء السند</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {payments.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  لا توجد سندات مسجلة. قم بإنشاء سند قبض أو صرف جديد.
+                </TableCell>
+              </TableRow>
+            ) : (
+              payments.map((payment) => {
+                const MethodIcon = methodMap[payment.method]?.icon || Wallet;
+                return (
+                  <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell className="font-medium">{payment.id}</TableCell>
+                    <TableCell>{payment.party}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-normal">
+                        {payment.box || "الصندوق الرئيسي"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{payment.date}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <MethodIcon className="w-4 h-4 text-muted-foreground" />
+                        <span>{methodMap[payment.method]?.label || payment.method}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`font-bold ${payment.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {payment.type === 'in' ? '+' : '-'}{payment.amount.toLocaleString()} ر.س
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-left">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                          <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
+                          <DropdownMenuItem>طباعة السند</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">إلغاء السند</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>

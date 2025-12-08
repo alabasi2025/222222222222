@@ -52,10 +52,7 @@ const menuItems = [
 ];
 
 const entities = [
-  { id: "HOLD-001", name: "مجموعة الأساس القابضة", type: "holding" },
-  { id: "UNIT-001", name: "وحدة التجارة العامة", type: "unit" },
-  { id: "BR-001", name: "فرع الرياض الرئيسي", type: "branch" },
-  { id: "BR-002", name: "فرع جدة", type: "branch" },
+  { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding" },
 ];
 
 export function Sidebar() {

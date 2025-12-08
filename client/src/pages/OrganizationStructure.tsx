@@ -52,14 +52,9 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-// Mock data for Organization Structure
+// Initial clean data
 const initialEntities = [
-  { id: "HOLD-001", name: "مجموعة الأساس القابضة", type: "holding", parentId: null, expanded: true },
-  { id: "UNIT-001", name: "وحدة التجارة العامة", type: "unit", parentId: "HOLD-001", expanded: true },
-  { id: "BR-001", name: "فرع الرياض الرئيسي", type: "branch", parentId: "UNIT-001", expanded: false },
-  { id: "BR-002", name: "فرع جدة", type: "branch", parentId: "UNIT-001", expanded: false },
-  { id: "UNIT-002", name: "وحدة المقاولات", type: "unit", parentId: "HOLD-001", expanded: true },
-  { id: "BR-003", name: "فرع المشاريع الحكومية", type: "branch", parentId: "UNIT-002", expanded: false },
+  { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding", parentId: null, expanded: true },
 ];
 
 const typeMap: Record<string, { label: string, icon: any, color: string }> = {
@@ -69,7 +64,15 @@ const typeMap: Record<string, { label: string, icon: any, color: string }> = {
 };
 
 export default function OrganizationStructure() {
-  const [entities, setEntities] = useState(initialEntities);
+  interface Entity {
+  id: string;
+  name: string;
+  type: string;
+  parentId: string | null;
+  expanded: boolean;
+}
+
+const [entities, setEntities] = useState<Entity[]>(initialEntities);
   const [isNewEntityOpen, setIsNewEntityOpen] = useState(false);
   const [newEntity, setNewEntity] = useState({
     name: "",
