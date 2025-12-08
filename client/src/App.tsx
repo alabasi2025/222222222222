@@ -21,6 +21,7 @@ import BankReconciliation from "./pages/BankReconciliation";
 import TaxManagement from "./pages/TaxManagement";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import OrganizationStructure from "./pages/OrganizationStructure";
 
 function Router() {
   return (
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/tax" component={TaxManagement} />
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
+        <Route path="/organization" component={OrganizationStructure} />
         
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

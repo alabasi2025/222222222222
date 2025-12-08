@@ -14,8 +14,22 @@ import {
   Building2,
   Target,
   Landmark,
-  Calculator
+  Calculator,
+  Network,
+  ChevronDown,
+  Building,
+  Store
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "لوحة المعلومات", href: "/" },
@@ -33,21 +47,69 @@ const menuItems = [
   { icon: Landmark, label: "تسوية البنك", href: "/bank-reconciliation" },
   { icon: Calculator, label: "إدارة الضريبة", href: "/tax" },
   { icon: PieChart, label: "التقارير", href: "/reports" },
+  { icon: Network, label: "الهيكل التنظيمي", href: "/organization" },
   { icon: Settings, label: "الإعدادات", href: "/settings" },
+];
+
+const entities = [
+  { id: "HOLD-001", name: "مجموعة الأساس القابضة", type: "holding" },
+  { id: "UNIT-001", name: "وحدة التجارة العامة", type: "unit" },
+  { id: "BR-001", name: "فرع الرياض الرئيسي", type: "branch" },
+  { id: "BR-002", name: "فرع جدة", type: "branch" },
 ];
 
 export function Sidebar() {
   const [location] = useLocation();
+  const [currentEntity, setCurrentEntity] = useState(entities[0]);
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-sidebar border-l border-sidebar-border h-screen sticky top-0">
-      <div className="p-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-xl">
-            F
-          </div>
-          <h1 className="text-xl font-bold text-sidebar-foreground">Frappe Books</h1>
-        </div>
+      <div className="p-4 border-b border-sidebar-border">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between h-auto py-3 px-2 hover:bg-sidebar-accent">
+              <div className="flex items-center gap-3 text-right overflow-hidden">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground font-bold text-lg shrink-0 ${
+                  currentEntity.type === 'holding' ? 'bg-purple-600' : 
+                  currentEntity.type === 'unit' ? 'bg-blue-600' : 'bg-emerald-600'
+                }`}>
+                  {currentEntity.type === 'holding' ? <Building2 className="w-4 h-4" /> : 
+                   currentEntity.type === 'unit' ? <Building className="w-4 h-4" /> : <Store className="w-4 h-4" />}
+                </div>
+                <div className="flex flex-col items-start overflow-hidden">
+                  <span className="font-bold text-sm truncate w-full">{currentEntity.name}</span>
+                  <span className="text-xs text-muted-foreground truncate w-full">
+                    {currentEntity.type === 'holding' ? 'الشركة القابضة' : 
+                     currentEntity.type === 'unit' ? 'وحدة أعمال' : 'فرع'}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuLabel>تبديل الكيان</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {entities.map((entity) => (
+              <DropdownMenuItem 
+                key={entity.id} 
+                onClick={() => setCurrentEntity(entity)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                {entity.type === 'holding' ? <Building2 className="w-4 h-4 text-purple-600" /> : 
+                 entity.type === 'unit' ? <Building className="w-4 h-4 text-blue-600" /> : <Store className="w-4 h-4 text-emerald-600" />}
+                <span className={currentEntity.id === entity.id ? "font-bold" : ""}>{entity.name}</span>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <Link href="/organization" className="flex items-center w-full">
+                <Network className="w-4 h-4 ml-2" />
+                إدارة الهيكل التنظيمي
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
@@ -77,7 +139,7 @@ export function Sidebar() {
             MA
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">شركة الأساس</p>
+            <p className="text-sm font-medium truncate">محمد أحمد</p>
             <p className="text-xs text-muted-foreground truncate">مدير النظام</p>
           </div>
         </div>
