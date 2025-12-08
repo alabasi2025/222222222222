@@ -322,39 +322,63 @@ export default function OrganizationStructure() {
             </div>
           ) : (
             childEntities.map((entity) => (
-              <Card key={entity.id} className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigateToEntity(entity)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {entity.type === 'unit' ? 'وحدة أعمال' : 'فرع'}
-                  </CardTitle>
-                  {entity.type === 'unit' ? <Building className="h-4 w-4 text-muted-foreground" /> : <Store className="h-4 w-4 text-muted-foreground" />}
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div 
-                      className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden"
-                      style={{ backgroundColor: entity.logo ? 'transparent' : getThemeColor(entity.id) }}
-                    >
-                      {entity.logo ? (
-                        <img src={entity.logo} alt="Logo" className="w-full h-full object-cover" />
-                      ) : (
-                        entity.type === 'unit' ? <Building className="w-6 h-6" /> : <Store className="w-6 h-6" />
-                      )}
+              <Card key={entity.id} className="hover:shadow-md transition-shadow cursor-pointer group relative">
+                <div className="absolute top-3 left-3 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(entity); }}>
+                        <Pencil className="w-4 h-4 ml-2" />
+                        تعديل
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive focus:text-destructive" 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteEntity(entity.id); }}
+                      >
+                        <Trash2 className="w-4 h-4 ml-2" />
+                        حذف
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div onClick={() => navigateToEntity(entity)}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      {entity.type === 'unit' ? 'وحدة أعمال' : 'فرع'}
+                    </CardTitle>
+                    {entity.type === 'unit' ? <Building className="h-4 w-4 text-muted-foreground" /> : <Store className="h-4 w-4 text-muted-foreground" />}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 mt-2">
+                      <div 
+                        className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden"
+                        style={{ backgroundColor: entity.logo ? 'transparent' : getThemeColor(entity.id) }}
+                      >
+                        {entity.logo ? (
+                          <img src={entity.logo} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                          entity.type === 'unit' ? <Building className="w-6 h-6" /> : <Store className="w-6 h-6" />
+                        )}
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="text-2xl font-bold truncate">{entity.name}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {entity.type === 'unit' 
+                            ? `${entities.filter(e => e.parentId === entity.id).length} فروع` 
+                            : 'نشط'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="text-2xl font-bold truncate">{entity.name}</div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {entity.type === 'unit' 
-                          ? `${entities.filter(e => e.parentId === entity.id).length} فروع` 
-                          : 'نشط'}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="bg-muted/50 p-3 flex justify-between items-center group-hover:bg-muted transition-colors">
-                  <span className="text-xs text-muted-foreground">انقر للإدارة</span>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-                </CardFooter>
+                  </CardContent>
+                  <CardFooter className="bg-muted/50 p-3 flex justify-between items-center group-hover:bg-muted transition-colors">
+                    <span className="text-xs text-muted-foreground">انقر للإدارة</span>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                  </CardFooter>
+                </div>
               </Card>
             ))
           )}
