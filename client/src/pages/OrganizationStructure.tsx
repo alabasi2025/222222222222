@@ -42,9 +42,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity, Entity } from "@/contexts/EntityContext";
+import { useLocation } from "wouter";
 
 const typeMap: Record<string, { label: string, icon: any, color: string, bg: string }> = {
   holding: { label: "شركة قابضة", icon: Building2, color: "text-purple-700", bg: "bg-purple-100" },
@@ -62,6 +63,7 @@ export default function OrganizationStructure() {
     getThemeColor 
   } = useEntity();
   
+  const [location, setLocation] = useLocation();
   const [isNewEntityOpen, setIsNewEntityOpen] = useState(false);
   const [isEditEntityOpen, setIsEditEntityOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
@@ -80,6 +82,19 @@ export default function OrganizationStructure() {
 
   // Filter children based on current view
   const childEntities = entities.filter(e => e.parentId === currentEntity.id);
+
+  // Handle query parameters for actions
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const action = searchParams.get('action');
+    
+    if (action === 'add') {
+      setIsNewEntityOpen(true);
+      // Clean up URL without refreshing
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   const handleAddEntity = () => {
     if (!newEntity.name) {

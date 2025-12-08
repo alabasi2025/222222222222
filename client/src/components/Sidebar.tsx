@@ -19,7 +19,8 @@ import {
   ChevronDown,
   Building,
   Store,
-  ChevronLeft
+  ChevronLeft,
+  Plus
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -188,6 +189,31 @@ export function Sidebar() {
                 </DropdownMenuSub>
               );
             })}
+
+            <DropdownMenuSeparator />
+            
+            {/* Quick Actions based on context */}
+            {currentEntity.type === 'holding' && (
+              <DropdownMenuItem>
+                <Link href="/organization?action=add">
+                  <div className="flex items-center w-full cursor-pointer text-primary">
+                    <Plus className="w-4 h-4 ml-2" />
+                    إضافة وحدة أعمال
+                  </div>
+                </Link>
+              </DropdownMenuItem>
+            )}
+            
+            {(currentEntity.type === 'unit' || currentEntity.type === 'branch') && (
+              <DropdownMenuItem>
+                <Link href="/organization?action=add">
+                  <div className="flex items-center w-full cursor-pointer text-primary">
+                    <Plus className="w-4 h-4 ml-2" />
+                    إضافة فرع جديد
+                  </div>
+                </Link>
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuSeparator />
             <DropdownMenuItem>
