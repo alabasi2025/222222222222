@@ -394,12 +394,14 @@ export default function ChartOfAccounts() {
             طي الكل
           </Button>
           
-          <DialogTrigger asChild>
-            <Button size="sm" className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white">
-              <Plus className="w-4 h-4 ml-2" />
-              حساب جديد
-            </Button>
-          </DialogTrigger>
+          <Button 
+            size="sm" 
+            className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => setIsNewAccountOpen(true)}
+          >
+            <Plus className="w-4 h-4 ml-2" />
+            حساب جديد
+          </Button>
         </div>
       </div>
 
