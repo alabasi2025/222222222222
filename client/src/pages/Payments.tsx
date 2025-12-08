@@ -51,13 +51,22 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
+// Mock data for Cash Boxes
+const cashBoxes = [
+  { id: "1111", name: "الصندوق الرئيسي" },
+  { id: "1112", name: "البنك الأهلي" },
+  { id: "1113", name: "صندوق الفرع - الرياض" },
+  { id: "1114", name: "صندوق الفرع - جدة" },
+  { id: "1115", name: "العهدة النثرية" },
+];
+
 // Initial data
 const initialPayments = [
-  { id: "PAY-001", party: "شركة التقنية الحديثة", type: "in", amount: 1200.00, date: "2025-01-18", method: "bank_transfer", reference: "REF-123456" },
-  { id: "PAY-002", party: "شركة التوريدات العالمية", type: "out", amount: 5000.00, date: "2025-01-17", method: "check", reference: "CHK-987" },
-  { id: "PAY-003", party: "سوبر ماركت السلام", type: "in", amount: 850.00, date: "2025-01-16", method: "cash", reference: "-" },
-  { id: "PAY-004", party: "فاتورة كهرباء", type: "out", amount: 450.00, date: "2025-01-15", method: "bank_transfer", reference: "BILL-JAN" },
-  { id: "PAY-005", party: "مكتبة المعرفة", type: "in", amount: 450.00, date: "2025-01-14", method: "credit_card", reference: "TXN-778899" },
+  { id: "PAY-001", party: "شركة التقنية الحديثة", type: "in", amount: 1200.00, date: "2025-01-18", method: "bank_transfer", reference: "REF-123456", box: "البنك الأهلي" },
+  { id: "PAY-002", party: "شركة التوريدات العالمية", type: "out", amount: 5000.00, date: "2025-01-17", method: "check", reference: "CHK-987", box: "البنك الأهلي" },
+  { id: "PAY-003", party: "سوبر ماركت السلام", type: "in", amount: 850.00, date: "2025-01-16", method: "cash", reference: "-", box: "الصندوق الرئيسي" },
+  { id: "PAY-004", party: "فاتورة كهرباء", type: "out", amount: 450.00, date: "2025-01-15", method: "bank_transfer", reference: "BILL-JAN", box: "البنك الأهلي" },
+  { id: "PAY-005", party: "مكتبة المعرفة", type: "in", amount: 450.00, date: "2025-01-14", method: "credit_card", reference: "TXN-778899", box: "البنك الأهلي" },
 ];
 
 const methodMap: Record<string, { label: string, icon: any }> = {
@@ -74,6 +83,7 @@ export default function Payments() {
 
   // Form states
   const [formData, setFormData] = useState({
+    box: "",
     party: "",
     amount: "",
     date: new Date().toISOString().split('T')[0],
@@ -86,15 +96,17 @@ export default function Payments() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (value: string) => {
-    setFormData(prev => ({ ...prev, method: value }));
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (type: 'in' | 'out') => {
-    if (!formData.party || !formData.amount) {
-      toast.error("الرجاء تعبئة الحقول المطلوبة");
+    if (!formData.box || !formData.party || !formData.amount) {
+      toast.error("الرجاء تعبئة الحقول المطلوبة (الصندوق، الطرف، المبلغ)");
       return;
     }
+
+    const boxName = cashBoxes.find(b => b.id === formData.box)?.name || formData.box;
 
     const newPayment = {
       id: `PAY-00${payments.length + 1}`,
@@ -103,7 +115,8 @@ export default function Payments() {
       amount: parseFloat(formData.amount),
       date: formData.date,
       method: formData.method,
-      reference: formData.reference || "-"
+      reference: formData.reference || "-",
+      box: boxName
     };
 
     setPayments([newPayment, ...payments]);
@@ -111,6 +124,7 @@ export default function Payments() {
     
     // Reset form and close dialog
     setFormData({
+      box: "",
       party: "",
       amount: "",
       date: new Date().toISOString().split('T')[0],
@@ -152,10 +166,23 @@ export default function Payments() {
               <DialogHeader>
                 <DialogTitle>إنشاء سند قبض جديد</DialogTitle>
                 <DialogDescription>
-                  أدخل تفاصيل المبلغ المستلم من العميل أو الطرف الآخر.
+                  أدخل تفاصيل المبلغ المستلم. يجب تحديد الصندوق أولاً.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="box" className="text-right font-bold">الصندوق/الحساب</Label>
+                  <Select onValueChange={(v) => handleSelectChange("box", v)} value={formData.box}>
+                    <SelectTrigger className="col-span-3 border-emerald-200 bg-emerald-50">
+                      <SelectValue placeholder="اختر الصندوق أو البنك" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cashBoxes.map(box => (
+                        <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="party" className="text-right">مستلم من</Label>
                   <Input id="party" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم العميل / الشركة" />
@@ -170,7 +197,7 @@ export default function Payments() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="method" className="text-right">طريقة الدفع</Label>
-                  <Select onValueChange={handleSelectChange} defaultValue={formData.method}>
+                  <Select onValueChange={(v) => handleSelectChange("method", v)} defaultValue={formData.method}>
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر طريقة الدفع" />
                     </SelectTrigger>
@@ -205,10 +232,23 @@ export default function Payments() {
               <DialogHeader>
                 <DialogTitle>إنشاء سند صرف جديد</DialogTitle>
                 <DialogDescription>
-                  أدخل تفاصيل المبلغ المدفوع للمورد أو المصروفات.
+                  أدخل تفاصيل المبلغ المدفوع. يجب تحديد الصندوق أولاً.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="box-out" className="text-right font-bold">الصندوق/الحساب</Label>
+                  <Select onValueChange={(v) => handleSelectChange("box", v)} value={formData.box}>
+                    <SelectTrigger className="col-span-3 border-rose-200 bg-rose-50">
+                      <SelectValue placeholder="اختر الصندوق أو البنك" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cashBoxes.map(box => (
+                        <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="party-out" className="text-right">مدفوع لـ</Label>
                   <Input id="party-out" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم المورد / المستفيد" />
@@ -223,7 +263,7 @@ export default function Payments() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="method-out" className="text-right">طريقة الدفع</Label>
-                  <Select onValueChange={handleSelectChange} defaultValue={formData.method}>
+                  <Select onValueChange={(v) => handleSelectChange("method", v)} defaultValue={formData.method}>
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر طريقة الدفع" />
                     </SelectTrigger>
@@ -270,10 +310,10 @@ export default function Payments() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">صافي التدفق النقدي</CardTitle>
-            <Wallet className="h-4 w-4 text-primary" />
+            <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netFlow >= 0 ? 'text-primary' : 'text-rose-600'}`}>
+            <div className={`text-2xl font-bold ${netFlow >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
               {netFlow.toLocaleString()} ر.س
             </div>
           </CardContent>
@@ -283,18 +323,13 @@ export default function Payments() {
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
         <div className="relative w-full sm:w-96">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="بحث برقم العملية أو الطرف..." className="pr-9" />
+          <Input placeholder="بحث برقم السند أو الاسم..." className="pr-9" />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
             <Filter className="w-4 h-4 ml-2" />
             تصفية
           </Button>
-          <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-            <option>جميع السندات</option>
-            <option>سندات قبض</option>
-            <option>سندات صرف</option>
-          </select>
         </div>
       </div>
 
@@ -302,38 +337,37 @@ export default function Payments() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[120px]">رقم العملية</TableHead>
+              <TableHead>رقم السند</TableHead>
               <TableHead>الطرف</TableHead>
+              <TableHead>الصندوق/الحساب</TableHead>
               <TableHead>التاريخ</TableHead>
               <TableHead>طريقة الدفع</TableHead>
-              <TableHead>المرجع</TableHead>
               <TableHead>المبلغ</TableHead>
               <TableHead className="text-left">إجراءات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {payments.map((payment) => {
-              const method = methodMap[payment.method];
-              const MethodIcon = method.icon;
-              
+              const MethodIcon = methodMap[payment.method]?.icon || Wallet;
               return (
                 <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="font-medium">{payment.id}</TableCell>
                   <TableCell>{payment.party}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="font-normal">
+                      {payment.box || "الصندوق الرئيسي"}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{payment.date}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <MethodIcon className="w-4 h-4 text-muted-foreground" />
-                      <span>{method.label}</span>
+                      <span>{methodMap[payment.method]?.label || payment.method}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{payment.reference}</TableCell>
                   <TableCell>
-                    <span className={`font-bold flex items-center gap-1 ${payment.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {payment.type === 'in' ? '+' : '-'} {payment.amount.toLocaleString()} ر.س
-                    </span>
-                    <span className="text-xs text-muted-foreground block mt-1">
-                      {payment.type === 'in' ? 'سند قبض' : 'سند صرف'}
+                    <span className={`font-bold ${payment.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {payment.type === 'in' ? '+' : '-'}{payment.amount.toLocaleString()} ر.س
                     </span>
                   </TableCell>
                   <TableCell className="text-left">
@@ -347,9 +381,9 @@ export default function Payments() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                         <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
-                        <DropdownMenuItem>طباعة الإيصال</DropdownMenuItem>
+                        <DropdownMenuItem>طباعة السند</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">إلغاء العملية</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive">إلغاء السند</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
