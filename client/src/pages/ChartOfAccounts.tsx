@@ -310,14 +310,17 @@ export default function ChartOfAccounts() {
           </Button>
           
           <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
-            <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-              <DialogHeader>
-                <DialogTitle>إضافة حساب جديد</DialogTitle>
+            <DialogContent className="max-w-2xl h-[90vh] md:h-auto md:max-h-[85vh] flex flex-col p-0 gap-0">
+              <DialogHeader className="p-6 pb-2 border-b">
+                <div className="flex justify-between items-center w-full">
+                  <DialogTitle>إضافة حساب جديد</DialogTitle>
+                  <Button size="sm" onClick={handleAddAccount} className="md:hidden">حفظ</Button>
+                </div>
                 <DialogDescription>
                   أدخل تفاصيل الحساب الجديد لإضافته إلى الشجرة.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-6 py-4 overflow-y-auto flex-1 px-2">
+              <div className="grid gap-6 p-6 overflow-y-auto flex-1">
                 
                 {/* Account Nature (Group vs Ledger) */}
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -433,7 +436,7 @@ export default function ChartOfAccounts() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="p-6 pt-2 border-t bg-background mt-auto">
                 <Button variant="outline" onClick={() => setIsNewAccountOpen(false)}>إلغاء</Button>
                 <Button onClick={handleAddAccount}>حفظ الحساب</Button>
               </DialogFooter>
