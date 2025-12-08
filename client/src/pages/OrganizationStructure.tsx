@@ -59,6 +59,13 @@ const initialEntities = [
   { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding", parentId: null, expanded: true },
   { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit", parentId: "HOLD-001", expanded: true },
   { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit", parentId: "HOLD-001", expanded: true },
+  // Branches for Al-Abbasi Private (UNIT-002)
+  { id: "BR-001", name: "الفرع الرئيسي", type: "branch", parentId: "UNIT-002", expanded: true },
+  // Branches for Al-Hudaydah Works (UNIT-001)
+  { id: "BR-002", name: "الفرع الرئيسي", type: "branch", parentId: "UNIT-001", expanded: true },
+  { id: "BR-003", name: "فرع الدهمية", type: "branch", parentId: "UNIT-001", expanded: true },
+  { id: "BR-004", name: "فرع الصبالية", type: "branch", parentId: "UNIT-001", expanded: true },
+  { id: "BR-005", name: "فرع غليل", type: "branch", parentId: "UNIT-001", expanded: true },
 ];
 
 const typeMap: Record<string, { label: string, icon: any, color: string }> = {

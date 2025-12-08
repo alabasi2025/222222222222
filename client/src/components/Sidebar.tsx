@@ -55,6 +55,11 @@ const entities = [
   { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding" },
   { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit" },
   { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit" },
+  { id: "BR-001", name: "الفرع الرئيسي (العباسي خاص)", type: "branch" },
+  { id: "BR-002", name: "الفرع الرئيسي (الحديدة)", type: "branch" },
+  { id: "BR-003", name: "فرع الدهمية", type: "branch" },
+  { id: "BR-004", name: "فرع الصبالية", type: "branch" },
+  { id: "BR-005", name: "فرع غليل", type: "branch" },
 ];
 
 export function Sidebar() {
