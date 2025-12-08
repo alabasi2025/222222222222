@@ -191,9 +191,11 @@ export function Sidebar() {
 
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <Link href="/organization" className="flex items-center w-full">
-                <Network className="w-4 h-4 ml-2" />
-                إدارة الهيكل التنظيمي
+              <Link href="/organization">
+                <div className="flex items-center w-full cursor-pointer">
+                  <Network className="w-4 h-4 ml-2" />
+                  إدارة الهيكل التنظيمي
+                </div>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -205,9 +207,9 @@ export function Sidebar() {
           const isActive = location === item.href;
           return (
             <Link key={item.href} href={item.href}>
-              <a
+              <div
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 cursor-pointer",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -222,7 +224,7 @@ export function Sidebar() {
                   style={{ color: isActive ? getThemeColor() : undefined }}
                 />
                 {item.label}
-              </a>
+              </div>
             </Link>
           );
         })}
