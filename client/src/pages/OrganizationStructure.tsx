@@ -20,7 +20,9 @@ import {
   Network,
   Save,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -67,15 +69,18 @@ const typeMap: Record<string, { label: string, icon: any, color: string }> = {
 
 export default function OrganizationStructure() {
   interface Entity {
-  id: string;
-  name: string;
-  type: string;
-  parentId: string | null;
-  expanded: boolean;
-}
+    id: string;
+    name: string;
+    type: string;
+    parentId: string | null;
+    expanded: boolean;
+  }
 
-const [entities, setEntities] = useState<Entity[]>(initialEntities);
+  const [entities, setEntities] = useState<Entity[]>(initialEntities);
   const [isNewEntityOpen, setIsNewEntityOpen] = useState(false);
+  const [isEditEntityOpen, setIsEditEntityOpen] = useState(false);
+  const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
+  
   const [newEntity, setNewEntity] = useState({
     name: "",
     type: "branch",
@@ -130,6 +135,40 @@ const [entities, setEntities] = useState<Entity[]>(initialEntities);
     toast.success("تم إضافة الكيان بنجاح");
     setIsNewEntityOpen(false);
     setNewEntity({ name: "", type: "branch", parent: "" });
+  };
+
+  const handleEditEntity = () => {
+    if (!editingEntity || !editingEntity.name) {
+      toast.error("يرجى إدخال اسم الكيان");
+      return;
+    }
+
+    setEntities(entities.map(e => 
+      e.id === editingEntity.id ? editingEntity : e
+    ));
+    
+    toast.success("تم تحديث بيانات الكيان بنجاح");
+    setIsEditEntityOpen(false);
+    setEditingEntity(null);
+  };
+
+  const handleDeleteEntity = (id: string) => {
+    // Check if entity has children
+    const hasChildren = entities.some(e => e.parentId === id);
+    if (hasChildren) {
+      toast.error("لا يمكن حذف كيان يحتوي على كيانات فرعية. يرجى حذف الفروع أولاً.");
+      return;
+    }
+
+    if (confirm("هل أنت متأكد من حذف هذا الكيان؟")) {
+      setEntities(entities.filter(e => e.id !== id));
+      toast.success("تم حذف الكيان بنجاح");
+    }
+  };
+
+  const openEditDialog = (entity: Entity) => {
+    setEditingEntity({ ...entity });
+    setIsEditEntityOpen(true);
   };
 
   // Helper to check visibility
@@ -215,6 +254,35 @@ const [entities, setEntities] = useState<Entity[]>(initialEntities);
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditEntityOpen} onOpenChange={setIsEditEntityOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>تعديل بيانات الكيان</DialogTitle>
+                <DialogDescription>
+                  تعديل اسم الكيان المحدد.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-name" className="text-right">الاسم</Label>
+                  <Input 
+                    id="edit-name" 
+                    value={editingEntity?.name || ""}
+                    onChange={(e) => setEditingEntity(prev => prev ? {...prev, name: e.target.value} : null)}
+                    className="col-span-3" 
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleEditEntity}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ التعديلات
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -291,10 +359,18 @@ const [entities, setEntities] = useState<Entity[]>(initialEntities);
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                              <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
-                              <DropdownMenuItem>إعدادات الكيان</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(entity)}>
+                                <Pencil className="w-4 h-4 ml-2" />
+                                تعديل
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => handleDeleteEntity(entity.id)}
+                              >
+                                <Trash2 className="w-4 h-4 ml-2" />
+                                حذف
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -307,57 +383,49 @@ const [entities, setEntities] = useState<Entity[]>(initialEntities);
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>إحصائيات الهيكل</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-full">
-                    <Building2 className="w-4 h-4 text-purple-600" />
-                  </div>
-                  <span className="font-medium">الشركات القابضة</span>
+        <Card>
+          <CardHeader>
+            <CardTitle>إحصائيات الهيكل</CardTitle>
+            <CardDescription>ملخص سريع للكيانات</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+                  <Building2 className="w-4 h-4" />
                 </div>
-                <span className="text-xl font-bold text-purple-700">1</span>
+                <span className="font-medium">الشركات القابضة</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <Building className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <span className="font-medium">وحدات الأعمال</span>
-                </div>
-                <span className="text-xl font-bold text-blue-700">
-                  {entities.filter(e => e.type === 'unit').length}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 rounded-full">
-                    <Store className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <span className="font-medium">الفروع النشطة</span>
-                </div>
-                <span className="text-xl font-bold text-emerald-700">
-                  {entities.filter(e => e.type === 'branch').length}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+              <span className="text-xl font-bold text-purple-700">
+                {entities.filter(e => e.type === 'holding').length}
+              </span>
+            </div>
 
-          <Card className="bg-primary/5 border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-primary">معلومات هامة</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                يسمح هذا الهيكل بإدارة حسابات متعددة المستويات. يتم تجميع التقارير المالية تلقائياً من الفروع إلى الوحدات، ومن الوحدات إلى الشركة القابضة.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-full text-blue-600">
+                  <Building className="w-4 h-4" />
+                </div>
+                <span className="font-medium">وحدات الأعمال</span>
+              </div>
+              <span className="text-xl font-bold text-blue-700">
+                {entities.filter(e => e.type === 'unit').length}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
+                  <Store className="w-4 h-4" />
+                </div>
+                <span className="font-medium">الفروع</span>
+              </div>
+              <span className="text-xl font-bold text-emerald-700">
+                {entities.filter(e => e.type === 'branch').length}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

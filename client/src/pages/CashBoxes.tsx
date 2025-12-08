@@ -18,7 +18,9 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   History,
-  Save
+  Save,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -57,6 +59,9 @@ const recentTransactions: any[] = [];
 export default function CashBoxes() {
   const [cashBoxes, setCashBoxes] = useState(initialCashBoxes);
   const [isNewBoxOpen, setIsNewBoxOpen] = useState(false);
+  const [isEditBoxOpen, setIsEditBoxOpen] = useState(false);
+  const [editingBox, setEditingBox] = useState<any>(null);
+
   const [newBox, setNewBox] = useState({
     name: "",
     currency: "SAR",
@@ -83,6 +88,39 @@ export default function CashBoxes() {
     toast.success("تم إضافة الصندوق بنجاح");
     setIsNewBoxOpen(false);
     setNewBox({ name: "", currency: "SAR", type: "cash_box" });
+  };
+
+  const handleEditBox = () => {
+    if (!editingBox || !editingBox.name) {
+      toast.error("يرجى إدخال اسم الصندوق");
+      return;
+    }
+
+    setCashBoxes(cashBoxes.map(box => 
+      box.id === editingBox.id ? editingBox : box
+    ));
+    
+    toast.success("تم تحديث بيانات الصندوق بنجاح");
+    setIsEditBoxOpen(false);
+    setEditingBox(null);
+  };
+
+  const handleDeleteBox = (id: string) => {
+    const box = cashBoxes.find(b => b.id === id);
+    if (box && box.balance !== 0) {
+      toast.error("لا يمكن حذف صندوق يحتوي على رصيد. يرجى تصفير الرصيد أولاً.");
+      return;
+    }
+
+    if (confirm("هل أنت متأكد من حذف هذا الصندوق؟")) {
+      setCashBoxes(cashBoxes.filter(b => b.id !== id));
+      toast.success("تم حذف الصندوق بنجاح");
+    }
+  };
+
+  const openEditDialog = (box: any) => {
+    setEditingBox({ ...box });
+    setIsEditBoxOpen(true);
   };
 
   return (
@@ -159,6 +197,51 @@ export default function CashBoxes() {
                 <Button onClick={handleAddBox}>
                   <Save className="w-4 h-4 ml-2" />
                   حفظ الصندوق
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditBoxOpen} onOpenChange={setIsEditBoxOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>تعديل بيانات الصندوق</DialogTitle>
+                <DialogDescription>
+                  تعديل اسم الصندوق أو العملة.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-name" className="text-right">اسم الصندوق</Label>
+                  <Input 
+                    id="edit-name" 
+                    value={editingBox?.name || ""}
+                    onChange={(e) => setEditingBox((prev: any) => prev ? {...prev, name: e.target.value} : null)}
+                    className="col-span-3" 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-currency" className="text-right">العملة</Label>
+                  <Select 
+                    value={editingBox?.currency || "SAR"} 
+                    onValueChange={(v) => setEditingBox((prev: any) => prev ? {...prev, currency: v} : null)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر العملة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
+                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
+                      <SelectItem value="EUR">يورو (EUR)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleEditBox}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ التعديلات
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -277,7 +360,17 @@ export default function CashBoxes() {
                             <DropdownMenuItem>سند صرف</DropdownMenuItem>
                             <DropdownMenuItem>تحويل أموال</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEditDialog(box)}>
+                              <Pencil className="w-4 h-4 ml-2" />
+                              تعديل البيانات
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteBox(box.id)}
+                            >
+                              <Trash2 className="w-4 h-4 ml-2" />
+                              حذف
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

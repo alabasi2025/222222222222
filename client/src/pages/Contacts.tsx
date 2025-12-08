@@ -19,7 +19,9 @@ import {
   Mail,
   MapPin,
   Building2,
-  Save
+  Save,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -60,7 +62,11 @@ export default function Contacts() {
   const [customers, setCustomers] = useState(initialCustomers);
   const [suppliers, setSuppliers] = useState(initialSuppliers);
   const [activeTab, setActiveTab] = useState("customers");
+  
   const [isNewContactOpen, setIsNewContactOpen] = useState(false);
+  const [isEditContactOpen, setIsEditContactOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<any>(null);
+
   const [newContact, setNewContact] = useState({
     name: "",
     type: "شركة",
@@ -105,14 +111,45 @@ export default function Contacts() {
     });
   };
 
+  const handleEditContact = () => {
+    if (!editingContact || !editingContact.name) {
+      toast.error("يرجى إدخال الاسم");
+      return;
+    }
+
+    if (activeTab === "customers") {
+      setCustomers(customers.map(c => 
+        c.id === editingContact.id ? editingContact : c
+      ));
+      toast.success("تم تحديث بيانات العميل بنجاح");
+    } else {
+      setSuppliers(suppliers.map(s => 
+        s.id === editingContact.id ? editingContact : s
+      ));
+      toast.success("تم تحديث بيانات المورد بنجاح");
+    }
+    
+    setIsEditContactOpen(false);
+    setEditingContact(null);
+  };
+
   const handleDeleteCustomer = (id: string) => {
-    setCustomers(customers.filter(c => c.id !== id));
-    toast.success("تم حذف العميل بنجاح");
+    if (confirm("هل أنت متأكد من حذف هذا العميل؟")) {
+      setCustomers(customers.filter(c => c.id !== id));
+      toast.success("تم حذف العميل بنجاح");
+    }
   };
 
   const handleDeleteSupplier = (id: string) => {
-    setSuppliers(suppliers.filter(s => s.id !== id));
-    toast.success("تم حذف المورد بنجاح");
+    if (confirm("هل أنت متأكد من حذف هذا المورد؟")) {
+      setSuppliers(suppliers.filter(s => s.id !== id));
+      toast.success("تم حذف المورد بنجاح");
+    }
+  };
+
+  const openEditDialog = (contact: any) => {
+    setEditingContact({ ...contact });
+    setIsEditContactOpen(true);
   };
 
   return (
@@ -211,6 +248,54 @@ export default function Contacts() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditContactOpen} onOpenChange={setIsEditContactOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>تعديل بيانات جهة الاتصال</DialogTitle>
+                <DialogDescription>
+                  تعديل بيانات العميل أو المورد.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-name" className="text-right">الاسم</Label>
+                  <Input 
+                    id="edit-name" 
+                    value={editingContact?.name || ""}
+                    onChange={(e) => setEditingContact((prev: any) => prev ? {...prev, name: e.target.value} : null)}
+                    className="col-span-3" 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-phone" className="text-right">الهاتف</Label>
+                  <Input 
+                    id="edit-phone" 
+                    value={editingContact?.phone || ""}
+                    onChange={(e) => setEditingContact((prev: any) => prev ? {...prev, phone: e.target.value} : null)}
+                    className="col-span-3" 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-email" className="text-right">البريد الإلكتروني</Label>
+                  <Input 
+                    id="edit-email" 
+                    type="email"
+                    value={editingContact?.email || ""}
+                    onChange={(e) => setEditingContact((prev: any) => prev ? {...prev, email: e.target.value} : null)}
+                    className="col-span-3" 
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleEditContact}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ التعديلات
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -282,19 +367,16 @@ export default function Contacts() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="font-normal">
-                          {customer.type}
-                        </Badge>
+                        <Badge variant="outline">{customer.type}</Badge>
                       </TableCell>
                       <TableCell>
-                        <span className={`font-bold ${customer.balance > 0 ? 'text-emerald-600' : customer.balance < 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
-                          {Math.abs(customer.balance).toLocaleString()} ر.س
-                          {customer.balance > 0 ? ' (له)' : customer.balance < 0 ? ' (عليه)' : ''}
+                        <span className="font-bold text-emerald-600">
+                          {customer.balance.toLocaleString()} ر.س
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                          نشط
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          {customer.status === 'active' ? 'نشط' : 'غير نشط'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-left">
@@ -308,10 +390,17 @@ export default function Contacts() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                             <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                            <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
                             <DropdownMenuItem>إنشاء فاتورة</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCustomer(customer.id)}>
+                            <DropdownMenuItem onClick={() => openEditDialog(customer)}>
+                              <Pencil className="w-4 h-4 ml-2" />
+                              تعديل البيانات
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteCustomer(customer.id)}
+                            >
+                              <Trash2 className="w-4 h-4 ml-2" />
                               حذف
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -351,7 +440,7 @@ export default function Contacts() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-blue-100 text-blue-700">
+                            <AvatarFallback className="bg-primary/10 text-primary">
                               {supplier.name.substring(0, 2)}
                             </AvatarFallback>
                           </Avatar>
@@ -374,19 +463,16 @@ export default function Contacts() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="font-normal">
-                          {supplier.type}
-                        </Badge>
+                        <Badge variant="outline">{supplier.type}</Badge>
                       </TableCell>
                       <TableCell>
-                        <span className={`font-bold ${supplier.balance > 0 ? 'text-emerald-600' : supplier.balance < 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
-                          {Math.abs(supplier.balance).toLocaleString()} ر.س
-                          {supplier.balance > 0 ? ' (له)' : supplier.balance < 0 ? ' (عليه)' : ''}
+                        <span className="font-bold text-rose-600">
+                          {supplier.balance.toLocaleString()} ر.س
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                          نشط
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          {supplier.status === 'active' ? 'نشط' : 'غير نشط'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-left">
@@ -400,10 +486,17 @@ export default function Contacts() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                             <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                            <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
                             <DropdownMenuItem>إنشاء فاتورة شراء</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteSupplier(supplier.id)}>
+                            <DropdownMenuItem onClick={() => openEditDialog(supplier)}>
+                              <Pencil className="w-4 h-4 ml-2" />
+                              تعديل البيانات
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteSupplier(supplier.id)}
+                            >
+                              <Trash2 className="w-4 h-4 ml-2" />
                               حذف
                             </DropdownMenuItem>
                           </DropdownMenuContent>
