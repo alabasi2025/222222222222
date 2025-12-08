@@ -14,6 +14,10 @@ import Payments from "./pages/Payments";
 import JournalEntries from "./pages/JournalEntries";
 import Ledger from "./pages/Ledger";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
+import FixedAssets from "./pages/FixedAssets";
+import CostCenters from "./pages/CostCenters";
+import BankReconciliation from "./pages/BankReconciliation";
+import TaxManagement from "./pages/TaxManagement";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 
@@ -31,6 +35,10 @@ function Router() {
         <Route path="/journals" component={JournalEntries} />
         <Route path="/ledger" component={Ledger} />
         <Route path="/coa" component={ChartOfAccounts} />
+      <Route path="/assets" component={FixedAssets} />
+      <Route path="/cost-centers" component={CostCenters} />
+      <Route path="/bank-reconciliation" component={BankReconciliation} />
+      <Route path="/tax" component={TaxManagement} />
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
         

@@ -10,7 +10,11 @@ import {
   PieChart,
   Wallet,
   BookOpen,
-  FolderTree
+  FolderTree,
+  Building2,
+  Target,
+  Landmark,
+  Calculator
 } from "lucide-react";
 
 const menuItems = [
@@ -23,6 +27,10 @@ const menuItems = [
   { icon: FileText, label: "قيود اليومية", href: "/journals" },
   { icon: BookOpen, label: "دفتر الأستاذ", href: "/ledger" },
   { icon: FolderTree, label: "شجرة الحسابات", href: "/coa" },
+  { icon: Building2, label: "الأصول الثابتة", href: "/assets" },
+  { icon: Target, label: "مراكز التكلفة", href: "/cost-centers" },
+  { icon: Landmark, label: "تسوية البنك", href: "/bank-reconciliation" },
+  { icon: Calculator, label: "إدارة الضريبة", href: "/tax" },
   { icon: PieChart, label: "التقارير", href: "/reports" },
   { icon: Settings, label: "الإعدادات", href: "/settings" },
 ];
