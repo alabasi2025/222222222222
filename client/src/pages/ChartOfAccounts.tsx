@@ -56,6 +56,8 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 // Account Subtypes
 const accountSubtypes = [
@@ -100,8 +102,19 @@ const typeMap: Record<string, { label: string, color: string }> = {
 
 export default function ChartOfAccounts() {
   const { currentEntity } = useEntity();
+  const [location, setLocation] = useLocation();
   const [accounts, setAccounts] = useState(initialAccountsData);
   const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
+
+  // Handle query params for quick actions
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('action') === 'add') {
+      setIsNewAccountOpen(true);
+      // Clean up URL without refreshing
+      window.history.replaceState({}, '', '/coa');
+    }
+  }, [location]);
   const [newAccount, setNewAccount] = useState({
     name: "",
     code: "",

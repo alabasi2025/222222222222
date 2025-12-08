@@ -215,6 +215,15 @@ export function Sidebar() {
               </DropdownMenuItem>
             )}
 
+            <DropdownMenuItem>
+              <Link href="/coa?action=add">
+                <div className="flex items-center w-full cursor-pointer text-primary">
+                  <FolderTree className="w-4 h-4 ml-2" />
+                  إضافة حساب جديد
+                </div>
+              </Link>
+            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <Link href="/organization">
