@@ -231,7 +231,7 @@ export default function OrganizationStructure() {
                     {isHoldingView ? "إضافة وحدة أعمال جديدة" : "إضافة فرع جديد"}
                   </DialogTitle>
                   <DialogDescription>
-                    سيتم إضافة الكيان الجديد تحت {currentEntity.name}
+                    سيتم إضافة {isHoldingView ? "وحدة الأعمال" : "الفرع"} مباشرة تحت: <span className="font-bold text-primary">{currentEntity.name}</span>
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -305,73 +305,58 @@ export default function OrganizationStructure() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {childEntities.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg bg-muted/10">
-              <div className={`p-4 rounded-full mb-4 ${isHoldingView ? 'bg-blue-100' : 'bg-emerald-100'}`}>
-                {isHoldingView ? <Building className="w-8 h-8 text-blue-600" /> : <Store className="w-8 h-8 text-emerald-600" />}
-              </div>
-              <h3 className="text-lg font-semibold">لا يوجد {isHoldingView ? "وحدات أعمال" : "فروع"}</h3>
-              <p className="text-muted-foreground mb-4">
-                لم يتم إضافة أي {isHoldingView ? "وحدات أعمال" : "فروع"} تابعة لـ {currentEntity.name} بعد.
-              </p>
-              <Button onClick={() => setIsNewEntityOpen(true)}>
-                <Plus className="w-4 h-4 ml-2" />
-                {isHoldingView ? "إضافة وحدة أعمال" : "إضافة فرع"}
-              </Button>
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+              {isHoldingView ? (
+                <>
+                  <Building2 className="w-12 h-12 mb-4 opacity-20" />
+                  <p>لا توجد وحدات أعمال مضافة بعد</p>
+                  <Button variant="link" onClick={() => setIsNewEntityOpen(true)}>إضافة وحدة جديدة</Button>
+                </>
+              ) : (
+                <>
+                  <Store className="w-12 h-12 mb-4 opacity-20" />
+                  <p>لا توجد فروع مضافة لهذه الوحدة</p>
+                  <Button variant="link" onClick={() => setIsNewEntityOpen(true)}>إضافة فرع جديد</Button>
+                </>
+              )}
             </div>
           ) : (
-            childEntities.map((entity) => {
-              const TypeIcon = typeMap[entity.type].icon;
-              const childCount = entities.filter(e => e.parentId === entity.id).length;
-              
-              return (
-                <Card key={entity.id} className="group hover:shadow-md transition-all cursor-pointer border-t-4" style={{ borderTopColor: getThemeColor(entity.id) }}>
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div className={`p-2 rounded-lg ${typeMap[entity.type].bg} bg-opacity-50`}>
-                        {entity.logo ? (
-                          <img src={entity.logo} alt="Logo" className="w-6 h-6 object-cover rounded-sm" />
-                        ) : (
-                          <TypeIcon className={`w-6 h-6 ${typeMap[entity.type].color}`} />
-                        )}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(entity); }}>
-                            <Pencil className="w-4 h-4 ml-2" />
-                            تعديل
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteEntity(entity.id); }}>
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            حذف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+            childEntities.map((entity) => (
+              <Card key={entity.id} className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigateToEntity(entity)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {entity.type === 'unit' ? 'وحدة أعمال' : 'فرع'}
+                  </CardTitle>
+                  {entity.type === 'unit' ? <Building className="h-4 w-4 text-muted-foreground" /> : <Store className="h-4 w-4 text-muted-foreground" />}
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div 
+                      className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden"
+                      style={{ backgroundColor: entity.logo ? 'transparent' : getThemeColor(entity.id) }}
+                    >
+                      {entity.logo ? (
+                        <img src={entity.logo} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        entity.type === 'unit' ? <Building className="w-6 h-6" /> : <Store className="w-6 h-6" />
+                      )}
                     </div>
-                    <CardTitle className="mt-3">{entity.name}</CardTitle>
-                    <CardDescription>{entity.id}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    {entity.type === 'unit' && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Store className="w-4 h-4" />
-                        <span>{childCount} فروع</span>
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter>
-                    <Button className="w-full" variant="secondary" onClick={() => navigateToEntity(entity)}>
-                      {entity.type === 'unit' ? 'إدارة الوحدة' : 'عرض التفاصيل'}
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })
+                    <div className="flex-1 overflow-hidden">
+                      <div className="text-2xl font-bold truncate">{entity.name}</div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {entity.type === 'unit' 
+                          ? `${entities.filter(e => e.parentId === entity.id).length} فروع` 
+                          : 'نشط'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-muted/50 p-3 flex justify-between items-center group-hover:bg-muted transition-colors">
+                  <span className="text-xs text-muted-foreground">انقر للإدارة</span>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                </CardFooter>
+              </Card>
+            ))
           )}
         </div>
       )}
@@ -380,9 +365,9 @@ export default function OrganizationStructure() {
       <Dialog open={isEditEntityOpen} onOpenChange={setIsEditEntityOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>تعديل بيانات الكيان</DialogTitle>
+            <DialogTitle>تعديل البيانات</DialogTitle>
             <DialogDescription>
-              تعديل اسم وشعار الكيان المحدد.
+              تعديل بيانات {editingEntity?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -391,49 +376,61 @@ export default function OrganizationStructure() {
               <Input 
                 id="edit-name" 
                 value={editingEntity?.name || ""}
-                onChange={(e) => setEditingEntity(prev => prev ? {...prev, name: e.target.value} : null)}
+                onChange={(e) => setEditingEntity(editingEntity ? {...editingEntity, name: e.target.value} : null)}
                 className="col-span-3" 
               />
             </div>
             
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">الشعار</Label>
-              <div className="col-span-3 flex flex-col gap-3">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-lg border flex items-center justify-center bg-muted overflow-hidden">
-                    {editingEntity?.logo ? (
-                      <img src={editingEntity.logo} alt="Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="w-3 h-3 ml-2" />
-                      رفع شعار جديد
-                    </Button>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef}
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                    />
-                    <p className="text-xs text-muted-foreground">PNG, JPG حتى 2MB</p>
-                  </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">الشعار</Label>
+              <div className="col-span-3 flex items-center gap-4">
+                <div className="w-16 h-16 border rounded-md flex items-center justify-center overflow-hidden bg-muted/20">
+                  {editingEntity?.logo ? (
+                    <img src={editingEntity.logo} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="w-3 h-3 ml-2" />
+                    رفع شعار
+                  </Button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                  />
+                  <span className="text-[10px] text-muted-foreground">الحد الأقصى 2 ميجابايت</span>
                 </div>
               </div>
             </div>
+
+            {editingEntity && !entities.some(e => e.parentId === editingEntity.id) && (
+              <div className="border-t pt-4 mt-2">
+                <Button 
+                  variant="destructive" 
+                  className="w-full" 
+                  onClick={() => {
+                    handleDeleteEntity(editingEntity.id);
+                    setIsEditEntityOpen(false);
+                    if (currentEntity.id === editingEntity.id) {
+                      goBack();
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 ml-2" />
+                  حذف الكيان نهائياً
+                </Button>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={handleEditEntity}>
               <Save className="w-4 h-4 ml-2" />
-              حفظ التعديلات
+              حفظ التغييرات
             </Button>
           </DialogFooter>
         </DialogContent>
