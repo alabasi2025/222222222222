@@ -55,6 +55,8 @@ import { toast } from "sonner";
 // Initial clean data
 const initialEntities = [
   { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding", parentId: null, expanded: true },
+  { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit", parentId: "HOLD-001", expanded: true },
+  { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit", parentId: "HOLD-001", expanded: true },
 ];
 
 const typeMap: Record<string, { label: string, icon: any, color: string }> = {
