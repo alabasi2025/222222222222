@@ -51,22 +51,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-
-// Initial clean data
-const initialEntities = [
-  { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding", parentId: null, expanded: true },
-  { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit", parentId: "HOLD-001", expanded: true },
-  { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit", parentId: "HOLD-001", expanded: true },
-  // Branches for Al-Abbasi Private (UNIT-002)
-  { id: "BR-001", name: "الفرع الرئيسي", type: "branch", parentId: "UNIT-002", expanded: true },
-  // Branches for Al-Hudaydah Works (UNIT-001)
-  { id: "BR-002", name: "الفرع الرئيسي", type: "branch", parentId: "UNIT-001", expanded: true },
-  { id: "BR-003", name: "فرع الدهمية", type: "branch", parentId: "UNIT-001", expanded: true },
-  { id: "BR-004", name: "فرع الصبالية", type: "branch", parentId: "UNIT-001", expanded: true },
-  { id: "BR-005", name: "فرع غليل", type: "branch", parentId: "UNIT-001", expanded: true },
-];
+import { useEntity, Entity } from "@/contexts/EntityContext";
 
 const typeMap: Record<string, { label: string, icon: any, color: string }> = {
   holding: { label: "شركة قابضة", icon: Building2, color: "bg-purple-100 text-purple-700 border-purple-200" },
@@ -75,18 +62,19 @@ const typeMap: Record<string, { label: string, icon: any, color: string }> = {
 };
 
 export default function OrganizationStructure() {
-  interface Entity {
-    id: string;
-    name: string;
-    type: string;
-    parentId: string | null;
-    expanded: boolean;
-  }
+  const { entities: contextEntities, isEntityVisible } = useEntity();
+  
+  // Local state for UI manipulation (expanding/collapsing)
+  // We initialize with context entities but add 'expanded' property
+  const [entities, setEntities] = useState<(Entity & { expanded: boolean })[]>([]);
+  
+  useEffect(() => {
+    setEntities(contextEntities.map(e => ({ ...e, expanded: true })));
+  }, [contextEntities]);
 
-  const [entities, setEntities] = useState<Entity[]>(initialEntities);
   const [isNewEntityOpen, setIsNewEntityOpen] = useState(false);
   const [isEditEntityOpen, setIsEditEntityOpen] = useState(false);
-  const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
+  const [editingEntity, setEditingEntity] = useState<(Entity & { expanded: boolean }) | null>(null);
   
   const [newEntity, setNewEntity] = useState({
     name: "",
@@ -128,7 +116,7 @@ export default function OrganizationStructure() {
     const newEnt = {
       id: newId,
       name: newEntity.name,
-      type: newEntity.type,
+      type: newEntity.type as any,
       parentId: newEntity.parent === "none" ? null : newEntity.parent,
       expanded: true
     };
@@ -173,17 +161,27 @@ export default function OrganizationStructure() {
     }
   };
 
-  const openEditDialog = (entity: Entity) => {
+  const openEditDialog = (entity: any) => {
     setEditingEntity({ ...entity });
     setIsEditEntityOpen(true);
   };
 
-  // Helper to check visibility
-  const isVisible = (entity: any): boolean => {
+  // Helper to check visibility for tree structure
+  const isVisibleInTree = (entity: any): boolean => {
+    // First check if it's allowed by current context
+    if (!isEntityVisible(entity.id)) return false;
+
+    // Then check tree expansion logic
     if (!entity.parentId) return true;
     const parent = entities.find(e => e.id === entity.parentId);
-    return parent ? (parent.expanded && isVisible(parent)) : true;
+    // If parent is not visible in current context, child shouldn't be either (unless it's the root of current view)
+    // But isEntityVisible handles that logic mostly.
+    // Here we just care about expansion state
+    return parent ? (parent.expanded && isVisibleInTree(parent)) : true;
   };
+
+  // Filter entities for display based on context
+  const visibleEntities = entities.filter(e => isEntityVisible(e.id));
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -296,139 +294,105 @@ export default function OrganizationStructure() {
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Network className="w-5 h-5 text-primary" />
-              شجرة الهيكل التنظيمي
-            </CardTitle>
-            <CardDescription>عرض هرمي للشركة القابضة والوحدات والفروع التابعة لها</CardDescription>
+            <CardTitle>شجرة الهيكل التنظيمي</CardTitle>
+            <CardDescription>عرض هرمي لجميع وحدات وفروع الشركة</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[400px]">الكيان</TableHead>
-                    <TableHead>النوع</TableHead>
-                    <TableHead>الرمز</TableHead>
-                    <TableHead className="text-left">إجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entities.filter(isVisible).map((entity) => {
-                    const TypeIcon = typeMap[entity.type].icon;
-                    const hasChildren = entities.some(e => e.parentId === entity.id);
-                    const indentLevel = entity.type === "holding" ? 0 : entity.type === "unit" ? 1 : 2;
-                    
-                    return (
-                      <TableRow key={entity.id} className="hover:bg-muted/50 transition-colors">
-                        <TableCell>
-                          <div 
-                            className="flex items-center gap-2" 
-                            style={{ paddingRight: `${indentLevel * 24}px` }}
-                          >
-                            {hasChildren ? (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 p-0 hover:bg-muted"
-                                onClick={() => toggleExpand(entity.id)}
-                              >
-                                {entity.expanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
-                                )}
-                              </Button>
-                            ) : (
-                              <div className="w-6" />
-                            )}
-                            <TypeIcon className={`w-4 h-4 ${entity.type === 'holding' ? 'text-purple-600' : entity.type === 'unit' ? 'text-blue-600' : 'text-emerald-600'}`} />
-                            <span className={`font-medium ${entity.type === 'holding' ? 'text-lg' : ''}`}>
-                              {entity.name}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={typeMap[entity.type].color}>
-                            {typeMap[entity.type].label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm font-mono">
-                          {entity.id}
-                        </TableCell>
-                        <TableCell className="text-left">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => openEditDialog(entity)}>
-                                <Pencil className="w-4 h-4 ml-2" />
-                                تعديل
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive"
-                                onClick={() => handleDeleteEntity(entity.id)}
-                              >
-                                <Trash2 className="w-4 h-4 ml-2" />
-                                حذف
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="rounded-md border p-4 min-h-[400px]">
+              {visibleEntities.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  لا توجد كيانات لعرضها في هذا السياق.
+                </div>
+              ) : (
+                entities.map((entity) => {
+                  // Only render if visible in tree logic AND allowed by context
+                  if (!isVisibleInTree(entity)) return null;
+                  
+                  const hasChildren = entities.some(e => e.parentId === entity.id);
+                  const level = entity.type === 'holding' ? 0 : entity.type === 'unit' ? 1 : 2;
+                  const TypeIcon = typeMap[entity.type]?.icon || Building;
+                  
+                  return (
+                    <div 
+                      key={entity.id}
+                      className="flex items-center py-2 hover:bg-muted/50 rounded-md px-2 transition-colors group"
+                      style={{ paddingRight: `${level * 24}px` }}
+                    >
+                      <button 
+                        onClick={() => toggleExpand(entity.id)}
+                        className={`p-1 rounded-sm hover:bg-muted mr-2 ${hasChildren ? 'visible' : 'invisible'}`}
+                      >
+                        {entity.expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+                      
+                      <div className={`flex items-center gap-3 flex-1`}>
+                        <div className={`p-2 rounded-md ${typeMap[entity.type]?.color || 'bg-gray-100'}`}>
+                          <TypeIcon className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">{entity.name}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">{entity.id}</span>
+                        </div>
+                        <Badge variant="outline" className="mr-auto ml-2">
+                          {typeMap[entity.type]?.label}
+                        </Badge>
+                        
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(entity)}>
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEntity(entity.id)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>إحصائيات الهيكل</CardTitle>
-            <CardDescription>ملخص سريع للكيانات</CardDescription>
+            <CardTitle>إحصائيات سريعة</CardTitle>
+            <CardDescription>ملخص الكيانات في النظام</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-100">
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-purple-50/50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 rounded-full text-purple-600">
-                  <Building2 className="w-4 h-4" />
+                  <Building2 className="w-5 h-5" />
                 </div>
                 <span className="font-medium">الشركات القابضة</span>
               </div>
-              <span className="text-xl font-bold text-purple-700">
-                {entities.filter(e => e.type === 'holding').length}
+              <span className="text-2xl font-bold text-purple-700">
+                {visibleEntities.filter(e => e.type === 'holding').length}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-blue-50/50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-full text-blue-600">
-                  <Building className="w-4 h-4" />
+                  <Building className="w-5 h-5" />
                 </div>
                 <span className="font-medium">وحدات الأعمال</span>
               </div>
-              <span className="text-xl font-bold text-blue-700">
-                {entities.filter(e => e.type === 'unit').length}
+              <span className="text-2xl font-bold text-blue-700">
+                {visibleEntities.filter(e => e.type === 'unit').length}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-emerald-50/50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
-                  <Store className="w-4 h-4" />
+                  <Store className="w-5 h-5" />
                 </div>
                 <span className="font-medium">الفروع</span>
               </div>
-              <span className="text-xl font-bold text-emerald-700">
-                {entities.filter(e => e.type === 'branch').length}
+              <span className="text-2xl font-bold text-emerald-700">
+                {visibleEntities.filter(e => e.type === 'branch').length}
               </span>
             </div>
           </CardContent>

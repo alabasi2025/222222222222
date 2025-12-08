@@ -51,12 +51,14 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useEntity } from "@/contexts/EntityContext";
 
 // Initial clean data
 const initialCashBoxes: any[] = [];
 const recentTransactions: any[] = [];
 
 export default function CashBoxes() {
+  const { currentEntity } = useEntity();
   const [cashBoxes, setCashBoxes] = useState(initialCashBoxes);
   const [isNewBoxOpen, setIsNewBoxOpen] = useState(false);
   const [isEditBoxOpen, setIsEditBoxOpen] = useState(false);
@@ -68,6 +70,13 @@ export default function CashBoxes() {
     type: "cash_box" // cash_box or petty_cash
   });
 
+  // Filter cash boxes based on current entity
+  // In a real app, this would be a backend query. Here we filter by an 'entityId' property we'll add.
+  const visibleCashBoxes = cashBoxes.filter(box => {
+    if (currentEntity.type === 'holding') return true; // Holding sees all
+    return box.entityId === currentEntity.id;
+  });
+
   const handleAddBox = () => {
     if (!newBox.name) {
       toast.error("يرجى إدخال اسم الصندوق");
@@ -77,6 +86,7 @@ export default function CashBoxes() {
     const newId = `111${cashBoxes.length + 1}`; // Simple ID generation
     const box = {
       id: newId,
+      entityId: currentEntity.id, // Associate with current entity
       name: newBox.name,
       balance: 0.00,
       currency: newBox.currency,
@@ -128,7 +138,9 @@ export default function CashBoxes() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">الصناديق والعهد</h2>
-          <p className="text-muted-foreground mt-1">إدارة الصناديق النقدية والعهد ومتابعة أرصدتها</p>
+          <p className="text-muted-foreground mt-1">
+            إدارة الصناديق النقدية والعهد لـ <span className="font-bold text-primary">{currentEntity.name}</span>
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
@@ -147,7 +159,7 @@ export default function CashBoxes() {
               <DialogHeader>
                 <DialogTitle>إضافة صندوق / عهدة جديدة</DialogTitle>
                 <DialogDescription>
-                  أدخل بيانات الصندوق الجديد أو العهدة لإضافتها للنظام.
+                  سيتم إضافة الصندوق إلى: <span className="font-bold">{currentEntity.name}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -301,122 +313,87 @@ export default function CashBoxes() {
         </div>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-primary" />
-            قائمة الصناديق
-          </h3>
-          <div className="rounded-md border bg-card shadow-sm overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>اسم الصندوق</TableHead>
-                  <TableHead>الرصيد الحالي</TableHead>
-                  <TableHead>آخر حركة</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="text-left">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cashBoxes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      لا توجد صناديق مضافة. قم بإضافة صندوق جديد للبدء.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  cashBoxes.map((box) => (
-                    <TableRow key={box.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell>
-                        <div className="font-medium">{box.name}</div>
-                        <div className="text-xs text-muted-foreground">#{box.id}</div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-bold text-emerald-600">
-                          {box.balance.toLocaleString()} {box.currency}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {box.lastTransaction}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                          نشط
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                            <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                            <DropdownMenuItem>سند قبض</DropdownMenuItem>
-                            <DropdownMenuItem>سند صرف</DropdownMenuItem>
-                            <DropdownMenuItem>تحويل أموال</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => openEditDialog(box)}>
-                              <Pencil className="w-4 h-4 ml-2" />
-                              تعديل البيانات
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteBox(box.id)}
-                            >
-                              <Trash2 className="w-4 h-4 ml-2" />
-                              حذف
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <History className="w-5 h-5 text-primary" />
-            آخر الحركات
-          </h3>
-          <div className="space-y-3">
-            {recentTransactions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground bg-card rounded-lg border border-dashed">
-                لا توجد حركات حديثة
-              </div>
+      <div className="rounded-md border bg-card shadow-sm overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[250px]">اسم الصندوق</TableHead>
+              <TableHead>النوع</TableHead>
+              <TableHead>الرصيد الحالي</TableHead>
+              <TableHead>آخر حركة</TableHead>
+              <TableHead>الحالة</TableHead>
+              <TableHead className="text-left">إجراءات</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleCashBoxes.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  لا توجد صناديق مسجلة لـ {currentEntity.name}. قم بإضافة صندوق جديد.
+                </TableCell>
+              </TableRow>
             ) : (
-              recentTransactions.map((trx) => (
-                <div key={trx.id} className="bg-card p-3 rounded-lg border shadow-sm flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${trx.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                      {trx.type === 'in' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+              visibleCashBoxes.map((box) => (
+                <TableRow key={box.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-muted-foreground" />
+                      {box.name}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{trx.description}</p>
-                      <p className="text-xs text-muted-foreground">{trx.box} • {trx.date}</p>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {box.type === 'petty_cash' ? 'عهدة' : 'صندوق نقدي'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-bold text-emerald-600">
+                      {box.balance.toLocaleString()} {box.currency}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <History className="w-3 h-3" />
+                      {box.lastTransaction}
                     </div>
-                  </div>
-                  <span className={`text-sm font-bold ${trx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {trx.type === 'in' ? '+' : '-'}{trx.amount.toLocaleString()}
-                  </span>
-                </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                      {box.status === 'active' ? 'نشط' : 'مغلق'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-left">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                        <DropdownMenuItem>كشف حساب</DropdownMenuItem>
+                        <DropdownMenuItem>جرد الصندوق</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => openEditDialog(box)}>
+                          <Pencil className="w-4 h-4 ml-2" />
+                          تعديل البيانات
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDeleteBox(box.id)}
+                        >
+                          <Trash2 className="w-4 h-4 ml-2" />
+                          حذف
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-            {recentTransactions.length > 0 && (
-              <Button variant="ghost" className="w-full text-muted-foreground text-sm">
-                عرض كل الحركات
-              </Button>
-            )}
-          </div>
-        </div>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

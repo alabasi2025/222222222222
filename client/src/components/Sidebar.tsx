@@ -28,8 +28,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useEntity } from "@/contexts/EntityContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "لوحة المعلومات", href: "/" },
@@ -51,20 +51,9 @@ const menuItems = [
   { icon: Settings, label: "الإعدادات", href: "/settings" },
 ];
 
-const entities = [
-  { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding" },
-  { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit" },
-  { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit" },
-  { id: "BR-001", name: "الفرع الرئيسي (العباسي خاص)", type: "branch" },
-  { id: "BR-002", name: "الفرع الرئيسي (الحديدة)", type: "branch" },
-  { id: "BR-003", name: "فرع الدهمية", type: "branch" },
-  { id: "BR-004", name: "فرع الصبالية", type: "branch" },
-  { id: "BR-005", name: "فرع غليل", type: "branch" },
-];
-
 export function Sidebar() {
   const [location] = useLocation();
-  const [currentEntity, setCurrentEntity] = useState(entities[0]);
+  const { currentEntity, setCurrentEntity, entities } = useEntity();
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-sidebar border-l border-sidebar-border h-screen sticky top-0">
