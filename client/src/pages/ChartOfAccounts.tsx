@@ -120,7 +120,7 @@ export default function ChartOfAccounts() {
   const { currentEntity } = useEntity();
   const [location, setLocation] = useLocation();
   const [accounts, setAccounts] = useState(initialAccountsData);
-  const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
+  const [isNewAccountOpen, setIsNewAccountOpen] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -312,10 +312,7 @@ export default function ChartOfAccounts() {
           <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
             <DialogContent className="max-w-2xl h-[90vh] md:h-auto md:max-h-[85vh] flex flex-col p-0 gap-0">
               <DialogHeader className="p-6 pb-2 border-b">
-                <div className="flex justify-between items-center w-full">
-                  <DialogTitle>إضافة حساب جديد</DialogTitle>
-                  <Button size="sm" onClick={handleAddAccount} className="md:hidden">حفظ</Button>
-                </div>
+                <DialogTitle>إضافة حساب جديد</DialogTitle>
                 <DialogDescription>
                   أدخل تفاصيل الحساب الجديد لإضافته إلى الشجرة.
                 </DialogDescription>
@@ -436,7 +433,7 @@ export default function ChartOfAccounts() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter className="p-6 pt-2 border-t bg-background mt-auto">
+              <DialogFooter className="p-6 border-t bg-background mt-auto flex gap-2 justify-end sticky bottom-0 z-50">
                 <Button variant="outline" onClick={() => setIsNewAccountOpen(false)}>إلغاء</Button>
                 <Button onClick={handleAddAccount}>حفظ الحساب</Button>
               </DialogFooter>
