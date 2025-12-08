@@ -14,7 +14,8 @@ import {
   MapPin,
   Phone,
   Mail,
-  MoreHorizontal
+  MoreHorizontal,
+  Eye
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -94,9 +95,14 @@ export default function OrganizationStructure() {
       type = "unit";
     } else if (isUnitView) {
       type = "branch";
-    } else {
-      toast.error("لا يمكن إضافة كيانات فرعية للفرع");
-      return;
+    } else if (isBranchView) {
+      // Allow adding a sibling branch (same parent unit)
+      type = "branch";
+      parentId = currentEntity.parentId || "";
+      if (!parentId) {
+        toast.error("خطأ في تحديد الوحدة التابعة");
+        return;
+      }
     }
 
     const prefix = type === "unit" ? "UNIT" : "BR";
@@ -186,13 +192,21 @@ export default function OrganizationStructure() {
     }
   };
 
+  // Get parent name for display in dialog
+  const getParentNameForNewEntity = () => {
+    if (isBranchView && currentEntity.parentId) {
+      return entities.find(e => e.id === currentEntity.parentId)?.name || currentEntity.name;
+    }
+    return currentEntity.name;
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card p-6 rounded-lg border shadow-sm">
         <div className="flex items-center gap-4">
           {currentEntity.parentId && (
-            <Button variant="outline" size="icon" onClick={goBack}>
+            <Button variant="outline" size="icon" onClick={goBack} title="عودة للمستوى السابق">
               <ArrowRight className="w-4 h-4" />
             </Button>
           )}
@@ -211,50 +225,48 @@ export default function OrganizationStructure() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => openEditDialog(currentEntity)}>
             <Pencil className="w-4 h-4 ml-2" />
             تعديل البيانات
           </Button>
           
-          {!isBranchView && (
-            <Dialog open={isNewEntityOpen} onOpenChange={setIsNewEntityOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 ml-2" />
-                  {isHoldingView ? "إضافة وحدة أعمال" : "إضافة فرع جديد"}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {isHoldingView ? "إضافة وحدة أعمال جديدة" : "إضافة فرع جديد"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    سيتم إضافة {isHoldingView ? "وحدة الأعمال" : "الفرع"} مباشرة تحت: <span className="font-bold text-primary">{currentEntity.name}</span>
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">الاسم</Label>
-                    <Input 
-                      id="name" 
-                      value={newEntity.name}
-                      onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
-                      className="col-span-3" 
-                      placeholder={isHoldingView ? "مثال: وحدة المقاولات" : "مثال: فرع الرياض"}
-                    />
-                  </div>
+          <Dialog open={isNewEntityOpen} onOpenChange={setIsNewEntityOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90">
+                <Plus className="w-4 h-4 ml-2" />
+                {isHoldingView ? "إضافة وحدة أعمال" : "إضافة فرع جديد"}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {isHoldingView ? "إضافة وحدة أعمال جديدة" : "إضافة فرع جديد"}
+                </DialogTitle>
+                <DialogDescription>
+                  سيتم إضافة {isHoldingView ? "وحدة الأعمال" : "الفرع"} مباشرة تحت: <span className="font-bold text-primary">{getParentNameForNewEntity()}</span>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">الاسم</Label>
+                  <Input 
+                    id="name" 
+                    value={newEntity.name}
+                    onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
+                    className="col-span-3" 
+                    placeholder={isHoldingView ? "مثال: وحدة المقاولات" : "مثال: فرع الرياض"}
+                  />
                 </div>
-                <DialogFooter>
-                  <Button onClick={handleAddEntity}>
-                    <Save className="w-4 h-4 ml-2" />
-                    حفظ
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddEntity}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -305,32 +317,44 @@ export default function OrganizationStructure() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {childEntities.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
               {isHoldingView ? (
                 <>
-                  <Building2 className="w-12 h-12 mb-4 opacity-20" />
-                  <p>لا توجد وحدات أعمال مضافة بعد</p>
-                  <Button variant="link" onClick={() => setIsNewEntityOpen(true)}>إضافة وحدة جديدة</Button>
+                  <Building2 className="w-16 h-16 mb-4 opacity-20" />
+                  <h3 className="text-lg font-medium mb-2">لا توجد وحدات أعمال</h3>
+                  <p className="text-muted-foreground mb-6 text-center max-w-sm">قم بإضافة وحدات الأعمال لتقسيم نشاط الشركة وتنظيم الفروع تحتها.</p>
+                  <Button onClick={() => setIsNewEntityOpen(true)}>
+                    <Plus className="w-4 h-4 ml-2" />
+                    إضافة وحدة جديدة
+                  </Button>
                 </>
               ) : (
                 <>
-                  <Store className="w-12 h-12 mb-4 opacity-20" />
-                  <p>لا توجد فروع مضافة لهذه الوحدة</p>
-                  <Button variant="link" onClick={() => setIsNewEntityOpen(true)}>إضافة فرع جديد</Button>
+                  <Store className="w-16 h-16 mb-4 opacity-20" />
+                  <h3 className="text-lg font-medium mb-2">لا توجد فروع</h3>
+                  <p className="text-muted-foreground mb-6 text-center max-w-sm">قم بإضافة الفروع التابعة لهذه الوحدة لبدء إدارة العمليات.</p>
+                  <Button onClick={() => setIsNewEntityOpen(true)}>
+                    <Plus className="w-4 h-4 ml-2" />
+                    إضافة فرع جديد
+                  </Button>
                 </>
               )}
             </div>
           ) : (
             childEntities.map((entity) => (
-              <Card key={entity.id} className="hover:shadow-md transition-shadow cursor-pointer group relative">
+              <Card key={entity.id} className="hover:shadow-md transition-all duration-200 cursor-pointer group relative border-muted-foreground/20">
                 <div className="absolute top-3 left-3 z-10">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigateToEntity(entity); }}>
+                        <Eye className="w-4 h-4 ml-2" />
+                        عرض التفاصيل
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(entity); }}>
                         <Pencil className="w-4 h-4 ml-2" />
                         تعديل
@@ -355,7 +379,7 @@ export default function OrganizationStructure() {
                   <CardContent>
                     <div className="flex items-center gap-4 mt-2">
                       <div 
-                        className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden"
+                        className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden shadow-sm"
                         style={{ backgroundColor: entity.logo ? 'transparent' : getThemeColor(entity.id) }}
                       >
                         {entity.logo ? (
@@ -374,8 +398,8 @@ export default function OrganizationStructure() {
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="bg-muted/50 p-3 flex justify-between items-center group-hover:bg-muted transition-colors">
-                    <span className="text-xs text-muted-foreground">انقر للإدارة</span>
+                  <CardFooter className="bg-muted/30 p-3 flex justify-between items-center group-hover:bg-muted/60 transition-colors border-t">
+                    <span className="text-xs text-muted-foreground font-medium">انقر للإدارة</span>
                     <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </CardFooter>
                 </div>
