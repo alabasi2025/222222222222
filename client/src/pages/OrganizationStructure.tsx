@@ -22,7 +22,9 @@ import {
   ChevronRight,
   ChevronDown,
   Pencil,
-  Trash2
+  Trash2,
+  Upload,
+  Image as ImageIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,7 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useEntity, Entity } from "@/contexts/EntityContext";
 
@@ -62,7 +64,7 @@ const typeMap: Record<string, { label: string, icon: any, color: string }> = {
 };
 
 export default function OrganizationStructure() {
-  const { entities: contextEntities, isEntityVisible } = useEntity();
+  const { entities: contextEntities, setEntities: setContextEntities, isEntityVisible, updateEntityLogo } = useEntity();
   
   // Local state for UI manipulation (expanding/collapsing)
   // We initialize with context entities but add 'expanded' property
@@ -75,6 +77,7 @@ export default function OrganizationStructure() {
   const [isNewEntityOpen, setIsNewEntityOpen] = useState(false);
   const [isEditEntityOpen, setIsEditEntityOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<(Entity & { expanded: boolean }) | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newEntity, setNewEntity] = useState({
     name: "",
@@ -126,7 +129,10 @@ export default function OrganizationStructure() {
       e.id === newEntity.parent ? { ...e, expanded: true } : e
     );
 
-    setEntities([...updatedEntities, newEnt]);
+    const finalEntities = [...updatedEntities, newEnt];
+    setEntities(finalEntities);
+    setContextEntities(finalEntities); // Sync with context
+    
     toast.success("تم إضافة الكيان بنجاح");
     setIsNewEntityOpen(false);
     setNewEntity({ name: "", type: "branch", parent: "" });
@@ -138,9 +144,12 @@ export default function OrganizationStructure() {
       return;
     }
 
-    setEntities(entities.map(e => 
+    const updatedEntities = entities.map(e => 
       e.id === editingEntity.id ? editingEntity : e
-    ));
+    );
+    
+    setEntities(updatedEntities);
+    setContextEntities(updatedEntities); // Sync with context
     
     toast.success("تم تحديث بيانات الكيان بنجاح");
     setIsEditEntityOpen(false);
@@ -156,9 +165,30 @@ export default function OrganizationStructure() {
     }
 
     if (confirm("هل أنت متأكد من حذف هذا الكيان؟")) {
-      setEntities(entities.filter(e => e.id !== id));
+      const filteredEntities = entities.filter(e => e.id !== id);
+      setEntities(filteredEntities);
+      setContextEntities(filteredEntities); // Sync with context
       toast.success("تم حذف الكيان بنجاح");
     }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingEntity) return;
+
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      toast.error("حجم الصورة يجب أن لا يتجاوز 2 ميجابايت");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setEditingEntity({ ...editingEntity, logo: base64String });
+      updateEntityLogo(editingEntity.id, base64String);
+      toast.success("تم رفع الشعار بنجاح");
+    };
+    reader.readAsDataURL(file);
   };
 
   const openEditDialog = (entity: any) => {
@@ -266,7 +296,7 @@ export default function OrganizationStructure() {
               <DialogHeader>
                 <DialogTitle>تعديل بيانات الكيان</DialogTitle>
                 <DialogDescription>
-                  تعديل اسم الكيان المحدد.
+                  تعديل اسم وشعار الكيان المحدد.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -278,6 +308,40 @@ export default function OrganizationStructure() {
                     onChange={(e) => setEditingEntity(prev => prev ? {...prev, name: e.target.value} : null)}
                     className="col-span-3" 
                   />
+                </div>
+                
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right pt-2">الشعار</Label>
+                  <div className="col-span-3 flex flex-col gap-3">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg border flex items-center justify-center bg-muted overflow-hidden">
+                        {editingEntity?.logo ? (
+                          <img src={editingEntity.logo} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload className="w-3 h-3 ml-2" />
+                          رفع شعار جديد
+                        </Button>
+                        <input 
+                          type="file" 
+                          ref={fileInputRef}
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                        />
+                        <p className="text-xs text-muted-foreground">PNG, JPG حتى 2MB</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -301,54 +365,70 @@ export default function OrganizationStructure() {
             <div className="rounded-md border p-4 min-h-[400px]">
               {visibleEntities.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground">
-                  لا توجد كيانات لعرضها في هذا السياق.
+                  لا توجد كيانات لعرضها في هذا السياق
                 </div>
               ) : (
-                entities.map((entity) => {
-                  // Only render if visible in tree logic AND allowed by context
-                  if (!isVisibleInTree(entity)) return null;
-                  
-                  const hasChildren = entities.some(e => e.parentId === entity.id);
-                  const level = entity.type === 'holding' ? 0 : entity.type === 'unit' ? 1 : 2;
-                  const TypeIcon = typeMap[entity.type]?.icon || Building;
-                  
-                  return (
-                    <div 
-                      key={entity.id}
-                      className="flex items-center py-2 hover:bg-muted/50 rounded-md px-2 transition-colors group"
-                      style={{ paddingRight: `${level * 24}px` }}
-                    >
-                      <button 
-                        onClick={() => toggleExpand(entity.id)}
-                        className={`p-1 rounded-sm hover:bg-muted mr-2 ${hasChildren ? 'visible' : 'invisible'}`}
+                <div className="space-y-2">
+                  {visibleEntities.map((entity) => {
+                    if (!isVisibleInTree(entity)) return null;
+                    
+                    // Calculate indentation level
+                    let level = 0;
+                    if (entity.type === 'unit') level = 1;
+                    if (entity.type === 'branch') level = 2;
+                    
+                    const hasChildren = entities.some(e => e.parentId === entity.id);
+                    const TypeIcon = typeMap[entity.type]?.icon || Store;
+                    
+                    return (
+                      <div 
+                        key={entity.id}
+                        className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"
+                        style={{ marginRight: `${level * 24}px` }}
                       >
-                        {entity.expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-                      
-                      <div className={`flex items-center gap-3 flex-1`}>
-                        <div className={`p-2 rounded-md ${typeMap[entity.type]?.color || 'bg-gray-100'}`}>
-                          <TypeIcon className="w-4 h-4" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-sm">{entity.name}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase">{entity.id}</span>
-                        </div>
-                        <Badge variant="outline" className="mr-auto ml-2">
-                          {typeMap[entity.type]?.label}
-                        </Badge>
+                        <button 
+                          onClick={() => toggleExpand(entity.id)}
+                          className={`p-1 rounded-sm hover:bg-muted ${!hasChildren && 'invisible'}`}
+                        >
+                          {entity.expanded ? (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </button>
                         
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        <div className={`p-2 rounded-md ${typeMap[entity.type]?.color} bg-opacity-20`}>
+                          {entity.logo ? (
+                            <img src={entity.logo} alt="Logo" className="w-4 h-4 object-cover rounded-sm" />
+                          ) : (
+                            <TypeIcon className="w-4 h-4" />
+                          )}
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="font-medium text-sm flex items-center gap-2">
+                            {entity.name}
+                            <Badge variant="outline" className="text-[10px] h-5">
+                              {typeMap[entity.type]?.label}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {entity.id}
+                          </div>
+                        </div>
+
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(entity)}>
                             <Pencil className="w-3 h-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEntity(entity.id)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteEntity(entity.id)}>
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
           </CardContent>
@@ -357,42 +437,41 @@ export default function OrganizationStructure() {
         <Card>
           <CardHeader>
             <CardTitle>إحصائيات سريعة</CardTitle>
-            <CardDescription>ملخص الكيانات في النظام</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-purple-50/50">
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-purple-50 border-purple-100">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-full text-purple-600">
-                  <Building2 className="w-5 h-5" />
+                <div className="p-2 bg-purple-100 rounded-full">
+                  <Building2 className="w-4 h-4 text-purple-600" />
                 </div>
                 <span className="font-medium">الشركات القابضة</span>
               </div>
-              <span className="text-2xl font-bold text-purple-700">
-                {visibleEntities.filter(e => e.type === 'holding').length}
+              <span className="text-xl font-bold text-purple-700">
+                {entities.filter(e => e.type === 'holding').length}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-blue-50/50">
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-blue-50 border-blue-100">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-full text-blue-600">
-                  <Building className="w-5 h-5" />
+                <div className="p-2 bg-blue-100 rounded-full">
+                  <Building className="w-4 h-4 text-blue-600" />
                 </div>
                 <span className="font-medium">وحدات الأعمال</span>
               </div>
-              <span className="text-2xl font-bold text-blue-700">
-                {visibleEntities.filter(e => e.type === 'unit').length}
+              <span className="text-xl font-bold text-blue-700">
+                {entities.filter(e => e.type === 'unit').length}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-emerald-50/50">
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-emerald-50 border-emerald-100">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
-                  <Store className="w-5 h-5" />
+                <div className="p-2 bg-emerald-100 rounded-full">
+                  <Store className="w-4 h-4 text-emerald-600" />
                 </div>
                 <span className="font-medium">الفروع</span>
               </div>
-              <span className="text-2xl font-bold text-emerald-700">
-                {visibleEntities.filter(e => e.type === 'branch').length}
+              <span className="text-xl font-bold text-emerald-700">
+                {entities.filter(e => e.type === 'branch').length}
               </span>
             </div>
           </CardContent>

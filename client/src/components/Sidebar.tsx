@@ -66,11 +66,15 @@ export function Sidebar() {
             <Button variant="ghost" className="w-full justify-between h-auto py-3 px-2 hover:bg-sidebar-accent">
               <div className="flex items-center gap-3 text-right overflow-hidden">
                 <div 
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 transition-colors duration-300 shadow-sm"
-                  style={{ backgroundColor: getThemeColor() }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 transition-colors duration-300 shadow-sm overflow-hidden"
+                  style={{ backgroundColor: currentEntity.logo ? 'transparent' : getThemeColor() }}
                 >
-                  {currentEntity.type === 'holding' ? <Building2 className="w-4 h-4" /> : 
-                   currentEntity.type === 'unit' ? <Building className="w-4 h-4" /> : <Store className="w-4 h-4" />}
+                  {currentEntity.logo ? (
+                    <img src={currentEntity.logo} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    currentEntity.type === 'holding' ? <Building2 className="w-4 h-4" /> : 
+                    currentEntity.type === 'unit' ? <Building className="w-4 h-4" /> : <Store className="w-4 h-4" />
+                  )}
                 </div>
                 <div className="flex flex-col items-start overflow-hidden">
                   <span className="font-bold text-sm truncate w-full">{currentEntity.name}</span>
@@ -93,9 +97,15 @@ export function Sidebar() {
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <div 
-                  className="w-2 h-2 rounded-full" 
-                  style={{ backgroundColor: getThemeColor(entity.id) }}
-                />
+                  className="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0" 
+                  style={{ backgroundColor: entity.logo ? 'transparent' : getThemeColor(entity.id) }}
+                >
+                  {entity.logo ? (
+                    <img src={entity.logo} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  )}
+                </div>
                 <span className={currentEntity.id === entity.id ? "font-bold" : ""}>{entity.name}</span>
               </DropdownMenuItem>
             ))}

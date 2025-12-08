@@ -8,6 +8,7 @@ export interface Entity {
   type: EntityType;
   parentId?: string | null;
   themeColor?: string; // Hex color code
+  logo?: string; // URL or base64 string
 }
 
 // Define the initial entities data here to be shared
@@ -26,14 +27,17 @@ interface EntityContextType {
   currentEntity: Entity;
   setCurrentEntity: (entity: Entity) => void;
   entities: Entity[];
+  setEntities: (entities: Entity[]) => void;
   availableEntities: Entity[];
   isEntityVisible: (entityId: string) => boolean; 
   getThemeColor: (entityId?: string) => string;
+  updateEntityLogo: (entityId: string, logo: string) => void;
 }
 
 const EntityContext = createContext<EntityContextType | undefined>(undefined);
 
 export function EntityProvider({ children }: { children: ReactNode }) {
+  const [entities, setEntities] = useState<Entity[]>(initialEntities);
   const [currentEntity, setCurrentEntity] = useState<Entity>(initialEntities[0]);
 
   // Update CSS variables when entity changes
@@ -83,14 +87,14 @@ export function EntityProvider({ children }: { children: ReactNode }) {
 
   const getThemeColor = (entityId?: string) => {
     const id = entityId || currentEntity.id;
-    const entity = initialEntities.find(e => e.id === id);
+    const entity = entities.find(e => e.id === id);
     
     // If entity has explicit color, use it
     if (entity?.themeColor) return entity.themeColor;
     
     // If branch, inherit from unit
     if (entity?.type === 'branch' && entity.parentId) {
-      const parent = initialEntities.find(e => e.id === entity.parentId);
+      const parent = entities.find(e => e.id === entity.parentId);
       if (parent?.themeColor) return parent.themeColor;
     }
     
@@ -100,7 +104,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
   const isEntityVisible = (entityId: string) => {
     if (currentEntity.type === 'holding') return true;
 
-    const target = initialEntities.find(e => e.id === entityId);
+    const target = entities.find(e => e.id === entityId);
     if (!target) return false;
 
     if (currentEntity.type === 'unit') {
@@ -116,14 +120,27 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const updateEntityLogo = (entityId: string, logo: string) => {
+    setEntities(prev => prev.map(e => 
+      e.id === entityId ? { ...e, logo } : e
+    ));
+    
+    // Also update current entity if it's the one being modified
+    if (currentEntity.id === entityId) {
+      setCurrentEntity(prev => ({ ...prev, logo }));
+    }
+  };
+
   return (
     <EntityContext.Provider value={{ 
       currentEntity, 
       setCurrentEntity, 
-      entities: initialEntities,
-      availableEntities: initialEntities,
+      entities,
+      setEntities,
+      availableEntities: entities,
       isEntityVisible,
-      getThemeColor
+      getThemeColor,
+      updateEntityLogo
     }}>
       {children}
     </EntityContext.Provider>
