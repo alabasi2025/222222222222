@@ -17,7 +17,8 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownLeft,
-  History
+  History,
+  Save
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,9 +30,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useState } from "react";
+import { toast } from "sonner";
 
 // Mock data based on Chart of Accounts
-const cashBoxes = [
+const initialCashBoxes = [
   { id: "1111", name: "الصندوق الرئيسي", balance: 15000.00, currency: "SAR", status: "active", lastTransaction: "2023-11-15" },
   { id: "1113", name: "صندوق الفرع - الرياض", balance: 5200.00, currency: "SAR", status: "active", lastTransaction: "2023-11-14" },
   { id: "1114", name: "صندوق الفرع - جدة", balance: 3150.00, currency: "SAR", status: "active", lastTransaction: "2023-11-12" },
@@ -46,6 +66,36 @@ const recentTransactions = [
 ];
 
 export default function CashBoxes() {
+  const [cashBoxes, setCashBoxes] = useState(initialCashBoxes);
+  const [isNewBoxOpen, setIsNewBoxOpen] = useState(false);
+  const [newBox, setNewBox] = useState({
+    name: "",
+    currency: "SAR",
+    type: "cash_box" // cash_box or petty_cash
+  });
+
+  const handleAddBox = () => {
+    if (!newBox.name) {
+      toast.error("يرجى إدخال اسم الصندوق");
+      return;
+    }
+
+    const newId = `111${cashBoxes.length + 2}`; // Simple ID generation
+    const box = {
+      id: newId,
+      name: newBox.name,
+      balance: 0.00,
+      currency: newBox.currency,
+      status: "active",
+      lastTransaction: "-"
+    };
+
+    setCashBoxes([...cashBoxes, box]);
+    toast.success("تم إضافة الصندوق بنجاح");
+    setIsNewBoxOpen(false);
+    setNewBox({ name: "", currency: "SAR", type: "cash_box" });
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -58,10 +108,72 @@ export default function CashBoxes() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          <Button size="sm">
-            <Plus className="w-4 h-4 ml-2" />
-            صندوق جديد
-          </Button>
+          
+          <Dialog open={isNewBoxOpen} onOpenChange={setIsNewBoxOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="w-4 h-4 ml-2" />
+                صندوق جديد
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>إضافة صندوق / عهدة جديدة</DialogTitle>
+                <DialogDescription>
+                  أدخل بيانات الصندوق الجديد أو العهدة لإضافتها للنظام.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">اسم الصندوق</Label>
+                  <Input 
+                    id="name" 
+                    value={newBox.name}
+                    onChange={(e) => setNewBox({...newBox, name: e.target.value})}
+                    className="col-span-3" 
+                    placeholder="مثال: صندوق المبيعات الرئيسي"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="type" className="text-right">النوع</Label>
+                  <Select 
+                    value={newBox.type} 
+                    onValueChange={(v) => setNewBox({...newBox, type: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر النوع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash_box">صندوق نقدي</SelectItem>
+                      <SelectItem value="petty_cash">عهدة موظف</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="currency" className="text-right">العملة</Label>
+                  <Select 
+                    value={newBox.currency} 
+                    onValueChange={(v) => setNewBox({...newBox, currency: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر العملة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
+                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
+                      <SelectItem value="EUR">يورو (EUR)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddBox}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ الصندوق
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
