@@ -14,7 +14,7 @@ import {
 import { useEntity } from "@/contexts/EntityContext";
 
 export default function Home() {
-  const { currentEntity } = useEntity();
+  const { currentEntity, getThemeColor } = useEntity();
 
   // Helper to get entity type label
   const getEntityTypeLabel = () => {
@@ -29,9 +29,9 @@ export default function Home() {
   // Helper to get entity icon
   const EntityIcon = () => {
     switch(currentEntity.type) {
-      case 'holding': return <Building2 className="h-6 w-6 text-purple-600" />;
-      case 'unit': return <Building className="h-6 w-6 text-blue-600" />;
-      case 'branch': return <Store className="h-6 w-6 text-emerald-600" />;
+      case 'holding': return <Building2 className="h-6 w-6 text-white" />;
+      case 'unit': return <Building className="h-6 w-6 text-white" />;
+      case 'branch': return <Store className="h-6 w-6 text-white" />;
       default: return null;
     }
   };
@@ -40,19 +40,22 @@ export default function Home() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-6">
         <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-xl ${
-            currentEntity.type === 'holding' ? 'bg-purple-100' : 
-            currentEntity.type === 'unit' ? 'bg-blue-100' : 'bg-emerald-100'
-          }`}>
+          <div 
+            className="p-3 rounded-xl shadow-sm transition-colors duration-300"
+            style={{ backgroundColor: getThemeColor() }}
+          >
             <EntityIcon />
           </div>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">{currentEntity.name}</h2>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                currentEntity.type === 'holding' ? 'bg-purple-100 text-purple-700' : 
-                currentEntity.type === 'unit' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
-              }`}>
+              <span 
+                className="text-xs px-2 py-0.5 rounded-full font-medium transition-colors duration-300"
+                style={{ 
+                  backgroundColor: `${getThemeColor()}20`, // 20 is roughly 12% opacity
+                  color: getThemeColor()
+                }}
+              >
                 {getEntityTypeLabel()}
               </span>
               <p className="text-muted-foreground text-sm">لوحة المعلومات العامة</p>
@@ -60,12 +63,12 @@ export default function Home() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button>تقرير جديد</Button>
+          <Button style={{ backgroundColor: getThemeColor() }}>تقرير جديد</Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="border-t-4" style={{ borderTopColor: getThemeColor() }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">إجمالي الإيرادات</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -77,7 +80,7 @@ export default function Home() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-t-4" style={{ borderTopColor: getThemeColor() }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">المصروفات</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -89,7 +92,7 @@ export default function Home() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-t-4" style={{ borderTopColor: getThemeColor() }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">صافي الربح</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -101,7 +104,7 @@ export default function Home() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-t-4" style={{ borderTopColor: getThemeColor() }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">الفواتير المستحقة</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
@@ -121,7 +124,10 @@ export default function Home() {
             <CardTitle>نظرة عامة - {currentEntity.name}</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[350px] flex items-center justify-center text-muted-foreground bg-muted/10 rounded-md border border-dashed">
+            <div 
+              className="h-[350px] flex items-center justify-center text-muted-foreground rounded-md border border-dashed transition-colors duration-300"
+              style={{ backgroundColor: `${getThemeColor()}08` }}
+            >
               لا توجد بيانات كافية لعرض الرسم البياني لهذا الكيان
             </div>
           </CardContent>
@@ -134,7 +140,10 @@ export default function Home() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[350px] flex items-center justify-center text-muted-foreground bg-muted/10 rounded-md border border-dashed">
+            <div 
+              className="h-[350px] flex items-center justify-center text-muted-foreground rounded-md border border-dashed transition-colors duration-300"
+              style={{ backgroundColor: `${getThemeColor()}08` }}
+            >
               لا توجد بيانات كافية لعرض الرسم البياني لهذا الكيان
             </div>
           </CardContent>
