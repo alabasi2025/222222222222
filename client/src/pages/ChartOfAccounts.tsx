@@ -120,7 +120,7 @@ export default function ChartOfAccounts() {
   const { currentEntity } = useEntity();
   const [location, setLocation] = useLocation();
   const [accounts, setAccounts] = useState(initialAccountsData);
-  const [isNewAccountOpen, setIsNewAccountOpen] = useState(true);
+  const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
