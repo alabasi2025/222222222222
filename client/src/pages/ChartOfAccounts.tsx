@@ -25,7 +25,8 @@ import {
   Wallet,
   Landmark,
   Users,
-  Package
+  Package,
+  GripVertical
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,11 +54,26 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableRow } from "@/components/SortableRow";
 
 // Account Subtypes
 const accountSubtypes = [
@@ -105,6 +121,13 @@ export default function ChartOfAccounts() {
   const [location, setLocation] = useLocation();
   const [accounts, setAccounts] = useState(initialAccountsData);
   const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Handle query params for quick actions
   useEffect(() => {
@@ -168,8 +191,8 @@ export default function ChartOfAccounts() {
     }
 
     updatedAccounts.push(newAcc);
-    // Sort by code to keep tree structure somewhat ordered
-    updatedAccounts.sort((a, b) => a.id.localeCompare(b.id));
+    // No auto-sorting to allow manual reordering
+    // updatedAccounts.sort((a, b) => a.id.localeCompare(b.id));
 
     setAccounts(updatedAccounts);
     setIsNewAccountOpen(false);
@@ -203,6 +226,66 @@ export default function ChartOfAccounts() {
 
   // Filter accounts for parent selection (only Groups can be parents)
   const groupAccounts = accounts.filter(a => a.isGroup);
+
+  // Get visible accounts for rendering
+  const visibleAccounts = accounts.filter(isVisible);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    setAccounts((items) => {
+      const oldIndex = items.findIndex((item) => item.id === active.id);
+      const newIndex = items.findIndex((item) => item.id === over.id);
+      
+      if (oldIndex === -1 || newIndex === -1) return items;
+
+      // 1. Identify the block to move (item + all its descendants)
+      const activeItem = items[oldIndex];
+      let blockSize = 1;
+      
+      // Iterate starting from the next item
+      for (let i = oldIndex + 1; i < items.length; i++) {
+        // If the item has a deeper level, it's a descendant (assuming strict order)
+        if (items[i].level > activeItem.level) {
+          blockSize++;
+        } else {
+          // Found a sibling or parent (level <= activeItem.level), stop
+          break;
+        }
+      }
+      
+      // 2. Extract the block
+      const newItems = [...items];
+      const block = newItems.splice(oldIndex, blockSize);
+      
+      // 3. Find the new insertion index in the modified array
+      // We need to find where the 'over' item ended up
+      let targetIndex = newItems.findIndex(item => item.id === over.id);
+      
+      if (targetIndex === -1) {
+        // Should not happen unless we dragged onto a descendant (which is hidden/removed)
+        return items; 
+      }
+
+      // If we are dragging down (original position was above new position),
+      // we generally want to insert AFTER the target item.
+      // However, if the target item has children, we might want to skip them too?
+      // For simplicity in this "reorder" mode, we insert immediately after/before the target row.
+      // If dragging down: insert after target.
+      // If dragging up: insert before target.
+      
+      if (oldIndex < newIndex) {
+        targetIndex += 1;
+      }
+      
+      // Insert the block at the new position
+      newItems.splice(targetIndex, 0, ...block);
+      
+      return newItems;
+    });
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -259,256 +342,249 @@ export default function ChartOfAccounts() {
                         <FileText className={`w-5 h-5 ${!newAccount.isGroup ? 'text-primary' : 'text-muted-foreground'}`} />
                         <span className="font-bold">حساب فرعي (تحليلي)</span>
                       </div>
-                      <p className="text-xs text-muted-foreground">الحساب الذي يتأثر بالعمليات المالية (قيود، فواتير، سندات).</p>
+                      <p className="text-xs text-muted-foreground">يستخدم لتسجيل العمليات المالية والقيود اليومية.</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">اسم الحساب</Label>
-                    <Input 
-                      id="name" 
-                      value={newAccount.name}
-                      onChange={(e) => setNewAccount({...newAccount, name: e.target.value})}
-                      placeholder="مثال: الصندوق الرئيسي"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="code">رمز الحساب</Label>
-                    <Input 
-                      id="code" 
-                      value={newAccount.code}
-                      onChange={(e) => setNewAccount({...newAccount, code: e.target.value})}
-                      placeholder="مثال: 110101"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="parent">الحساب الرئيسي (الأب)</Label>
-                    <Select 
-                      value={newAccount.parent} 
-                      onValueChange={(v) => {
-                        const parent = accounts.find(a => a.id === v);
-                        setNewAccount({
-                          ...newAccount, 
-                          parent: v,
-                          type: parent ? parent.type : newAccount.type // Inherit type from parent
-                        });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الحساب الرئيسي" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">-- بدون (حساب جذر) --</SelectItem>
-                        {groupAccounts.map(acc => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.id} - {acc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="type">التصنيف الرئيسي</Label>
-                    <Select 
-                      value={newAccount.type} 
-                      onValueChange={(v) => setNewAccount({...newAccount, type: v})}
-                      disabled={newAccount.parent !== "none"} // Lock type if parent is selected
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر التصنيف" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asset">أصول</SelectItem>
-                        <SelectItem value="liability">خصوم</SelectItem>
-                        <SelectItem value="equity">حقوق ملكية</SelectItem>
-                        <SelectItem value="income">إيرادات</SelectItem>
-                        <SelectItem value="expense">مصروفات</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Subtype Selection - Only for Ledger Accounts */}
+                {/* Subtype Selection (Only for Ledger Accounts) */}
                 {!newAccount.isGroup && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                    <Label htmlFor="subtype">نوع الحساب الفرعي</Label>
-                    <Select 
-                      value={newAccount.subtype} 
-                      onValueChange={(v) => setNewAccount({...newAccount, subtype: v})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر نوع الحساب الفرعي" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accountSubtypes.map(st => (
-                          <SelectItem key={st.value} value={st.value}>
-                            <div className="flex items-center gap-2">
-                              <st.icon className="w-4 h-4 text-muted-foreground" />
-                              <span>{st.label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      يساعد تحديد النوع الدقيق في أتمتة العمليات (مثل ظهور حسابات البنوك في سندات الصرف).
-                    </p>
+                  <div className="grid grid-cols-4 items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                    <Label htmlFor="subtype" className="text-right font-bold">تصنيف الحساب</Label>
+                    <div className="col-span-3">
+                      <Select 
+                        value={newAccount.subtype} 
+                        onValueChange={(value) => setNewAccount({...newAccount, subtype: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر تصنيف الحساب" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accountSubtypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              <div className="flex items-center gap-2">
+                                <type.icon className="w-4 h-4 text-muted-foreground" />
+                                {type.label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">يساعد التصنيف في أتمتة العمليات والتقارير (مثل ربط العملاء والموردين).</p>
+                    </div>
                   </div>
                 )}
 
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right font-bold">اسم الحساب</Label>
+                  <Input
+                    id="name"
+                    value={newAccount.name}
+                    onChange={(e) => setNewAccount({...newAccount, name: e.target.value})}
+                    className="col-span-3"
+                    placeholder="مثال: الصندوق الرئيسي"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="code" className="text-right font-bold">رمز الحساب</Label>
+                  <Input
+                    id="code"
+                    value={newAccount.code}
+                    onChange={(e) => setNewAccount({...newAccount, code: e.target.value})}
+                    className="col-span-3"
+                    placeholder="مثال: 1101"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="type" className="text-right font-bold">طبيعة الحساب</Label>
+                  <Select 
+                    value={newAccount.type} 
+                    onValueChange={(value) => setNewAccount({...newAccount, type: value})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر النوع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="asset">أصول</SelectItem>
+                      <SelectItem value="liability">خصوم</SelectItem>
+                      <SelectItem value="equity">حقوق ملكية</SelectItem>
+                      <SelectItem value="income">إيرادات</SelectItem>
+                      <SelectItem value="expense">مصروفات</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="parent" className="text-right font-bold">الحساب الرئيسي</Label>
+                  <Select 
+                    value={newAccount.parent} 
+                    onValueChange={(value) => setNewAccount({...newAccount, parent: value})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب الرئيسي" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">بدون (حساب رئيسي)</SelectItem>
+                      {groupAccounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.id} - {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddAccount}>
-                  <Save className="w-4 h-4 ml-2" />
-                  حفظ الحساب
-                </Button>
+                <Button variant="outline" onClick={() => setIsNewAccountOpen(false)}>إلغاء</Button>
+                <Button onClick={handleAddAccount}>حفظ الحساب</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="بحث برقم الحساب أو الاسم..." className="pr-9" />
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
-            <Filter className="w-4 h-4 ml-2" />
-            تصفية
-          </Button>
           <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1 sm:flex-none"
-            onClick={() => setAccounts(accounts.map(a => ({...a, expanded: false})))}
+            onClick={() => setIsNewAccountOpen(true)} 
+            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
           >
-            <FolderTree className="w-4 h-4 ml-2" />
-            طي الكل
+            <Plus className="w-4 h-4" />
+            إضافة حساب
           </Button>
           
-          <Button 
-            size="sm" 
-            className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white"
-            onClick={() => setIsNewAccountOpen(true)}
-          >
-            <Plus className="w-4 h-4 ml-2" />
-            حساب جديد
+          <Button variant="outline" size="icon" onClick={() => setAccounts(accounts.map(a => ({...a, expanded: false})))}>
+            <FolderTree className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="rounded-md border bg-card shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[400px]">اسم الحساب</TableHead>
-              <TableHead>الرمز</TableHead>
-              <TableHead>النوع</TableHead>
-              <TableHead>التصنيف الفرعي</TableHead>
-              <TableHead>الرصيد الحالي</TableHead>
-              <TableHead className="text-left">إجراءات</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {accounts.filter(isVisible).map((account) => {
-              const subtypeLabel = accountSubtypes.find(s => s.value === account.subtype)?.label || "عام";
-              
-              return (
-                <TableRow key={account.id} className="group hover:bg-muted/50">
-                  <TableCell>
-                    <div 
-                      className="flex items-center gap-2"
-                      style={{ paddingRight: `${(account.level - 1) * 24}px` }}
-                    >
-                      {account.hasChildren ? (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 p-0 hover:bg-transparent"
-                          onClick={() => toggleExpand(account.id)}
-                        >
-                          {account.expanded ? (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
-                          )}
-                        </Button>
-                      ) : (
-                        <div className="w-6" />
-                      )}
-                      
-                      {account.isGroup ? (
-                        <Folder className="h-4 w-4 text-blue-500" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      
-                      <span className={account.isGroup ? "font-bold" : ""}>
-                        {account.name}
+      <div className="flex gap-4 items-center bg-muted/30 p-4 rounded-lg border">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="بحث في الحسابات..." className="pr-9 bg-background" />
+        </div>
+        <Button variant="outline" size="icon">
+          <Filter className="w-4 h-4" />
+        </Button>
+      </div>
+
+      <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="w-[300px] text-right">اسم الحساب</TableHead>
+                <TableHead className="text-right">الرمز</TableHead>
+                <TableHead className="text-right">النوع</TableHead>
+                <TableHead className="text-right">التصنيف</TableHead>
+                <TableHead className="text-right">الرصيد</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <SortableContext 
+                items={visibleAccounts.map(a => a.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {visibleAccounts.map((account) => (
+                  <SortableRow key={account.id} id={account.id}>
+                    <TableCell className="font-medium">
+                      <div 
+                        className="flex items-center gap-2"
+                        style={{ paddingRight: `${(account.level - 1) * 24}px` }}
+                      >
+                        {account.hasChildren ? (
+                          <button 
+                            onClick={() => toggleExpand(account.id)}
+                            className="p-1 hover:bg-muted rounded-sm transition-colors"
+                          >
+                            {account.expanded ? (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="w-6" />
+                        )}
+                        
+                        {account.isGroup ? (
+                          <Folder className={`w-4 h-4 ${account.expanded ? 'text-amber-500' : 'text-amber-400/80'}`} />
+                        ) : (
+                          <FileText className="w-4 h-4 text-blue-500" />
+                        )}
+                        
+                        <span className={account.isGroup ? "font-bold text-foreground" : "text-muted-foreground"}>
+                          {account.name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                        {account.id}
                       </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {account.id}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`${typeMap[account.type].color} ${typeMap[account.type].color.replace('text-', 'bg-').replace('700', '100')} border-0`}>
-                      {typeMap[account.type].label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {!account.isGroup && (
-                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                        {subtypeLabel}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="secondary" 
+                        className={`${typeMap[account.type]?.color} border`}
+                      >
+                        {typeMap[account.type]?.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {!account.isGroup && account.subtype && (
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          {(() => {
+                            const subtype = accountSubtypes.find(s => s.value === account.subtype);
+                            if (!subtype) return null;
+                            const Icon = subtype.icon;
+                            return (
+                              <>
+                                <Icon className="w-3.5 h-3.5" />
+                                <span>{subtype.label}</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className={account.balance < 0 ? "text-red-600 font-medium" : "font-medium"}>
+                        {account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
                       </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className={account.balance < 0 ? "text-red-600" : ""}>
-                      {account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-left">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => {
-                          setNewAccount({
-                            ...newAccount,
-                            parent: account.id,
-                            type: account.type,
-                            isGroup: false // Default to sub-account when adding child
-                          });
-                          setIsNewAccountOpen(true);
-                        }}>
-                          <Plus className="w-4 h-4 ml-2" />
-                          إضافة حساب فرعي
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteAccount(account.id)}>
-                          حذف
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(account.id)}>
+                            نسخ الرمز
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>تعديل</DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-600 focus:text-red-600"
+                            onClick={() => handleDeleteAccount(account.id)}
+                          >
+                            حذف
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </SortableRow>
+                ))}
+              </SortableContext>
+            </TableBody>
+          </Table>
+        </DndContext>
       </div>
     </div>
   );
