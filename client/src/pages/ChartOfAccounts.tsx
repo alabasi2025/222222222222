@@ -310,14 +310,14 @@ export default function ChartOfAccounts() {
           </Button>
           
           <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>إضافة حساب جديد</DialogTitle>
                 <DialogDescription>
                   أدخل تفاصيل الحساب الجديد لإضافته إلى الشجرة.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-6 py-4">
+              <div className="grid gap-6 py-4 overflow-y-auto flex-1 px-2">
                 
                 {/* Account Nature (Group vs Ledger) */}
                 <div className="grid grid-cols-4 items-center gap-4">
