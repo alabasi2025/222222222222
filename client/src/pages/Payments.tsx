@@ -61,11 +61,11 @@ export default function Payments() {
           </Button>
           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
             <Plus className="w-4 h-4 ml-2" />
-            استلام دفعة
+            سند قبض جديد
           </Button>
           <Button size="sm" variant="destructive">
             <Plus className="w-4 h-4 ml-2" />
-            دفع مبلغ
+            سند صرف جديد
           </Button>
         </div>
       </div>
@@ -111,9 +111,9 @@ export default function Payments() {
             تصفية
           </Button>
           <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-            <option>جميع العمليات</option>
-            <option>مقبوضات</option>
-            <option>مدفوعات</option>
+            <option>جميع السندات</option>
+            <option>سندات قبض</option>
+            <option>سندات صرف</option>
           </select>
         </div>
       </div>
@@ -151,6 +151,9 @@ export default function Payments() {
                   <TableCell>
                     <span className={`font-bold flex items-center gap-1 ${payment.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {payment.type === 'in' ? '+' : '-'} {payment.amount.toLocaleString()} ر.س
+                    </span>
+                    <span className="text-xs text-muted-foreground block mt-1">
+                      {payment.type === 'in' ? 'سند قبض' : 'سند صرف'}
                     </span>
                   </TableCell>
                   <TableCell className="text-left">

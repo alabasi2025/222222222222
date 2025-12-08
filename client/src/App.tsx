@@ -11,6 +11,7 @@ import Purchases from "./pages/Purchases";
 import Inventory from "./pages/Inventory";
 import Contacts from "./pages/Contacts";
 import Payments from "./pages/Payments";
+import JournalEntries from "./pages/JournalEntries";
 import Ledger from "./pages/Ledger";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -26,6 +27,7 @@ function Router() {
         <Route path="/inventory" component={Inventory} />
         <Route path="/contacts" component={Contacts} />
         <Route path="/payments" component={Payments} />
+        <Route path="/journals" component={JournalEntries} />
         <Route path="/ledger" component={Ledger} />
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
