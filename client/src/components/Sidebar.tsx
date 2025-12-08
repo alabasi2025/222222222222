@@ -24,6 +24,7 @@ const menuItems = [
   { icon: Package, label: "المخزون", href: "/inventory" },
   { icon: Users, label: "العملاء والموردين", href: "/contacts" },
   { icon: Wallet, label: "السندات المالية", href: "/payments" },
+  { icon: Wallet, label: "الصناديق والعهد", href: "/cash-boxes" },
   { icon: FileText, label: "قيود اليومية", href: "/journals" },
   { icon: BookOpen, label: "دفتر الأستاذ", href: "/ledger" },
   { icon: FolderTree, label: "شجرة الحسابات", href: "/coa" },

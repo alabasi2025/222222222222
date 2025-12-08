@@ -14,6 +14,7 @@ import Payments from "./pages/Payments";
 import JournalEntries from "./pages/JournalEntries";
 import Ledger from "./pages/Ledger";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
+import CashBoxes from "./pages/CashBoxes";
 import FixedAssets from "./pages/FixedAssets";
 import CostCenters from "./pages/CostCenters";
 import BankReconciliation from "./pages/BankReconciliation";
@@ -35,6 +36,7 @@ function Router() {
         <Route path="/journals" component={JournalEntries} />
         <Route path="/ledger" component={Ledger} />
         <Route path="/coa" component={ChartOfAccounts} />
+        <Route path="/cash-boxes" component={CashBoxes} />
       <Route path="/assets" component={FixedAssets} />
       <Route path="/cost-centers" component={CostCenters} />
       <Route path="/bank-reconciliation" component={BankReconciliation} />
