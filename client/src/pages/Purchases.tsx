@@ -30,13 +30,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-const purchases = [
-  { id: "PUR-2025-001", supplier: "شركة التوريدات العالمية", date: "2025-01-18", amount: 15000.00, status: "received", items: 12 },
-  { id: "PUR-2025-002", supplier: "مصنع الأثاث الحديث", date: "2025-01-16", amount: 8450.00, status: "pending", items: 5 },
-  { id: "PUR-2025-003", supplier: "مؤسسة التقنية", date: "2025-01-15", amount: 3200.00, status: "ordered", items: 8 },
-  { id: "PUR-2025-004", supplier: "شركة الورق والطباعة", date: "2025-01-10", amount: 1200.00, status: "received", items: 20 },
-  { id: "PUR-2025-005", supplier: "موردين الإلكترونيات", date: "2025-01-05", amount: 25000.00, status: "overdue", items: 15 },
-];
+// Initial clean data
+const purchases: any[] = [];
 
 const statusMap: Record<string, { label: string, color: string, icon: any }> = {
   received: { label: "تم الاستلام", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
@@ -98,44 +93,52 @@ export default function Purchases() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {purchases.map((purchase) => {
-              const status = statusMap[purchase.status];
-              const StatusIcon = status.icon;
-              
-              return (
-                <TableRow key={purchase.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{purchase.id}</TableCell>
-                  <TableCell>{purchase.supplier}</TableCell>
-                  <TableCell>{purchase.date}</TableCell>
-                  <TableCell>{purchase.items}</TableCell>
-                  <TableCell className="font-bold">{purchase.amount.toLocaleString()} ر.س</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`${status.color} gap-1 pl-2 pr-2 py-0.5 font-normal`}>
-                      <StatusIcon className="w-3 h-3" />
-                      {status.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-left">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
-                        <DropdownMenuItem>تعديل الفاتورة</DropdownMenuItem>
-                        <DropdownMenuItem>تسجيل استلام</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {purchases.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  لا توجد فواتير شراء مسجلة. قم بإنشاء فاتورة شراء جديدة للبدء.
+                </TableCell>
+              </TableRow>
+            ) : (
+              purchases.map((purchase) => {
+                const status = statusMap[purchase.status];
+                const StatusIcon = status.icon;
+                
+                return (
+                  <TableRow key={purchase.id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell className="font-medium">{purchase.id}</TableCell>
+                    <TableCell>{purchase.supplier}</TableCell>
+                    <TableCell>{purchase.date}</TableCell>
+                    <TableCell>{purchase.items}</TableCell>
+                    <TableCell className="font-bold">{purchase.amount.toLocaleString()} ر.س</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`${status.color} gap-1 pl-2 pr-2 py-0.5 font-normal`}>
+                        <StatusIcon className="w-3 h-3" />
+                        {status.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-left">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                          <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
+                          <DropdownMenuItem>تعديل الفاتورة</DropdownMenuItem>
+                          <DropdownMenuItem>تسجيل استلام</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>

@@ -29,15 +29,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-const invoices = [
-  { id: "INV-2025-001", client: "شركة التقنية الحديثة", date: "2025-01-15", amount: 1200.00, status: "paid", dueDate: "2025-02-15" },
-  { id: "INV-2025-002", client: "مؤسسة البناء", date: "2025-01-14", amount: 3450.00, status: "pending", dueDate: "2025-01-20" },
-  { id: "INV-2025-003", client: "سوبر ماركت السلام", date: "2025-01-12", amount: 850.00, status: "paid", dueDate: "2025-01-12" },
-  { id: "INV-2025-004", client: "مطعم النخيل", date: "2025-01-10", amount: 2100.00, status: "overdue", dueDate: "2025-01-01" },
-  { id: "INV-2025-005", client: "مكتبة المعرفة", date: "2025-01-08", amount: 450.00, status: "paid", dueDate: "2025-01-08" },
-  { id: "INV-2025-006", client: "شركة الأفق", date: "2025-01-05", amount: 5600.00, status: "pending", dueDate: "2025-02-05" },
-  { id: "INV-2025-007", client: "مؤسسة النور", date: "2025-01-03", amount: 1250.00, status: "draft", dueDate: "2025-02-03" },
-];
+// Initial clean data
+const invoices: any[] = [];
 
 const statusMap: Record<string, { label: string, color: string, icon: any }> = {
   paid: { label: "مدفوع", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
@@ -99,44 +92,52 @@ export default function Invoices() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {invoices.map((invoice) => {
-              const status = statusMap[invoice.status];
-              const StatusIcon = status.icon;
-              
-              return (
-                <TableRow key={invoice.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{invoice.id}</TableCell>
-                  <TableCell>{invoice.client}</TableCell>
-                  <TableCell>{invoice.date}</TableCell>
-                  <TableCell>{invoice.dueDate}</TableCell>
-                  <TableCell className="font-bold">{invoice.amount.toLocaleString()} ر.س</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`${status.color} gap-1 pl-2 pr-2 py-0.5 font-normal`}>
-                      <StatusIcon className="w-3 h-3" />
-                      {status.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-left">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
-                        <DropdownMenuItem>تعديل الفاتورة</DropdownMenuItem>
-                        <DropdownMenuItem>تسجيل دفعة</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {invoices.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  لا توجد فواتير مسجلة. قم بإنشاء فاتورة جديدة للبدء.
+                </TableCell>
+              </TableRow>
+            ) : (
+              invoices.map((invoice) => {
+                const status = statusMap[invoice.status];
+                const StatusIcon = status.icon;
+                
+                return (
+                  <TableRow key={invoice.id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell className="font-medium">{invoice.id}</TableCell>
+                    <TableCell>{invoice.client}</TableCell>
+                    <TableCell>{invoice.date}</TableCell>
+                    <TableCell>{invoice.dueDate}</TableCell>
+                    <TableCell className="font-bold">{invoice.amount.toLocaleString()} ر.س</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`${status.color} gap-1 pl-2 pr-2 py-0.5 font-normal`}>
+                        <StatusIcon className="w-3 h-3" />
+                        {status.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-left">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                          <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
+                          <DropdownMenuItem>تعديل الفاتورة</DropdownMenuItem>
+                          <DropdownMenuItem>تسجيل دفعة</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>

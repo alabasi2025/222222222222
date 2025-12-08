@@ -30,14 +30,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-const products = [
-  { id: "PRD-001", name: "لابتوب ديل XPS 15", category: "إلكترونيات", stock: 12, minStock: 5, price: 8500.00, status: "in_stock" },
-  { id: "PRD-002", name: "طابعة ليزر HP", category: "أجهزة مكتبية", stock: 3, minStock: 5, price: 1200.00, status: "low_stock" },
-  { id: "PRD-003", name: "شاشة سامسونج 27 بوصة", category: "إلكترونيات", stock: 0, minStock: 3, price: 1800.00, status: "out_of_stock" },
-  { id: "PRD-004", name: "ماوس لاسلكي لوجيتك", category: "ملحقات", stock: 45, minStock: 10, price: 150.00, status: "in_stock" },
-  { id: "PRD-005", name: "كيبورد ميكانيكي", category: "ملحقات", stock: 8, minStock: 5, price: 450.00, status: "in_stock" },
-  { id: "PRD-006", name: "مكتب خشبي فاخر", category: "أثاث", stock: 2, minStock: 2, price: 3500.00, status: "low_stock" },
-];
+// Initial clean data
+const products: any[] = [];
 
 const statusMap: Record<string, { label: string, color: string }> = {
   in_stock: { label: "متوفر", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -69,7 +63,7 @@ export default function Inventory() {
         <div className="bg-card p-4 rounded-lg border shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">إجمالي المنتجات</p>
-            <h3 className="text-2xl font-bold mt-1">1,240</h3>
+            <h3 className="text-2xl font-bold mt-1">0</h3>
           </div>
           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
             <Package className="w-5 h-5" />
@@ -78,7 +72,7 @@ export default function Inventory() {
         <div className="bg-card p-4 rounded-lg border shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">قيمة المخزون</p>
-            <h3 className="text-2xl font-bold mt-1">345,200 ر.س</h3>
+            <h3 className="text-2xl font-bold mt-1">0.00 ر.س</h3>
           </div>
           <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
             <ArrowUpRight className="w-5 h-5" />
@@ -87,7 +81,7 @@ export default function Inventory() {
         <div className="bg-card p-4 rounded-lg border shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">تنبيهات المخزون</p>
-            <h3 className="text-2xl font-bold mt-1 text-amber-600">12</h3>
+            <h3 className="text-2xl font-bold mt-1 text-amber-600">0</h3>
           </div>
           <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600">
             <AlertTriangle className="w-5 h-5" />
@@ -128,48 +122,56 @@ export default function Inventory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((product) => {
-              const status = statusMap[product.status];
-              const stockPercentage = Math.min((product.stock / (product.minStock * 3)) * 100, 100);
-              
-              return (
-                <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{product.id}</TableCell>
-                  <TableCell className="font-semibold">{product.name}</TableCell>
-                  <TableCell>{product.category}</TableCell>
-                  <TableCell>{product.price.toLocaleString()} ر.س</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="w-8 text-sm">{product.stock}</span>
-                      <Progress value={stockPercentage} className="w-20 h-2" />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`${status.color} font-normal`}>
-                      {status.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-left">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>تعديل المنتج</DropdownMenuItem>
-                        <DropdownMenuItem>حركة المخزون</DropdownMenuItem>
-                        <DropdownMenuItem>تعديل السعر</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {products.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  لا توجد منتجات مسجلة. قم بإضافة منتج جديد للبدء.
+                </TableCell>
+              </TableRow>
+            ) : (
+              products.map((product) => {
+                const status = statusMap[product.status];
+                const stockPercentage = Math.min((product.stock / (product.minStock * 3)) * 100, 100);
+                
+                return (
+                  <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell className="font-medium">{product.id}</TableCell>
+                    <TableCell className="font-semibold">{product.name}</TableCell>
+                    <TableCell>{product.category}</TableCell>
+                    <TableCell>{product.price.toLocaleString()} ر.س</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 text-sm">{product.stock}</span>
+                        <Progress value={stockPercentage} className="w-20 h-2" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`${status.color} font-normal`}>
+                        {status.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-left">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                          <DropdownMenuItem>تعديل المنتج</DropdownMenuItem>
+                          <DropdownMenuItem>حركة المخزون</DropdownMenuItem>
+                          <DropdownMenuItem>تعديل السعر</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>

@@ -52,18 +52,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const initialCustomers = [
-  { id: "CUS-001", name: "شركة التقنية الحديثة", type: "شركة", email: "info@tech-modern.com", phone: "0501234567", balance: 1200.00, status: "active" },
-  { id: "CUS-002", name: "مؤسسة البناء", type: "مؤسسة", email: "contact@al-binaa.com", phone: "0559876543", balance: -3450.00, status: "active" },
-  { id: "CUS-003", name: "سوبر ماركت السلام", type: "فرد", email: "salam@gmail.com", phone: "0541122334", balance: 0.00, status: "inactive" },
-  { id: "CUS-004", name: "مطعم النخيل", type: "شركة", email: "manager@palm-rest.com", phone: "0566677788", balance: 2100.00, status: "active" },
-];
-
-const initialSuppliers = [
-  { id: "SUP-001", name: "شركة التوريدات العالمية", type: "شركة", email: "sales@global-supply.com", phone: "0112233445", balance: 15000.00, status: "active" },
-  { id: "SUP-002", name: "مصنع الأثاث الحديث", type: "مصنع", email: "orders@modern-furniture.com", phone: "0123344556", balance: 8450.00, status: "active" },
-  { id: "SUP-003", name: "مؤسسة التقنية", type: "مؤسسة", email: "support@tech-est.com", phone: "0134455667", balance: 0.00, status: "inactive" },
-];
+// Initial clean data
+const initialCustomers: any[] = [];
+const initialSuppliers: any[] = [];
 
 export default function Contacts() {
   const [customers, setCustomers] = useState(initialCustomers);
@@ -256,73 +247,79 @@ export default function Contacts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers.map((customer) => (
-                  <TableRow key={customer.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {customer.name.substring(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{customer.name}</p>
-                          <p className="text-xs text-muted-foreground">{customer.id}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Mail className="w-3 h-3 ml-1" />
-                          {customer.email}
-                        </div>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Phone className="w-3 h-3 ml-1" />
-                          {customer.phone}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="font-normal">
-                        {customer.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-bold ${customer.balance > 0 ? "text-emerald-600" : customer.balance < 0 ? "text-rose-600" : ""}`}>
-                        {customer.balance.toLocaleString()} ر.س
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={customer.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-700"}>
-                        {customer.status === "active" ? "نشط" : "غير نشط"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                          <DropdownMenuItem>عرض الملف</DropdownMenuItem>
-                          <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                          <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => handleDeleteCustomer(customer.id)}
-                          >
-                            حذف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {customers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      لا يوجد عملاء مسجلين. قم بإضافة عميل جديد.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  customers.map((customer) => (
+                    <TableRow key={customer.id} className="hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {customer.name.substring(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{customer.name}</p>
+                            <p className="text-xs text-muted-foreground">{customer.id}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Mail className="w-3 h-3" />
+                            {customer.email}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="w-3 h-3" />
+                            {customer.phone}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-normal">
+                          {customer.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-bold ${customer.balance > 0 ? 'text-emerald-600' : customer.balance < 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
+                          {Math.abs(customer.balance).toLocaleString()} ر.س
+                          {customer.balance > 0 ? ' (له)' : customer.balance < 0 ? ' (عليه)' : ''}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          نشط
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                            <DropdownMenuItem>كشف حساب</DropdownMenuItem>
+                            <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
+                            <DropdownMenuItem>إنشاء فاتورة</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCustomer(customer.id)}>
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -342,73 +339,79 @@ export default function Contacts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {suppliers.map((supplier) => (
-                  <TableRow key={supplier.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-secondary/10 text-secondary-foreground">
-                            {supplier.name.substring(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{supplier.name}</p>
-                          <p className="text-xs text-muted-foreground">{supplier.id}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Mail className="w-3 h-3 ml-1" />
-                          {supplier.email}
-                        </div>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Phone className="w-3 h-3 ml-1" />
-                          {supplier.phone}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="font-normal">
-                        {supplier.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-bold ${supplier.balance > 0 ? "text-rose-600" : supplier.balance < 0 ? "text-emerald-600" : ""}`}>
-                        {supplier.balance.toLocaleString()} ر.س
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={supplier.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-700"}>
-                        {supplier.status === "active" ? "نشط" : "غير نشط"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                          <DropdownMenuItem>عرض الملف</DropdownMenuItem>
-                          <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                          <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => handleDeleteSupplier(supplier.id)}
-                          >
-                            حذف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {suppliers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      لا يوجد موردين مسجلين. قم بإضافة مورد جديد.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  suppliers.map((supplier) => (
+                    <TableRow key={supplier.id} className="hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarFallback className="bg-blue-100 text-blue-700">
+                              {supplier.name.substring(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{supplier.name}</p>
+                            <p className="text-xs text-muted-foreground">{supplier.id}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Mail className="w-3 h-3" />
+                            {supplier.email}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="w-3 h-3" />
+                            {supplier.phone}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-normal">
+                          {supplier.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-bold ${supplier.balance > 0 ? 'text-emerald-600' : supplier.balance < 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
+                          {Math.abs(supplier.balance).toLocaleString()} ر.س
+                          {supplier.balance > 0 ? ' (له)' : supplier.balance < 0 ? ' (عليه)' : ''}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          نشط
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                            <DropdownMenuItem>كشف حساب</DropdownMenuItem>
+                            <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
+                            <DropdownMenuItem>إنشاء فاتورة شراء</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteSupplier(supplier.id)}>
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
