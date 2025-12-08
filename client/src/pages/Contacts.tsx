@@ -53,12 +53,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useEntity } from "@/contexts/EntityContext";
 
 // Initial clean data
 const initialCustomers: any[] = [];
 const initialSuppliers: any[] = [];
 
 export default function Contacts() {
+  const { currentEntity } = useEntity();
   const [customers, setCustomers] = useState(initialCustomers);
   const [suppliers, setSuppliers] = useState(initialSuppliers);
   const [activeTab, setActiveTab] = useState("customers");
@@ -75,6 +77,17 @@ export default function Contacts() {
     category: "customer" // customer or supplier
   });
 
+  // Filter contacts based on current entity
+  const visibleCustomers = customers.filter(c => {
+    if (currentEntity.type === 'holding') return true;
+    return c.entityId === currentEntity.id;
+  });
+
+  const visibleSuppliers = suppliers.filter(s => {
+    if (currentEntity.type === 'holding') return true;
+    return s.entityId === currentEntity.id;
+  });
+
   const handleAddContact = () => {
     if (!newContact.name || !newContact.phone) {
       toast.error("يرجى تعبئة الاسم ورقم الهاتف");
@@ -85,6 +98,7 @@ export default function Contacts() {
       id: newContact.category === "customer" 
         ? `CUS-${String(customers.length + 1).padStart(3, '0')}`
         : `SUP-${String(suppliers.length + 1).padStart(3, '0')}`,
+      entityId: currentEntity.id, // Associate with current entity
       name: newContact.name,
       type: newContact.type,
       email: newContact.email,
@@ -157,7 +171,9 @@ export default function Contacts() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">العملاء والموردين</h2>
-          <p className="text-muted-foreground mt-1">إدارة بيانات الاتصال والأرصدة</p>
+          <p className="text-muted-foreground mt-1">
+            إدارة بيانات الاتصال والأرصدة لـ <span className="font-bold text-primary">{currentEntity.name}</span>
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
@@ -176,7 +192,7 @@ export default function Contacts() {
               <DialogHeader>
                 <DialogTitle>إضافة جهة اتصال جديدة</DialogTitle>
                 <DialogDescription>
-                  أدخل بيانات العميل أو المورد الجديد.
+                  سيتم إضافة جهة الاتصال إلى: <span className="font-bold">{currentEntity.name}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -299,70 +315,44 @@ export default function Contacts() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
+      <Tabs defaultValue="customers" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
           <TabsTrigger value="customers">العملاء</TabsTrigger>
           <TabsTrigger value="suppliers">الموردين</TabsTrigger>
         </TabsList>
-
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm mb-6">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="بحث بالاسم، البريد الإلكتروني أو الهاتف..." className="pr-9" />
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
-              <Filter className="w-4 h-4 ml-2" />
-              تصفية
-            </Button>
-          </div>
-        </div>
-
-        <TabsContent value="customers">
+        
+        <TabsContent value="customers" className="mt-6">
           <div className="rounded-md border bg-card shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[250px]">الاسم</TableHead>
-                  <TableHead>معلومات الاتصال</TableHead>
                   <TableHead>النوع</TableHead>
+                  <TableHead>بيانات الاتصال</TableHead>
                   <TableHead>الرصيد</TableHead>
                   <TableHead>الحالة</TableHead>
                   <TableHead className="text-left">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers.length === 0 ? (
+                {visibleCustomers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      لا يوجد عملاء مسجلين. قم بإضافة عميل جديد.
+                      لا يوجد عملاء مسجلين لـ {currentEntity.name}. قم بإضافة عميل جديد.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  customers.map((customer) => (
+                  visibleCustomers.map((customer) => (
                     <TableRow key={customer.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell>
+                      <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {customer.name.substring(0, 2)}
-                            </AvatarFallback>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${customer.name}`} />
+                            <AvatarFallback>{customer.name.substring(0, 2)}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium">{customer.name}</p>
-                            <p className="text-xs text-muted-foreground">{customer.id}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Mail className="w-3 h-3" />
-                            {customer.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="w-3 h-3" />
-                            {customer.phone}
+                          <div className="flex flex-col">
+                            <span>{customer.name}</span>
+                            <span className="text-xs text-muted-foreground">{customer.id}</span>
                           </div>
                         </div>
                       </TableCell>
@@ -370,7 +360,21 @@ export default function Contacts() {
                         <Badge variant="outline">{customer.type}</Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-bold text-emerald-600">
+                        <div className="flex flex-col gap-1 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-muted-foreground" />
+                            {customer.phone}
+                          </div>
+                          {customer.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-3 h-3 text-muted-foreground" />
+                              {customer.email}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-bold ${customer.balance > 0 ? 'text-emerald-600' : customer.balance < 0 ? 'text-rose-600' : ''}`}>
                           {customer.balance.toLocaleString()} ر.س
                         </span>
                       </TableCell>
@@ -413,52 +417,39 @@ export default function Contacts() {
             </Table>
           </div>
         </TabsContent>
-
-        <TabsContent value="suppliers">
+        
+        <TabsContent value="suppliers" className="mt-6">
           <div className="rounded-md border bg-card shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[250px]">الاسم</TableHead>
-                  <TableHead>معلومات الاتصال</TableHead>
                   <TableHead>النوع</TableHead>
+                  <TableHead>بيانات الاتصال</TableHead>
                   <TableHead>الرصيد</TableHead>
                   <TableHead>الحالة</TableHead>
                   <TableHead className="text-left">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {suppliers.length === 0 ? (
+                {visibleSuppliers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      لا يوجد موردين مسجلين. قم بإضافة مورد جديد.
+                      لا يوجد موردين مسجلين لـ {currentEntity.name}. قم بإضافة مورد جديد.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  suppliers.map((supplier) => (
+                  visibleSuppliers.map((supplier) => (
                     <TableRow key={supplier.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell>
+                      <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {supplier.name.substring(0, 2)}
-                            </AvatarFallback>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${supplier.name}`} />
+                            <AvatarFallback>{supplier.name.substring(0, 2)}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium">{supplier.name}</p>
-                            <p className="text-xs text-muted-foreground">{supplier.id}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Mail className="w-3 h-3" />
-                            {supplier.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="w-3 h-3" />
-                            {supplier.phone}
+                          <div className="flex flex-col">
+                            <span>{supplier.name}</span>
+                            <span className="text-xs text-muted-foreground">{supplier.id}</span>
                           </div>
                         </div>
                       </TableCell>
@@ -466,7 +457,21 @@ export default function Contacts() {
                         <Badge variant="outline">{supplier.type}</Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-bold text-rose-600">
+                        <div className="flex flex-col gap-1 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-muted-foreground" />
+                            {supplier.phone}
+                          </div>
+                          {supplier.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-3 h-3 text-muted-foreground" />
+                              {supplier.email}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-bold ${supplier.balance > 0 ? 'text-rose-600' : supplier.balance < 0 ? 'text-emerald-600' : ''}`}>
                           {supplier.balance.toLocaleString()} ر.س
                         </span>
                       </TableCell>
@@ -486,7 +491,7 @@ export default function Contacts() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
                             <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                            <DropdownMenuItem>إنشاء فاتورة شراء</DropdownMenuItem>
+                            <DropdownMenuItem>إنشاء أمر شراء</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => openEditDialog(supplier)}>
                               <Pencil className="w-4 h-4 ml-2" />
