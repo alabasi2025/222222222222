@@ -227,12 +227,6 @@ export default function ChartOfAccounts() {
           </Button>
           
           <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="w-4 h-4 ml-2" />
-                حساب جديد
-              </Button>
-            </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>إضافة حساب جديد</DialogTitle>
@@ -399,6 +393,13 @@ export default function ChartOfAccounts() {
             <FolderTree className="w-4 h-4 ml-2" />
             طي الكل
           </Button>
+          
+          <DialogTrigger asChild>
+            <Button size="sm" className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Plus className="w-4 h-4 ml-2" />
+              حساب جديد
+            </Button>
+          </DialogTrigger>
         </div>
       </div>
 
