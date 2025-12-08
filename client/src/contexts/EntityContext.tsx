@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export type EntityType = 'holding' | 'unit' | 'branch';
 
@@ -7,27 +7,28 @@ export interface Entity {
   name: string;
   type: EntityType;
   parentId?: string | null;
+  themeColor?: string; // Hex color code
 }
 
 // Define the initial entities data here to be shared
 export const initialEntities: Entity[] = [
-  { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding", parentId: null },
-  { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit", parentId: "HOLD-001" },
-  { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit", parentId: "HOLD-001" },
-  { id: "BR-001", name: "الفرع الرئيسي (العباسي خاص)", type: "branch", parentId: "UNIT-002" },
-  { id: "BR-002", name: "الفرع الرئيسي (الحديدة)", type: "branch", parentId: "UNIT-001" },
-  { id: "BR-003", name: "فرع الدهمية", type: "branch", parentId: "UNIT-001" },
-  { id: "BR-004", name: "فرع الصبالية", type: "branch", parentId: "UNIT-001" },
-  { id: "BR-005", name: "فرع غليل", type: "branch", parentId: "UNIT-001" },
+  { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding", parentId: null, themeColor: "#7c3aed" }, // Violet
+  { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit", parentId: "HOLD-001", themeColor: "#2563eb" }, // Blue
+  { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit", parentId: "HOLD-001", themeColor: "#059669" }, // Emerald
+  { id: "BR-001", name: "الفرع الرئيسي (العباسي خاص)", type: "branch", parentId: "UNIT-002", themeColor: "#059669" },
+  { id: "BR-002", name: "الفرع الرئيسي (الحديدة)", type: "branch", parentId: "UNIT-001", themeColor: "#2563eb" },
+  { id: "BR-003", name: "فرع الدهمية", type: "branch", parentId: "UNIT-001", themeColor: "#2563eb" },
+  { id: "BR-004", name: "فرع الصبالية", type: "branch", parentId: "UNIT-001", themeColor: "#2563eb" },
+  { id: "BR-005", name: "فرع غليل", type: "branch", parentId: "UNIT-001", themeColor: "#2563eb" },
 ];
 
 interface EntityContextType {
   currentEntity: Entity;
   setCurrentEntity: (entity: Entity) => void;
   entities: Entity[];
-  availableEntities: Entity[]; // Entities visible based on current selection (if we were to implement strict hierarchy navigation, but for switcher we usually show all allowed)
-  // Helper to check if an entity belongs to the current context
+  availableEntities: Entity[];
   isEntityVisible: (entityId: string) => boolean; 
+  getThemeColor: (entityId?: string) => string;
 }
 
 const EntityContext = createContext<EntityContextType | undefined>(undefined);
@@ -35,27 +36,80 @@ const EntityContext = createContext<EntityContextType | undefined>(undefined);
 export function EntityProvider({ children }: { children: ReactNode }) {
   const [currentEntity, setCurrentEntity] = useState<Entity>(initialEntities[0]);
 
-  // Logic to determine if an item should be visible based on current context
+  // Update CSS variables when entity changes
+  useEffect(() => {
+    const color = getThemeColor(currentEntity.id);
+    document.documentElement.style.setProperty('--primary', hexToHSL(color));
+    // Also update ring color for focus states
+    document.documentElement.style.setProperty('--ring', hexToHSL(color));
+  }, [currentEntity]);
+
+  // Helper to convert hex to HSL for Tailwind
+  const hexToHSL = (hex: string) => {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+      r = parseInt("0x" + hex[1] + hex[1]);
+      g = parseInt("0x" + hex[2] + hex[2]);
+      b = parseInt("0x" + hex[3] + hex[3]);
+    } else if (hex.length === 7) {
+      r = parseInt("0x" + hex[1] + hex[2]);
+      g = parseInt("0x" + hex[3] + hex[4]);
+      b = parseInt("0x" + hex[5] + hex[6]);
+    }
+    
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    
+    const cmin = Math.min(r,g,b), cmax = Math.max(r,g,b), delta = cmax - cmin;
+    let h = 0, s = 0, l = 0;
+    
+    if (delta === 0) h = 0;
+    else if (cmax === r) h = ((g - b) / delta) % 6;
+    else if (cmax === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    
+    h = Math.round(h * 60);
+    if (h < 0) h += 360;
+    
+    l = (cmax + cmin) / 2;
+    s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+    
+    s = +(s * 100).toFixed(1);
+    l = +(l * 100).toFixed(1);
+    
+    return `${h} ${s}% ${l}%`;
+  };
+
+  const getThemeColor = (entityId?: string) => {
+    const id = entityId || currentEntity.id;
+    const entity = initialEntities.find(e => e.id === id);
+    
+    // If entity has explicit color, use it
+    if (entity?.themeColor) return entity.themeColor;
+    
+    // If branch, inherit from unit
+    if (entity?.type === 'branch' && entity.parentId) {
+      const parent = initialEntities.find(e => e.id === entity.parentId);
+      if (parent?.themeColor) return parent.themeColor;
+    }
+    
+    return "#7c3aed"; // Default violet
+  };
+
   const isEntityVisible = (entityId: string) => {
-    // If holding company is selected, everything is visible
     if (currentEntity.type === 'holding') return true;
 
-    // Find the target entity
     const target = initialEntities.find(e => e.id === entityId);
     if (!target) return false;
 
-    // If unit is selected
     if (currentEntity.type === 'unit') {
-      // Show the unit itself
       if (target.id === currentEntity.id) return true;
-      // Show branches of this unit
       if (target.parentId === currentEntity.id) return true;
       return false;
     }
 
-    // If branch is selected
     if (currentEntity.type === 'branch') {
-      // Show only the branch itself
       return target.id === currentEntity.id;
     }
 
@@ -68,7 +122,8 @@ export function EntityProvider({ children }: { children: ReactNode }) {
       setCurrentEntity, 
       entities: initialEntities,
       availableEntities: initialEntities,
-      isEntityVisible
+      isEntityVisible,
+      getThemeColor
     }}>
       {children}
     </EntityContext.Provider>
