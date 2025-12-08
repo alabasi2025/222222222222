@@ -18,7 +18,8 @@ import {
   Phone,
   Mail,
   MapPin,
-  Building2
+  Building2,
+  Save
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,24 +29,101 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState } from "react";
+import { toast } from "sonner";
 
-const customers = [
+const initialCustomers = [
   { id: "CUS-001", name: "شركة التقنية الحديثة", type: "شركة", email: "info@tech-modern.com", phone: "0501234567", balance: 1200.00, status: "active" },
   { id: "CUS-002", name: "مؤسسة البناء", type: "مؤسسة", email: "contact@al-binaa.com", phone: "0559876543", balance: -3450.00, status: "active" },
   { id: "CUS-003", name: "سوبر ماركت السلام", type: "فرد", email: "salam@gmail.com", phone: "0541122334", balance: 0.00, status: "inactive" },
   { id: "CUS-004", name: "مطعم النخيل", type: "شركة", email: "manager@palm-rest.com", phone: "0566677788", balance: 2100.00, status: "active" },
 ];
 
-const suppliers = [
+const initialSuppliers = [
   { id: "SUP-001", name: "شركة التوريدات العالمية", type: "شركة", email: "sales@global-supply.com", phone: "0112233445", balance: 15000.00, status: "active" },
   { id: "SUP-002", name: "مصنع الأثاث الحديث", type: "مصنع", email: "orders@modern-furniture.com", phone: "0123344556", balance: 8450.00, status: "active" },
   { id: "SUP-003", name: "مؤسسة التقنية", type: "مؤسسة", email: "support@tech-est.com", phone: "0134455667", balance: 0.00, status: "inactive" },
 ];
 
 export default function Contacts() {
+  const [customers, setCustomers] = useState(initialCustomers);
+  const [suppliers, setSuppliers] = useState(initialSuppliers);
+  const [activeTab, setActiveTab] = useState("customers");
+  const [isNewContactOpen, setIsNewContactOpen] = useState(false);
+  const [newContact, setNewContact] = useState({
+    name: "",
+    type: "شركة",
+    email: "",
+    phone: "",
+    category: "customer" // customer or supplier
+  });
+
+  const handleAddContact = () => {
+    if (!newContact.name || !newContact.phone) {
+      toast.error("يرجى تعبئة الاسم ورقم الهاتف");
+      return;
+    }
+
+    const contact = {
+      id: newContact.category === "customer" 
+        ? `CUS-${String(customers.length + 1).padStart(3, '0')}`
+        : `SUP-${String(suppliers.length + 1).padStart(3, '0')}`,
+      name: newContact.name,
+      type: newContact.type,
+      email: newContact.email,
+      phone: newContact.phone,
+      balance: 0.00,
+      status: "active"
+    };
+
+    if (newContact.category === "customer") {
+      setCustomers([...customers, contact]);
+      toast.success("تم إضافة العميل بنجاح");
+    } else {
+      setSuppliers([...suppliers, contact]);
+      toast.success("تم إضافة المورد بنجاح");
+    }
+
+    setIsNewContactOpen(false);
+    setNewContact({
+      name: "",
+      type: "شركة",
+      email: "",
+      phone: "",
+      category: activeTab === "customers" ? "customer" : "supplier"
+    });
+  };
+
+  const handleDeleteCustomer = (id: string) => {
+    setCustomers(customers.filter(c => c.id !== id));
+    toast.success("تم حذف العميل بنجاح");
+  };
+
+  const handleDeleteSupplier = (id: string) => {
+    setSuppliers(suppliers.filter(s => s.id !== id));
+    toast.success("تم حذف المورد بنجاح");
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -58,14 +136,94 @@ export default function Contacts() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          <Button size="sm">
-            <Plus className="w-4 h-4 ml-2" />
-            جهة اتصال جديدة
-          </Button>
+          
+          <Dialog open={isNewContactOpen} onOpenChange={setIsNewContactOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" onClick={() => setNewContact({...newContact, category: activeTab === "customers" ? "customer" : "supplier"})}>
+                <Plus className="w-4 h-4 ml-2" />
+                جهة اتصال جديدة
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>إضافة جهة اتصال جديدة</DialogTitle>
+                <DialogDescription>
+                  أدخل بيانات العميل أو المورد الجديد.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="category" className="text-right">التصنيف</Label>
+                  <Select 
+                    value={newContact.category} 
+                    onValueChange={(v) => setNewContact({...newContact, category: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر التصنيف" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="customer">عميل</SelectItem>
+                      <SelectItem value="supplier">مورد</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">الاسم</Label>
+                  <Input 
+                    id="name" 
+                    value={newContact.name}
+                    onChange={(e) => setNewContact({...newContact, name: e.target.value})}
+                    className="col-span-3" 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="type" className="text-right">النوع</Label>
+                  <Select 
+                    value={newContact.type} 
+                    onValueChange={(v) => setNewContact({...newContact, type: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر النوع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="شركة">شركة</SelectItem>
+                      <SelectItem value="مؤسسة">مؤسسة</SelectItem>
+                      <SelectItem value="فرد">فرد</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="phone" className="text-right">الهاتف</Label>
+                  <Input 
+                    id="phone" 
+                    value={newContact.phone}
+                    onChange={(e) => setNewContact({...newContact, phone: e.target.value})}
+                    className="col-span-3" 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="email" className="text-right">البريد الإلكتروني</Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    value={newContact.email}
+                    onChange={(e) => setNewContact({...newContact, email: e.target.value})}
+                    className="col-span-3" 
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddContact}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ البيانات
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      <Tabs defaultValue="customers" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
           <TabsTrigger value="customers">العملاء</TabsTrigger>
           <TabsTrigger value="suppliers">الموردين</TabsTrigger>
@@ -154,7 +312,12 @@ export default function Contacts() {
                           <DropdownMenuItem>كشف حساب</DropdownMenuItem>
                           <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                          >
+                            حذف
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -235,7 +398,12 @@ export default function Contacts() {
                           <DropdownMenuItem>كشف حساب</DropdownMenuItem>
                           <DropdownMenuItem>تعديل البيانات</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDeleteSupplier(supplier.id)}
+                          >
+                            حذف
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

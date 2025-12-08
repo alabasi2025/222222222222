@@ -18,7 +18,8 @@ import {
   ChevronRight,
   ChevronDown,
   Folder,
-  FileText
+  FileText,
+  Save
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,25 +29,43 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import { toast } from "sonner";
 
-// Mock data for Chart of Accounts
-const accountsData = [
-  { id: "1000", name: "الأصول", type: "asset", level: 1, balance: 450000.00, hasChildren: true, expanded: true },
-  { id: "1100", name: "الأصول المتداولة", type: "asset", level: 2, balance: 150000.00, hasChildren: true, expanded: true },
-  { id: "1110", name: "النقد وما في حكمه", type: "asset", level: 3, balance: 50000.00, hasChildren: true, expanded: true },
-  { id: "1111", name: "الصندوق الرئيسي", type: "asset", level: 4, balance: 15000.00, hasChildren: false },
-  { id: "1112", name: "البنك الأهلي", type: "asset", level: 4, balance: 35000.00, hasChildren: false },
-  { id: "1120", name: "العملاء", type: "asset", level: 3, balance: 45000.00, hasChildren: false },
-  { id: "1130", name: "المخزون", type: "asset", level: 3, balance: 55000.00, hasChildren: false },
-  { id: "1200", name: "الأصول الثابتة", type: "asset", level: 2, balance: 300000.00, hasChildren: true, expanded: false },
-  { id: "2000", name: "الخصوم", type: "liability", level: 1, balance: 120000.00, hasChildren: true, expanded: true },
-  { id: "2100", name: "الخصوم المتداولة", type: "liability", level: 2, balance: 45000.00, hasChildren: true, expanded: true },
-  { id: "2110", name: "الموردين", type: "liability", level: 3, balance: 25000.00, hasChildren: false },
-  { id: "3000", name: "حقوق الملكية", type: "equity", level: 1, balance: 330000.00, hasChildren: true, expanded: false },
-  { id: "4000", name: "الإيرادات", type: "income", level: 1, balance: 85000.00, hasChildren: true, expanded: false },
-  { id: "5000", name: "المصروفات", type: "expense", level: 1, balance: 35000.00, hasChildren: true, expanded: false },
+// Initial Mock data for Chart of Accounts
+const initialAccountsData = [
+  { id: "1000", name: "الأصول", type: "asset", level: 1, balance: 450000.00, hasChildren: true, expanded: true, parentId: null },
+  { id: "1100", name: "الأصول المتداولة", type: "asset", level: 2, balance: 150000.00, hasChildren: true, expanded: true, parentId: "1000" },
+  { id: "1110", name: "النقد وما في حكمه", type: "asset", level: 3, balance: 50000.00, hasChildren: true, expanded: true, parentId: "1100" },
+  { id: "1111", name: "الصندوق الرئيسي", type: "asset", level: 4, balance: 15000.00, hasChildren: false, expanded: false, parentId: "1110" },
+  { id: "1112", name: "البنك الأهلي", type: "asset", level: 4, balance: 35000.00, hasChildren: false, expanded: false, parentId: "1110" },
+  { id: "1120", name: "العملاء", type: "asset", level: 3, balance: 45000.00, hasChildren: false, expanded: false, parentId: "1100" },
+  { id: "1130", name: "المخزون", type: "asset", level: 3, balance: 55000.00, hasChildren: false, expanded: false, parentId: "1100" },
+  { id: "1200", name: "الأصول الثابتة", type: "asset", level: 2, balance: 300000.00, hasChildren: true, expanded: false, parentId: "1000" },
+  { id: "2000", name: "الخصوم", type: "liability", level: 1, balance: 120000.00, hasChildren: true, expanded: true, parentId: null },
+  { id: "2100", name: "الخصوم المتداولة", type: "liability", level: 2, balance: 45000.00, hasChildren: true, expanded: true, parentId: "2000" },
+  { id: "2110", name: "الموردين", type: "liability", level: 3, balance: 25000.00, hasChildren: false, expanded: false, parentId: "2100" },
+  { id: "3000", name: "حقوق الملكية", type: "equity", level: 1, balance: 330000.00, hasChildren: true, expanded: false, parentId: null },
+  { id: "4000", name: "الإيرادات", type: "income", level: 1, balance: 85000.00, hasChildren: true, expanded: false, parentId: null },
+  { id: "5000", name: "المصروفات", type: "expense", level: 1, balance: 35000.00, hasChildren: true, expanded: false, parentId: null },
 ];
 
 const typeMap: Record<string, { label: string, color: string }> = {
@@ -58,12 +77,74 @@ const typeMap: Record<string, { label: string, color: string }> = {
 };
 
 export default function ChartOfAccounts() {
-  const [accounts, setAccounts] = useState(accountsData);
+  const [accounts, setAccounts] = useState(initialAccountsData);
+  const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
+  const [newAccount, setNewAccount] = useState({
+    name: "",
+    code: "",
+    type: "asset",
+    parent: "none"
+  });
 
   const toggleExpand = (id: string) => {
     setAccounts(accounts.map(acc => 
       acc.id === id ? { ...acc, expanded: !acc.expanded } : acc
     ));
+  };
+
+  const handleAddAccount = () => {
+    if (!newAccount.name || !newAccount.code) {
+      toast.error("يرجى تعبئة جميع الحقول المطلوبة");
+      return;
+    }
+
+    const parent = accounts.find(a => a.id === newAccount.parent);
+    const level = parent ? parent.level + 1 : 1;
+    
+    const newAcc = {
+      id: newAccount.code,
+      name: newAccount.name,
+      type: newAccount.type,
+      level: level,
+      balance: 0,
+      hasChildren: false,
+      expanded: false,
+      parentId: newAccount.parent === "none" ? null : newAccount.parent
+    };
+
+    // If adding to a parent, update parent to have children and be expanded
+    let updatedAccounts = [...accounts];
+    if (parent) {
+      updatedAccounts = updatedAccounts.map(acc => 
+        acc.id === parent.id ? { ...acc, hasChildren: true, expanded: true } : acc
+      );
+    }
+
+    updatedAccounts.push(newAcc);
+    // Sort by code to keep tree structure somewhat ordered
+    updatedAccounts.sort((a, b) => a.id.localeCompare(b.id));
+
+    setAccounts(updatedAccounts);
+    setIsNewAccountOpen(false);
+    setNewAccount({ name: "", code: "", type: "asset", parent: "none" });
+    toast.success("تم إضافة الحساب بنجاح");
+  };
+
+  const handleDeleteAccount = (id: string) => {
+    const hasChildren = accounts.some(a => a.parentId === id);
+    if (hasChildren) {
+      toast.error("لا يمكن حذف حساب رئيسي يحتوي على حسابات فرعية");
+      return;
+    }
+    setAccounts(accounts.filter(a => a.id !== id));
+    toast.success("تم حذف الحساب بنجاح");
+  };
+
+  // Helper to check if an account should be visible based on parent expansion
+  const isVisible = (account: any): boolean => {
+    if (!account.parentId) return true;
+    const parent = accounts.find(a => a.id === account.parentId);
+    return parent ? (parent.expanded && isVisible(parent)) : true;
   };
 
   return (
@@ -78,10 +159,86 @@ export default function ChartOfAccounts() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          <Button size="sm">
-            <Plus className="w-4 h-4 ml-2" />
-            حساب جديد
-          </Button>
+          
+          <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="w-4 h-4 ml-2" />
+                حساب جديد
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>إضافة حساب جديد</DialogTitle>
+                <DialogDescription>
+                  أدخل تفاصيل الحساب الجديد لإضافته إلى الشجرة.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">اسم الحساب</Label>
+                  <Input 
+                    id="name" 
+                    value={newAccount.name}
+                    onChange={(e) => setNewAccount({...newAccount, name: e.target.value})}
+                    className="col-span-3" 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="code" className="text-right">رمز الحساب</Label>
+                  <Input 
+                    id="code" 
+                    value={newAccount.code}
+                    onChange={(e) => setNewAccount({...newAccount, code: e.target.value})}
+                    className="col-span-3" 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="type" className="text-right">النوع</Label>
+                  <Select 
+                    value={newAccount.type} 
+                    onValueChange={(v) => setNewAccount({...newAccount, type: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر النوع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="asset">أصول</SelectItem>
+                      <SelectItem value="liability">خصوم</SelectItem>
+                      <SelectItem value="equity">حقوق ملكية</SelectItem>
+                      <SelectItem value="income">إيرادات</SelectItem>
+                      <SelectItem value="expense">مصروفات</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="parent" className="text-right">الحساب الرئيسي</Label>
+                  <Select 
+                    value={newAccount.parent} 
+                    onValueChange={(v) => setNewAccount({...newAccount, parent: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب الرئيسي" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- بدون (حساب رئيسي) --</SelectItem>
+                      {accounts.map(acc => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.id} - {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddAccount}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ الحساب
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -95,7 +252,12 @@ export default function ChartOfAccounts() {
             <Filter className="w-4 h-4 ml-2" />
             تصفية
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 sm:flex-none"
+            onClick={() => setAccounts(accounts.map(a => ({...a, expanded: false})))}
+          >
             <FolderTree className="w-4 h-4 ml-2" />
             طي الكل
           </Button>
@@ -114,11 +276,8 @@ export default function ChartOfAccounts() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {accounts.map((account) => {
+            {accounts.filter(isVisible).map((account) => {
               const type = typeMap[account.type];
-              
-              // Simple logic to hide children if parent is collapsed (for demo purposes)
-              // In a real app, this would be recursive or tree-based
               
               return (
                 <TableRow key={account.id} className="hover:bg-muted/50 transition-colors">
@@ -161,11 +320,21 @@ export default function ChartOfAccounts() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem>إضافة حساب فرعي</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          setNewAccount({...newAccount, parent: account.id, type: account.type});
+                          setIsNewAccountOpen(true);
+                        }}>
+                          إضافة حساب فرعي
+                        </DropdownMenuItem>
                         <DropdownMenuItem>تعديل</DropdownMenuItem>
                         <DropdownMenuItem>كشف حساب</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDeleteAccount(account.id)}
+                        >
+                          حذف
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
