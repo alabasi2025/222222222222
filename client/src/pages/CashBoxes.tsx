@@ -67,7 +67,10 @@ export default function CashBoxes() {
   const [newBox, setNewBox] = useState({
     name: "",
     currency: "SAR",
-    type: "cash_box" // cash_box or petty_cash
+    type: "cash_box", // cash_box or petty_cash
+    accountId: "", // حساب من الدليل
+    branchId: "", // الفرع المربوط
+    responsiblePerson: "" // مسؤول الصندوق
   });
 
   // Filter cash boxes based on current entity
@@ -90,6 +93,10 @@ export default function CashBoxes() {
       name: newBox.name,
       balance: 0.00,
       currency: newBox.currency,
+      type: newBox.type,
+      accountId: newBox.accountId,
+      branchId: newBox.branchId,
+      responsiblePerson: newBox.responsiblePerson,
       status: "active",
       lastTransaction: "-"
     };
@@ -97,7 +104,7 @@ export default function CashBoxes() {
     setCashBoxes([...cashBoxes, box]);
     toast.success("تم إضافة الصندوق بنجاح");
     setIsNewBoxOpen(false);
-    setNewBox({ name: "", currency: "SAR", type: "cash_box" });
+    setNewBox({ name: "", currency: "SAR", type: "cash_box", accountId: "", branchId: "", responsiblePerson: "" });
   };
 
   const handleEditBox = () => {
@@ -150,7 +157,7 @@ export default function CashBoxes() {
           
           <Dialog open={isNewBoxOpen} onOpenChange={setIsNewBoxOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
                 <Plus className="w-4 h-4 ml-2" />
                 صندوق جديد
               </Button>
@@ -198,11 +205,51 @@ export default function CashBoxes() {
                       <SelectValue placeholder="اختر العملة" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
                       <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
                       <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
-                      <SelectItem value="EUR">يورو (EUR)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="accountId" className="text-right">حساب من الدليل</Label>
+                  <Select 
+                    value={newBox.accountId} 
+                    onValueChange={(v) => setNewBox({...newBox, accountId: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب المربوط" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">لا يوجد حساب</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="branchId" className="text-right">الفرع المربوط</Label>
+                  <Select 
+                    value={newBox.branchId} 
+                    onValueChange={(v) => setNewBox({...newBox, branchId: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الفرع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="main">الفرع الرئيسي</SelectItem>
+                      <SelectItem value="branch1">فرع 1</SelectItem>
+                      <SelectItem value="branch2">فرع 2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="responsiblePerson" className="text-right">مسؤول الصندوق</Label>
+                  <Input 
+                    id="responsiblePerson" 
+                    value={newBox.responsiblePerson}
+                    onChange={(e) => setNewBox({...newBox, responsiblePerson: e.target.value})}
+                    className="col-span-3" 
+                    placeholder="مثال: محمد أحمد"
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -243,9 +290,9 @@ export default function CashBoxes() {
                       <SelectValue placeholder="اختر العملة" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
                       <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
                       <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
-                      <SelectItem value="EUR">يورو (EUR)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

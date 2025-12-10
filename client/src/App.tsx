@@ -23,6 +23,7 @@ import TaxManagement from "./pages/TaxManagement";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import OrganizationStructure from "./pages/OrganizationStructure";
+import AccountGroups from "./pages/AccountGroups";
 
 function Router() {
   return (
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
         <Route path="/organization" component={OrganizationStructure} />
+        <Route path="/financial/settings/coa/groups" component={AccountGroups} />
         
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
