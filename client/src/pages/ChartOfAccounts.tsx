@@ -112,7 +112,7 @@ const accountSubtypes = [
 ];
 
 // Initial Mock data with Banks, Exchanges, and Wallets accounts
-const initialAccountsData: Account[] = [
+export const initialAccountsData: Account[] = [
   {
     id: "1",
     name: "الأصول المتداولة",
