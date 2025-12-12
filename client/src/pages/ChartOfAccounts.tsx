@@ -93,6 +93,7 @@ interface Account {
   subtype: string;
   allowedCurrencies: string[];
   entityId?: string; // معرف الوحدة التي ينتمي لها الحساب
+  branchId?: string; // معرف الفرع التي ينتمي له الحساب (للحسابات الفرعية)
 }
 
 // Account Subtypes
@@ -324,7 +325,8 @@ const initialAccountsData: Account[] = [
     isGroup: false,
     subtype: "cash",
     allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-001"
+    entityId: "UNIT-001",
+    branchId: "BR-003"
   },
   {
     id: "2.2",
@@ -338,7 +340,8 @@ const initialAccountsData: Account[] = [
     isGroup: false,
     subtype: "cash",
     allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-001"
+    entityId: "UNIT-001",
+    branchId: "BR-004"
   },
   {
     id: "2.3",
@@ -352,7 +355,8 @@ const initialAccountsData: Account[] = [
     isGroup: false,
     subtype: "cash",
     allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-001"
+    entityId: "UNIT-001",
+    branchId: "BR-005"
   }
 ];
 
