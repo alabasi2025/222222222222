@@ -176,7 +176,8 @@ const initialAccountsData: Account[] = [
     parentId: "1.1",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.1.2",
@@ -189,7 +190,8 @@ const initialAccountsData: Account[] = [
     parentId: "1.1",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.1.3",
@@ -202,7 +204,8 @@ const initialAccountsData: Account[] = [
     parentId: "1.1",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.1.4",
@@ -215,9 +218,10 @@ const initialAccountsData: Account[] = [
     parentId: "1.1",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
-  // Exchange Accounts
+  // Exchange Offices
   {
     id: "1.2.1",
     name: "الحوشبي للصرافة",
@@ -229,9 +233,10 @@ const initialAccountsData: Account[] = [
     parentId: "1.2",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
-  // Wallet Accounts
+  // Mobile Wallets
   {
     id: "1.3.1",
     name: "محفظة جوالي - 774424555",
@@ -243,7 +248,8 @@ const initialAccountsData: Account[] = [
     parentId: "1.3",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.3.2",
@@ -256,7 +262,8 @@ const initialAccountsData: Account[] = [
     parentId: "1.3",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.3.3",
@@ -269,7 +276,8 @@ const initialAccountsData: Account[] = [
     parentId: "1.3",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.3.4",
@@ -282,7 +290,8 @@ const initialAccountsData: Account[] = [
     parentId: "1.3",
     isGroup: false,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   }
 ];
 
