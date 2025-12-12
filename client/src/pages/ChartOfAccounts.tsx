@@ -862,6 +862,29 @@ export default function ChartOfAccounts() {
                     </Select>
                   </div>
                 )}
+
+                {/* خانة اختيار الفرع - يظهر فقط للحسابات الفرعية */}
+                {!newAccount.isGroup && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="branchId" className="text-right font-bold">الفرع المربوط (اختياري)</Label>
+                    <Select 
+                      value={newAccount.branchId || "none"} 
+                      onValueChange={(value) => setNewAccount({...newAccount, branchId: value === "none" ? undefined : value})}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="اختر الفرع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">بدون فرع (عام للوحدة)</SelectItem>
+                        {entities.filter(e => e.type === 'branch' && e.parentId === currentEntity.id).map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="parent" className="text-right font-bold">الحساب الرئيسي</Label>
