@@ -94,65 +94,8 @@ const accountSubtypes = [
   { value: "tax", label: "ضريبة", icon: FileText },
 ];
 
-// Initial Mock data with Banks, Exchanges, and Wallets accounts
-const initialAccountsData: Account[] = [
-  // 1. الأصول المتداولة (رئيسي)
-  {
-    id: "1",
-    name: "الأصول المتداولة",
-    type: "asset",
-    level: 1,
-    balance: 0,
-    hasChildren: true,
-    expanded: true,
-    parentId: null,
-    isGroup: true,
-    subtype: "general",
-    allowedCurrencies: ["YER", "SAR", "USD"]
-  },
-  // 1.1 البنوك (فرعي)
-  {
-    id: "1.1",
-    name: "البنوك",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
-  },
-  // 1.2 الصرافين (فرعي)
-  {
-    id: "1.2",
-    name: "الصرافين",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
-  },
-  // 1.3 المحافظ (فرعي)
-  {
-    id: "1.3",
-    name: "المحافظ",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
-  }
-];
+// Initial Mock data for Chart of Accounts - Empty to allow custom setup
+const initialAccountsData: Account[] = [];
 
 const typeMap: Record<string, { label: string, color: string }> = {
   asset: { label: "أصول", color: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -192,7 +135,7 @@ export default function ChartOfAccounts() {
     parent: "none",
     isGroup: true, // Default to Group (Main)
     subtype: "general",
-    allowedCurrencies: ["YER", "SAR", "USD"] as string[], // العملات المحددة
+    currencies: [] as string[], // العملات المحددة
     defaultCurrency: "YER", // العملة الافتراضية
     accountGroup: "none" // مجموعة الحسابات (اختياري)
   });
@@ -224,8 +167,7 @@ export default function ChartOfAccounts() {
           level: level,
           parentId: newAccount.parent === "none" ? null : newAccount.parent,
           isGroup: newAccount.isGroup,
-          subtype: newAccount.subtype,
-          allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"]
+          subtype: newAccount.subtype
         } : acc
       ));
       toast.success("تم تحديث الحساب بنجاح");
@@ -251,9 +193,8 @@ export default function ChartOfAccounts() {
         expanded: false,
         parentId: newAccount.parent === "none" ? null : newAccount.parent,
         isGroup: newAccount.isGroup,
-        subtype: newAccount.subtype,
-          allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"]
-        };
+        subtype: newAccount.subtype
+      };
 
       // If adding to a parent, update parent to have children and be expanded
       let updatedAccounts = [...accounts];
