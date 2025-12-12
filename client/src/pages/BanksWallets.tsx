@@ -22,7 +22,9 @@ import {
   Pencil,
   Trash2,
   Eye,
-  CreditCard
+  CreditCard,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,87 +53,214 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
 
-// Helper function to create 3 currency accounts for each item
-const createCurrencyAccounts = (baseId: string, entityId: string, name: string, type: string, accountType: string) => {
-  const currencies = ['YER', 'SAR', 'USD'];
-  return currencies.map((currency, index) => ({
-    id: `${baseId}-${currency}`,
-    entityId,
-    name,
-    type,
-    accountType,
-    balance: 0.00,
-    currency,
-    accountNumber: name.includes('جوالي') && name.includes('774424555') ? '774424555' : 
-                   name.includes('جوالي') && name.includes('771506017') ? '771506017' : '',
+// Multi-currency account structure
+interface CurrencyBalance {
+  currency: string;
+  balance: number;
+}
+
+interface BankWalletAccount {
+  id: string;
+  entityId: string;
+  name: string;
+  type: string;
+  accountType: string;
+  accountNumber: string;
+  allowedCurrencies: string[]; // العملات المسموح بها
+  balances: CurrencyBalance[]; // الأرصدة بالعملات المختلفة
+  status: string;
+  lastTransaction: string;
+}
+
+// Initial data for Al-Abbasi Unit
+const initialBanksWallets: BankWalletAccount[] = [
+  {
+    id: "1",
+    entityId: "unit-1",
+    name: "الحوشبي للصرافة",
+    type: "exchange",
+    accountType: "current",
+    accountNumber: "",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
     status: "active",
     lastTransaction: "-"
-  }));
-};
-
-// Initial data for Al-Abbasi Unit - Each account has 3 currency sub-accounts
-const initialBanksWallets = [
-  // 1. الحوشبي للصرافة (3 عملات)
-  ...createCurrencyAccounts("1", "unit-1", "الحوشبي للصرافة", "exchange", "current"),
-  
-  // 2. محفظة جوالي - 774424555 (3 عملات)
-  ...createCurrencyAccounts("2", "unit-1", "محفظة جوالي - 774424555", "wallet", "wallet"),
-  
-  // 3. محفظة جوالي - 771506017 (3 عملات)
-  ...createCurrencyAccounts("3", "unit-1", "محفظة جوالي - 771506017", "wallet", "wallet"),
-  
-  // 4. محفظة جيب (3 عملات)
-  ...createCurrencyAccounts("4", "unit-1", "محفظة جيب", "wallet", "wallet"),
-  
-  // 5. محفظة ون كاش (3 عملات)
-  ...createCurrencyAccounts("5", "unit-1", "محفظة ون كاش", "wallet", "wallet"),
-  
-  // 6. الكريمي الحديدة - حساب جاري (3 عملات)
-  ...createCurrencyAccounts("6", "unit-1", "الكريمي الحديدة - حساب جاري", "bank", "current"),
-  
-  // 7. الكريمي الحديدة - حساب توفير (3 عملات)
-  ...createCurrencyAccounts("7", "unit-1", "الكريمي الحديدة - حساب توفير", "bank", "savings"),
-  
-  // 8. الكريمي صنعاء - حساب توفير (3 عملات)
-  ...createCurrencyAccounts("8", "unit-1", "الكريمي صنعاء - حساب توفير", "bank", "savings"),
-  
-  // 9. الكريمي صنعاء - حساب جاري (3 عملات)
-  ...createCurrencyAccounts("9", "unit-1", "الكريمي صنعاء - حساب جاري", "bank", "current"),
+  },
+  {
+    id: "2",
+    entityId: "unit-1",
+    name: "محفظة جوالي - 774424555",
+    type: "wallet",
+    accountType: "wallet",
+    accountNumber: "774424555",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "3",
+    entityId: "unit-1",
+    name: "محفظة جوالي - 771506017",
+    type: "wallet",
+    accountType: "wallet",
+    accountNumber: "771506017",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "4",
+    entityId: "unit-1",
+    name: "محفظة جيب",
+    type: "wallet",
+    accountType: "wallet",
+    accountNumber: "",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "5",
+    entityId: "unit-1",
+    name: "محفظة ون كاش",
+    type: "wallet",
+    accountType: "wallet",
+    accountNumber: "",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "6",
+    entityId: "unit-1",
+    name: "الكريمي الحديدة - حساب جاري",
+    type: "bank",
+    accountType: "current",
+    accountNumber: "",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "7",
+    entityId: "unit-1",
+    name: "الكريمي الحديدة - حساب توفير",
+    type: "bank",
+    accountType: "savings",
+    accountNumber: "",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "8",
+    entityId: "unit-1",
+    name: "الكريمي صنعاء - حساب توفير",
+    type: "bank",
+    accountType: "savings",
+    accountNumber: "",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "9",
+    entityId: "unit-1",
+    name: "الكريمي صنعاء - حساب جاري",
+    type: "bank",
+    accountType: "current",
+    accountNumber: "",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    balances: [
+      { currency: "YER", balance: 0.00 },
+      { currency: "SAR", balance: 0.00 },
+      { currency: "USD", balance: 0.00 }
+    ],
+    status: "active",
+    lastTransaction: "-"
+  }
 ];
 
 export default function BanksWallets() {
   const { currentEntity, getThemeColor } = useEntity();
-  const [banksWallets, setBanksWallets] = useState(initialBanksWallets);
+  const [banksWallets, setBanksWallets] = useState<BankWalletAccount[]>(initialBanksWallets);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<BankWalletAccount | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [filterCurrency, setFilterCurrency] = useState("all");
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const [newItem, setNewItem] = useState({
     name: "",
-    type: "bank", // bank, wallet, exchange
-    accountType: "current", // current, savings, wallet
+    type: "bank",
+    accountType: "current",
     accountNumber: "",
-    branchId: "",
-    responsiblePerson: ""
+    allowedCurrencies: ["YER", "SAR", "USD"] as string[]
   });
 
-  // Filter items based on current entity
+  // Toggle row expansion
+  const toggleRow = (id: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedRows(newExpanded);
+  };
+
+  // Filter items
   const visibleItems = banksWallets.filter(item => {
-    if (currentEntity.type === 'holding') return true;
-    return item.entityId === currentEntity.id;
-  }).filter(item => {
+    if (currentEntity.type !== 'holding' && item.entityId !== currentEntity.id) return false;
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          item.accountNumber.includes(searchTerm);
     const matchesTypeFilter = filterType === "all" || item.type === filterType;
-    const matchesCurrencyFilter = filterCurrency === "all" || item.currency === filterCurrency;
-    return matchesSearch && matchesTypeFilter && matchesCurrencyFilter;
+    return matchesSearch && matchesTypeFilter;
   });
 
   const handleAddItem = () => {
@@ -139,33 +268,36 @@ export default function BanksWallets() {
       toast.error("يرجى إدخال الاسم");
       return;
     }
+    if (newItem.allowedCurrencies.length === 0) {
+      toast.error("يرجى اختيار عملة واحدة على الأقل");
+      return;
+    }
 
-    // Create 3 currency accounts for the new item
-    const baseId = `${Date.now()}`;
-    const currencies = ['YER', 'SAR', 'USD'];
-    const newItems = currencies.map(currency => ({
-      id: `${baseId}-${currency}`,
+    const item: BankWalletAccount = {
+      id: `${Date.now()}`,
       entityId: currentEntity.id,
       name: newItem.name,
       type: newItem.type,
       accountType: newItem.accountType,
-      balance: 0.00,
-      currency,
       accountNumber: newItem.accountNumber,
+      allowedCurrencies: newItem.allowedCurrencies,
+      balances: newItem.allowedCurrencies.map(currency => ({
+        currency,
+        balance: 0.00
+      })),
       status: "active",
       lastTransaction: "-"
-    }));
+    };
 
-    setBanksWallets([...banksWallets, ...newItems]);
-    toast.success("تم الإضافة بنجاح (3 حسابات بعملات مختلفة)");
+    setBanksWallets([...banksWallets, item]);
+    toast.success(`تم الإضافة بنجاح (${newItem.allowedCurrencies.length} عملة)`);
     setIsNewItemOpen(false);
     setNewItem({ 
       name: "", 
       type: "bank", 
       accountType: "current", 
       accountNumber: "",
-      branchId: "",
-      responsiblePerson: ""
+      allowedCurrencies: ["YER", "SAR", "USD"]
     });
   };
 
@@ -174,9 +306,21 @@ export default function BanksWallets() {
       toast.error("يرجى إدخال الاسم");
       return;
     }
+    if (editingItem.allowedCurrencies.length === 0) {
+      toast.error("يرجى اختيار عملة واحدة على الأقل");
+      return;
+    }
+
+    // Update balances based on allowed currencies
+    const updatedBalances = editingItem.allowedCurrencies.map(currency => {
+      const existing = editingItem.balances.find(b => b.currency === currency);
+      return existing || { currency, balance: 0.00 };
+    });
+
+    const updated = { ...editingItem, balances: updatedBalances };
 
     setBanksWallets(banksWallets.map(item => 
-      item.id === editingItem.id ? editingItem : item
+      item.id === updated.id ? updated : item
     ));
     
     toast.success("تم التحديث بنجاح");
@@ -186,8 +330,8 @@ export default function BanksWallets() {
 
   const handleDeleteItem = (id: string) => {
     const item = banksWallets.find(b => b.id === id);
-    if (item && item.balance !== 0) {
-      toast.error("لا يمكن الحذف. يحتوي على رصيد. يرجى تصفير الرصيد أولاً.");
+    if (item && item.balances.some(b => b.balance !== 0)) {
+      toast.error("لا يمكن الحذف. يحتوي على رصيد. يرجى تصفير جميع الأرصدة أولاً.");
       return;
     }
 
@@ -197,9 +341,28 @@ export default function BanksWallets() {
     }
   };
 
-  const openEditDialog = (item: any) => {
+  const openEditDialog = (item: BankWalletAccount) => {
     setEditingItem({ ...item });
     setIsEditItemOpen(true);
+  };
+
+  const toggleCurrency = (currency: string, isNew: boolean = false) => {
+    if (isNew) {
+      setNewItem(prev => {
+        const currencies = prev.allowedCurrencies.includes(currency)
+          ? prev.allowedCurrencies.filter(c => c !== currency)
+          : [...prev.allowedCurrencies, currency];
+        return { ...prev, allowedCurrencies: currencies };
+      });
+    } else if (editingItem) {
+      setEditingItem(prev => {
+        if (!prev) return null;
+        const currencies = prev.allowedCurrencies.includes(currency)
+          ? prev.allowedCurrencies.filter(c => c !== currency)
+          : [...prev.allowedCurrencies, currency];
+        return { ...prev, allowedCurrencies: currencies };
+      });
+    }
   };
 
   const getTypeLabel = (type: string) => {
@@ -248,15 +411,9 @@ export default function BanksWallets() {
   };
 
   // Statistics
-  const totalBalance = visibleItems.reduce((sum, item) => sum + item.balance, 0);
   const bankCount = visibleItems.filter(i => i.type === 'bank').length;
   const walletCount = visibleItems.filter(i => i.type === 'wallet').length;
   const exchangeCount = visibleItems.filter(i => i.type === 'exchange').length;
-
-  // Count by currency
-  const yerCount = visibleItems.filter(i => i.currency === 'YER').length;
-  const sarCount = visibleItems.filter(i => i.currency === 'SAR').length;
-  const usdCount = visibleItems.filter(i => i.currency === 'USD').length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -267,7 +424,7 @@ export default function BanksWallets() {
             إدارة الحسابات البنكية والمحافظ الإلكترونية لـ <span className="font-bold" style={{ color: getThemeColor() }}>{currentEntity.name}</span>
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            كل حساب يحتوي على 3 حسابات فرعية بعملات مختلفة (YER, SAR, USD)
+            كل حساب يدعم عملات متعددة مع إمكانية تحديد العملات المسموح بها
           </p>
         </div>
         <div className="flex gap-2">
@@ -287,7 +444,7 @@ export default function BanksWallets() {
               <DialogHeader>
                 <DialogTitle>إضافة بنك / محفظة جديدة</DialogTitle>
                 <DialogDescription>
-                  سيتم إنشاء 3 حسابات فرعية بعملات مختلفة (YER, SAR, USD) لـ: <span className="font-bold">{currentEntity.name}</span>
+                  إضافة حساب متعدد العملات إلى: <span className="font-bold">{currentEntity.name}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -339,7 +496,7 @@ export default function BanksWallets() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="accountNumber" className="text-right">رقم الحساب / المحفظة</Label>
+                  <Label htmlFor="accountNumber" className="text-right">رقم الحساب</Label>
                   <Input 
                     id="accountNumber" 
                     value={newItem.accountNumber}
@@ -348,11 +505,46 @@ export default function BanksWallets() {
                     placeholder="مثال: 774424555"
                   />
                 </div>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right mt-2">العملات المسموح بها</Label>
+                  <div className="col-span-3 space-y-2">
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <Checkbox 
+                        id="new-yer" 
+                        checked={newItem.allowedCurrencies.includes("YER")}
+                        onCheckedChange={() => toggleCurrency("YER", true)}
+                      />
+                      <label htmlFor="new-yer" className="text-sm font-medium cursor-pointer">
+                        ريال يمني (YER)
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <Checkbox 
+                        id="new-sar" 
+                        checked={newItem.allowedCurrencies.includes("SAR")}
+                        onCheckedChange={() => toggleCurrency("SAR", true)}
+                      />
+                      <label htmlFor="new-sar" className="text-sm font-medium cursor-pointer">
+                        ريال سعودي (SAR)
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <Checkbox 
+                        id="new-usd" 
+                        checked={newItem.allowedCurrencies.includes("USD")}
+                        onCheckedChange={() => toggleCurrency("USD", true)}
+                      />
+                      <label htmlFor="new-usd" className="text-sm font-medium cursor-pointer">
+                        دولار أمريكي (USD)
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={handleAddItem} style={{ backgroundColor: getThemeColor() }}>
                   <Save className="w-4 h-4 ml-2" />
-                  حفظ (3 حسابات)
+                  حفظ
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -401,47 +593,8 @@ export default function BanksWallets() {
             <CreditCard className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{visibleItems.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">حساب بجميع العملات</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Currency Statistics */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-0 shadow-md">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">ريال يمني</p>
-                <p className="text-2xl font-bold text-green-600">{yerCount}</p>
-              </div>
-              <Badge className="bg-green-500/10 text-green-600 border-green-500/20">YER</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">ريال سعودي</p>
-                <p className="text-2xl font-bold text-blue-600">{sarCount}</p>
-              </div>
-              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">SAR</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">دولار أمريكي</p>
-                <p className="text-2xl font-bold text-purple-600">{usdCount}</p>
-              </div>
-              <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20">USD</Badge>
-            </div>
+            <div className="text-3xl font-bold text-purple-600">{visibleItems.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">حساب متعدد العملات</p>
           </CardContent>
         </Card>
       </div>
@@ -471,18 +624,6 @@ export default function BanksWallets() {
                 <SelectItem value="exchange">الصرافات فقط</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterCurrency} onValueChange={setFilterCurrency}>
-              <SelectTrigger className="w-[200px]">
-                <CreditCard className="w-4 h-4 ml-2" />
-                <SelectValue placeholder="تصفية حسب العملة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع العملات</SelectItem>
-                <SelectItem value="YER">ريال يمني (YER)</SelectItem>
-                <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
-                <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -493,12 +634,12 @@ export default function BanksWallets() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="text-right w-12"></TableHead>
                 <TableHead className="text-right">الاسم</TableHead>
                 <TableHead className="text-right">النوع</TableHead>
                 <TableHead className="text-right">نوع الحساب</TableHead>
-                <TableHead className="text-right">العملة</TableHead>
                 <TableHead className="text-right">رقم الحساب</TableHead>
-                <TableHead className="text-right">الرصيد</TableHead>
+                <TableHead className="text-right">العملات المسموح بها</TableHead>
                 <TableHead className="text-right">الحالة</TableHead>
                 <TableHead className="text-right">الإجراءات</TableHead>
               </TableRow>
@@ -512,61 +653,106 @@ export default function BanksWallets() {
                 </TableRow>
               ) : (
                 visibleItems.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {getTypeIcon(item.type)}
-                        {item.name}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getTypeBadgeColor(item.type)}>
-                        {getTypeLabel(item.type)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getAccountTypeLabel(item.accountType)}</TableCell>
-                    <TableCell>
-                      <Badge className={getCurrencyBadgeColor(item.currency)}>
-                        {item.currency}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{item.accountNumber || '-'}</TableCell>
-                    <TableCell className="font-bold">{item.balance.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                        نشط
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => openEditDialog(item)}>
-                            <Pencil className="w-4 h-4 ml-2" />
-                            تعديل
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 ml-2" />
-                            عرض التفاصيل
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteItem(item.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            حذف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    <TableRow key={item.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => toggleRow(item.id)}
+                          className="p-0 h-8 w-8"
+                        >
+                          {expandedRows.has(item.id) ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {getTypeIcon(item.type)}
+                          {item.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getTypeBadgeColor(item.type)}>
+                          {getTypeLabel(item.type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{getAccountTypeLabel(item.accountType)}</TableCell>
+                      <TableCell className="font-mono text-sm">{item.accountNumber || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          {item.allowedCurrencies.map(currency => (
+                            <Badge key={currency} className={getCurrencyBadgeColor(currency)}>
+                              {currency}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                          نشط
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => openEditDialog(item)}>
+                              <Pencil className="w-4 h-4 ml-2" />
+                              تعديل
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 ml-2" />
+                              عرض التفاصيل
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteItem(item.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 ml-2" />
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                    {expandedRows.has(item.id) && (
+                      <TableRow key={`${item.id}-details`} className="bg-muted/30">
+                        <TableCell colSpan={8}>
+                          <div className="p-4 space-y-2">
+                            <h4 className="font-semibold text-sm mb-3">الأرصدة بالعملات المختلفة:</h4>
+                            <div className="grid grid-cols-3 gap-4">
+                              {item.balances.map(balance => (
+                                <Card key={balance.currency} className="border-0 shadow-sm">
+                                  <CardContent className="pt-4">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-xs text-muted-foreground mb-1">{balance.currency}</p>
+                                        <p className="text-2xl font-bold">{balance.balance.toFixed(2)}</p>
+                                      </div>
+                                      <Badge className={getCurrencyBadgeColor(balance.currency)}>
+                                        {balance.currency}
+                                      </Badge>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 ))
               )}
             </TableBody>
@@ -580,7 +766,7 @@ export default function BanksWallets() {
           <DialogHeader>
             <DialogTitle>تعديل البيانات</DialogTitle>
             <DialogDescription>
-              تعديل بيانات الحساب أو المحفظة
+              تعديل بيانات الحساب والعملات المسموح بها
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -589,7 +775,7 @@ export default function BanksWallets() {
               <Input 
                 id="edit-name" 
                 value={editingItem?.name || ""}
-                onChange={(e) => setEditingItem((prev: any) => prev ? {...prev, name: e.target.value} : null)}
+                onChange={(e) => setEditingItem((prev) => prev ? {...prev, name: e.target.value} : null)}
                 className="col-span-3" 
               />
             </div>
@@ -598,25 +784,44 @@ export default function BanksWallets() {
               <Input 
                 id="edit-accountNumber" 
                 value={editingItem?.accountNumber || ""}
-                onChange={(e) => setEditingItem((prev: any) => prev ? {...prev, accountNumber: e.target.value} : null)}
+                onChange={(e) => setEditingItem((prev) => prev ? {...prev, accountNumber: e.target.value} : null)}
                 className="col-span-3" 
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-currency" className="text-right">العملة</Label>
-              <Select 
-                value={editingItem?.currency || "YER"} 
-                onValueChange={(v) => setEditingItem((prev: any) => prev ? {...prev, currency: v} : null)}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="اختر العملة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="YER">ريال يمني (YER)</SelectItem>
-                  <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
-                  <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right mt-2">العملات المسموح بها</Label>
+              <div className="col-span-3 space-y-2">
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <Checkbox 
+                    id="edit-yer" 
+                    checked={editingItem?.allowedCurrencies.includes("YER")}
+                    onCheckedChange={() => toggleCurrency("YER", false)}
+                  />
+                  <label htmlFor="edit-yer" className="text-sm font-medium cursor-pointer">
+                    ريال يمني (YER)
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <Checkbox 
+                    id="edit-sar" 
+                    checked={editingItem?.allowedCurrencies.includes("SAR")}
+                    onCheckedChange={() => toggleCurrency("SAR", false)}
+                  />
+                  <label htmlFor="edit-sar" className="text-sm font-medium cursor-pointer">
+                    ريال سعودي (SAR)
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <Checkbox 
+                    id="edit-usd" 
+                    checked={editingItem?.allowedCurrencies.includes("USD")}
+                    onCheckedChange={() => toggleCurrency("USD", false)}
+                  />
+                  <label htmlFor="edit-usd" className="text-sm font-medium cursor-pointer">
+                    دولار أمريكي (USD)
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
