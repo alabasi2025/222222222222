@@ -454,8 +454,8 @@ export default function ChartOfAccounts() {
 
   // Filter accounts based on current entity
   const filteredAccountsByEntity = accounts.filter(account => {
-    // إذا كانت الشركة القابضة، اعرض جميع الحسابات
-    if (currentEntity.type === 'holding') return true;
+    // الشركة القابضة ليس لها حسابات خاصة بها
+    if (currentEntity.type === 'holding') return false;
     
     // إذا كانت وحدة، اعرض فقط حسابات هذه الوحدة
     if (currentEntity.type === 'unit') {
