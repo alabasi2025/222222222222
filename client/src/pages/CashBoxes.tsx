@@ -115,11 +115,19 @@ export default function CashBoxes() {
   });
 
   // Get cash accounts from chart of accounts
-  const cashAccounts = initialAccountsData.filter(account => 
+  const allCashAccounts = initialAccountsData.filter(account => 
     account.subtype === 'cash' && 
     !account.isGroup && 
     account.entityId === currentEntity.id
   );
+
+  // Filter available accounts (exclude already linked accounts)
+  const getAvailableCashAccounts = (excludeBoxId?: string) => {
+    const linkedAccountIds = cashBoxes
+      .filter(box => box.id !== excludeBoxId && box.accountId) // استثناء الصندوق الحالي عند التعديل
+      .map(box => box.accountId);
+    return allCashAccounts.filter(account => !linkedAccountIds.includes(account.id));
+  };
 
   // Filter cash boxes based on current entity
   // In a real app, this would be a backend query. Here we filter by an 'entityId' property we'll add.
@@ -275,7 +283,7 @@ export default function CashBoxes() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">لا يوجد حساب</SelectItem>
-                      {cashAccounts.map(account => (
+                      {getAvailableCashAccounts().map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.id} - {account.name}
                         </SelectItem>
@@ -365,7 +373,7 @@ export default function CashBoxes() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">لا يوجد حساب</SelectItem>
-                      {cashAccounts.map(account => (
+                      {getAvailableCashAccounts(editingBox?.id).map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.id} - {account.name}
                         </SelectItem>

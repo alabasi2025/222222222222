@@ -267,11 +267,19 @@ export default function BanksWallets() {
   };
 
   // Get bank accounts from chart of accounts
-  const bankAccounts = initialAccountsData.filter(account => 
+  const allBankAccounts = initialAccountsData.filter(account => 
     account.subtype === 'bank' && 
     !account.isGroup && 
     account.entityId === currentEntity.id
   );
+
+  // Filter available accounts (exclude already linked accounts)
+  const getAvailableBankAccounts = (excludeItemId?: string) => {
+    const linkedAccountIds = banksWallets
+      .filter(item => item.id !== excludeItemId && item.chartAccountId) // استثناء الحساب الحالي عند التعديل
+      .map(item => item.chartAccountId);
+    return allBankAccounts.filter(account => !linkedAccountIds.includes(account.id));
+  };
 
   // Filter items
   const visibleItems = banksWallets.filter(item => {
@@ -540,7 +548,7 @@ export default function BanksWallets() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">لا يوجد حساب</SelectItem>
-                      {bankAccounts.map(account => (
+                      {getAvailableBankAccounts().map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.id} - {account.name}
                         </SelectItem>
@@ -842,7 +850,7 @@ export default function BanksWallets() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">لا يوجد حساب</SelectItem>
-                  {bankAccounts.map(account => (
+                  {getAvailableBankAccounts(editingItem?.id).map(account => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.id} - {account.name}
                     </SelectItem>
