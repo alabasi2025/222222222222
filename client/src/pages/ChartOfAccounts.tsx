@@ -398,7 +398,10 @@ export default function ChartOfAccounts() {
     parent: "none",
     isGroup: true, // Default to Group (Main)
     subtype: "general",
-    allowedCurrencies: ["YER", "SAR", "USD"] as string[] // العملات المسموح بها
+    currencies: ["YER", "SAR", "USD"] as string[], // العملات المدعومة
+    defaultCurrency: "YER" as string, // العملة الافتراضية
+    accountGroup: "none" as string, // مجموعة الحسابات
+    branchId: undefined as string | undefined // الفرع المربوط
   });
 
   const toggleExpand = (id: string) => {
@@ -429,7 +432,10 @@ export default function ChartOfAccounts() {
           parentId: newAccount.parent === "none" ? null : newAccount.parent,
           isGroup: newAccount.isGroup,
           subtype: newAccount.subtype,
-          allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"],
+          currencies: newAccount.currencies || ["YER", "SAR", "USD"],
+          defaultCurrency: newAccount.defaultCurrency || 'YER',
+          accountGroup: newAccount.accountGroup === 'none' ? undefined : newAccount.accountGroup,
+          branchId: newAccount.branchId,
           entityId: currentEntity.type === 'unit' ? currentEntity.id : currentEntity.type === 'branch' ? currentEntity.parentId || undefined : undefined
         } : acc
       ));
@@ -457,7 +463,10 @@ export default function ChartOfAccounts() {
         parentId: newAccount.parent === "none" ? null : newAccount.parent,
         isGroup: newAccount.isGroup,
         subtype: newAccount.subtype,
-        allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"],
+        currencies: newAccount.currencies || ["YER", "SAR", "USD"],
+        defaultCurrency: newAccount.defaultCurrency || 'YER',
+        accountGroup: newAccount.accountGroup === 'none' ? undefined : newAccount.accountGroup,
+        branchId: newAccount.branchId,
         entityId: currentEntity.type === 'unit' ? currentEntity.id : currentEntity.type === 'branch' ? currentEntity.parentId || undefined : undefined
       };
 
@@ -484,7 +493,10 @@ export default function ChartOfAccounts() {
       parent: "none", 
       isGroup: true, 
       subtype: "general",
-      allowedCurrencies: ["YER", "SAR", "USD"]
+      currencies: ["YER", "SAR", "USD"],
+      defaultCurrency: "YER",
+      accountGroup: "none",
+      branchId: undefined
     });
   };
 
