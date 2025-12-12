@@ -37,7 +37,7 @@ const EntityContext = createContext<EntityContextType | undefined>(undefined);
 
 export function EntityProvider({ children }: { children: ReactNode }) {
   const [entities, setEntities] = useState<Entity[]>(initialEntities);
-  const [currentEntity, setCurrentEntity] = useState<Entity>(initialEntities[0]);
+  const [currentEntity, setCurrentEntity] = useState<Entity>(initialEntities[1]); // وحدة العباسي خاص
 
   // Update CSS variables when entity changes
   useEffect(() => {
