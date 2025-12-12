@@ -507,7 +507,10 @@ export default function ChartOfAccounts() {
       parent: account.parentId || 'none',
       isGroup: account.isGroup,
       subtype: account.subtype || '',
-      allowedCurrencies: account.allowedCurrencies || ["YER", "SAR", "USD"]
+      currencies: account.currencies || ["YER", "SAR", "USD"],
+      defaultCurrency: account.defaultCurrency || 'YER',
+      accountGroup: account.accountGroup || 'none',
+      branchId: account.branchId || undefined
     });
     setEditingAccountId(account.id);
     setIsNewAccountOpen(true);
