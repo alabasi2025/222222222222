@@ -54,7 +54,47 @@ import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
 
 // Initial clean data
-const initialCashBoxes: any[] = [];
+const initialCashBoxes: any[] = [
+  {
+    id: "CB-001",
+    entityId: "UNIT-001",
+    name: "صندوق التحصيل والتوريد الدهمية",
+    balance: 0.00,
+    currency: "YER",
+    type: "cash_box",
+    accountId: "2.1",
+    branchId: "BR-003",
+    responsiblePerson: "",
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "CB-002",
+    entityId: "UNIT-001",
+    name: "صندوق التحصيل والتوريد الصبالية",
+    balance: 0.00,
+    currency: "YER",
+    type: "cash_box",
+    accountId: "2.2",
+    branchId: "BR-004",
+    responsiblePerson: "",
+    status: "active",
+    lastTransaction: "-"
+  },
+  {
+    id: "CB-003",
+    entityId: "UNIT-001",
+    name: "صندوق التحصيل والتوريد غليل",
+    balance: 0.00,
+    currency: "YER",
+    type: "cash_box",
+    accountId: "2.3",
+    branchId: "BR-005",
+    responsiblePerson: "",
+    status: "active",
+    lastTransaction: "-"
+  }
+];
 const recentTransactions: any[] = [];
 
 export default function CashBoxes() {
@@ -76,8 +116,13 @@ export default function CashBoxes() {
   // Filter cash boxes based on current entity
   // In a real app, this would be a backend query. Here we filter by an 'entityId' property we'll add.
   const visibleCashBoxes = cashBoxes.filter(box => {
-    if (currentEntity.type === 'holding') return true; // Holding sees all
-    return box.entityId === currentEntity.id;
+    // الشركة القابضة ليس لها صناديق
+    if (currentEntity.type === 'holding') return false;
+    
+    // فقط عرض صناديق الوحدة الحالية
+    if (box.entityId !== currentEntity.id) return false;
+    
+    return true;
   });
 
   const handleAddBox = () => {
