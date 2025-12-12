@@ -539,7 +539,7 @@ export default function BanksWallets() {
                       <SelectValue placeholder="اختر الحساب المربوط" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">لا يوجد حساب</SelectItem>
+                      <SelectItem value="none">لا يوجد حساب</SelectItem>
                       {bankAccounts.map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.id} - {account.name}
