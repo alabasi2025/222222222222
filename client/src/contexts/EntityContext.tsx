@@ -13,9 +13,8 @@ export interface Entity {
 
 // Define the initial entities data here to be shared
 export const initialEntities: Entity[] = [
-  { id: "HOLD-001", name: "شركة أعمال العباسي", type: "holding", parentId: null, themeColor: "#7c3aed" }, // Violet
-  { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit", parentId: "HOLD-001", themeColor: "#2563eb" }, // Blue
-  { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit", parentId: "HOLD-001", themeColor: "#059669" }, // Emerald
+  { id: "UNIT-001", name: "وحدة أعمال الحديدة", type: "unit", parentId: null, themeColor: "#2563eb" }, // Blue
+  { id: "UNIT-002", name: "وحدة العباسي خاص", type: "unit", parentId: null, themeColor: "#059669" }, // Emerald
   { id: "BR-001", name: "الفرع الرئيسي (العباسي خاص)", type: "branch", parentId: "UNIT-002", themeColor: "#059669" },
   { id: "BR-002", name: "الفرع الرئيسي (الحديدة)", type: "branch", parentId: "UNIT-001", themeColor: "#2563eb" },
   { id: "BR-003", name: "فرع الدهمية", type: "branch", parentId: "UNIT-001", themeColor: "#2563eb" },

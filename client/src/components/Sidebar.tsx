@@ -113,9 +113,6 @@ export function Sidebar() {
     setOpenNestedSubMenus(prev => ({ ...prev, [href]: !prev[href] }));
   };
 
-  // Get holding company
-  const holdingCompany = entities.find(e => e.type === 'holding');
-  
   // Get all units
   const units = entities.filter(e => e.type === 'unit');
 
@@ -158,31 +155,7 @@ export function Sidebar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64" align="end">
             <DropdownMenuLabel>تحديد الكيان</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            
-            {/* Holding Company Option */}
-            {holdingCompany && (
-              <DropdownMenuItem 
-                onClick={() => setCurrentEntity(holdingCompany)}
-                className="flex items-center gap-2 cursor-pointer py-2"
-              >
-                <div 
-                  className="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0" 
-                  style={{ backgroundColor: holdingCompany.logo ? 'transparent' : getThemeColor(holdingCompany.id) }}
-                >
-                  {holdingCompany.logo ? (
-                    <img src={holdingCompany.logo} alt="Logo" className="w-full h-full object-cover" />
-                  ) : (
-                    <Building2 className="w-3 h-3 text-white" />
-                  )}
-                </div>
-                <span className={currentEntity.id === holdingCompany.id ? "font-bold" : ""}>
-                  {holdingCompany.name}
-                </span>
-              </DropdownMenuItem>
-            )}
 
-            <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs text-muted-foreground">وحدات الأعمال والفروع</DropdownMenuLabel>
 
             {/* Units with Submenu for Branches */}
@@ -246,17 +219,6 @@ export function Sidebar() {
             <DropdownMenuSeparator />
             
             {/* Quick Actions based on context */}
-            {currentEntity.type === 'holding' && (
-              <DropdownMenuItem>
-                <Link href="/organization?action=add">
-                  <div className="flex items-center w-full cursor-pointer text-primary">
-                    <Plus className="w-4 h-4 ml-2" />
-                    إضافة وحدة أعمال
-                  </div>
-                </Link>
-              </DropdownMenuItem>
-            )}
-            
             {(currentEntity.type === 'unit' || currentEntity.type === 'branch') && (
               <DropdownMenuItem>
                 <Link href="/organization?action=add">
