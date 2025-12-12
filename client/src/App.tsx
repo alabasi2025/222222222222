@@ -24,6 +24,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import OrganizationStructure from "./pages/OrganizationStructure";
 import AccountGroups from "./pages/AccountGroups";
+import BanksWallets from "./pages/BanksWallets";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/settings" component={Settings} />
         <Route path="/organization" component={OrganizationStructure} />
         <Route path="/financial/settings/coa/groups" component={AccountGroups} />
+        <Route path="/banks-wallets" component={BanksWallets} />
         
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

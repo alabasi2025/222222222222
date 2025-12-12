@@ -84,6 +84,7 @@ const financialSystemItems = [
 const otherMenuItems = [
   { icon: Wallet, label: "السندات المالية", href: "/payments" },
   { icon: Wallet, label: "الصناديق والعهد", href: "/cash-boxes" },
+  { icon: Landmark, label: "البنوك والمحافظ", href: "/banks-wallets" },
   { icon: FileText, label: "قيود اليومية", href: "/journals" },
   { icon: BookOpen, label: "دفتر الأستاذ", href: "/ledger" },
   { icon: Building2, label: "الأصول الثابتة", href: "/assets" },
