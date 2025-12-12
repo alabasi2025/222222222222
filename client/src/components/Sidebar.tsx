@@ -28,7 +28,9 @@ import {
   TrendingUp,
   BarChart3,
   Coins,
-  Layers
+  Layers,
+  Moon,
+  Sun
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -44,6 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useEntity } from "@/contexts/EntityContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "لوحة المعلومات", href: "/" },
@@ -94,7 +97,8 @@ const otherMenuItems = [
 
 export function Sidebar() {
   const [location] = useLocation();
-  const { currentEntity, setCurrentEntity, entities, getThemeColor } = useEntity();
+  const { entities, currentEntity, setCurrentEntity, getThemeColor } = useEntity();
+  const { theme, toggleTheme } = useTheme();
   const [isFinancialSystemOpen, setIsFinancialSystemOpen] = useState(false);
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
   const [openNestedSubMenus, setOpenNestedSubMenus] = useState<Record<string, boolean>>({});
@@ -495,7 +499,27 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-3">
+        {/* Theme Toggle Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleTheme}
+          className="w-full justify-start gap-3 hover:bg-sidebar-accent/50"
+        >
+          {theme === 'dark' ? (
+            <>
+              <Sun className="w-4 h-4" />
+              <span className="text-sm">الوضع الفاتح</span>
+            </>
+          ) : (
+            <>
+              <Moon className="w-4 h-4" />
+              <span className="text-sm">الوضع الداكن</span>
+            </>
+          )}
+        </Button>
+        
         <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-sidebar-accent/30">
           <div 
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold transition-colors duration-300"
