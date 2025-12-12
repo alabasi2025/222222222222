@@ -831,6 +831,25 @@ export default function BanksWallets() {
                 className="col-span-3" 
               />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-chartAccountId" className="text-right">حساب من الدليل</Label>
+              <Select 
+                value={editingItem?.chartAccountId || "none"} 
+                onValueChange={(v) => setEditingItem((prev) => prev ? {...prev, chartAccountId: v} : null)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="اختر الحساب المربوط" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">لا يوجد حساب</SelectItem>
+                  {bankAccounts.map(account => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.id} - {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-4 items-start gap-4">
               <Label className="text-right mt-2">العملات المسموح بها</Label>
               <div className="col-span-3 space-y-2">

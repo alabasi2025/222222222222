@@ -354,6 +354,25 @@ export default function CashBoxes() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-accountId" className="text-right">حساب من الدليل</Label>
+                  <Select 
+                    value={editingBox?.accountId || "none"} 
+                    onValueChange={(v) => setEditingBox((prev: any) => prev ? {...prev, accountId: v} : null)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب المربوط" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">لا يوجد حساب</SelectItem>
+                      {cashAccounts.map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.id} - {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={handleEditBox}>
