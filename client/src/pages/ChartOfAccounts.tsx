@@ -79,6 +79,22 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableRow } from "@/components/SortableRow";
 
+// Account interface
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+  level: number;
+  balance: number;
+  hasChildren: boolean;
+  expanded: boolean;
+  parentId: string | null;
+  isGroup: boolean;
+  subtype: string;
+  allowedCurrencies: string[];
+  entityId?: string; // معرف الوحدة التي ينتمي لها الحساب
+}
+
 // Account Subtypes
 const accountSubtypes = [
   { value: "general", label: "عام", icon: FileText },
@@ -339,7 +355,8 @@ export default function ChartOfAccounts() {
           parentId: newAccount.parent === "none" ? null : newAccount.parent,
           isGroup: newAccount.isGroup,
           subtype: newAccount.subtype,
-          allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"]
+          allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"],
+          entityId: currentEntity.type === 'unit' ? currentEntity.id : currentEntity.type === 'branch' ? currentEntity.parentId || undefined : undefined
         } : acc
       ));
       toast.success("تم تحديث الحساب بنجاح");
@@ -355,7 +372,7 @@ export default function ChartOfAccounts() {
 
       const level = parent ? parent.level + 1 : 1;
       
-      const newAcc = {
+      const newAcc: Account = {
         id: newAccount.code,
         name: newAccount.name,
         type: newAccount.type,
@@ -366,7 +383,8 @@ export default function ChartOfAccounts() {
         parentId: newAccount.parent === "none" ? null : newAccount.parent,
         isGroup: newAccount.isGroup,
         subtype: newAccount.subtype,
-        allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"]
+        allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"],
+        entityId: currentEntity.type === 'unit' ? currentEntity.id : currentEntity.type === 'branch' ? currentEntity.parentId || undefined : undefined
       };
 
       // If adding to a parent, update parent to have children and be expanded
@@ -428,11 +446,29 @@ export default function ChartOfAccounts() {
     return parent ? (parent.expanded && isVisible(parent)) : true;
   };
 
+  // Filter accounts based on current entity
+  const filteredAccountsByEntity = accounts.filter(account => {
+    // إذا كانت الشركة القابضة، اعرض جميع الحسابات
+    if (currentEntity.type === 'holding') return true;
+    
+    // إذا كانت وحدة، اعرض فقط حسابات هذه الوحدة
+    if (currentEntity.type === 'unit') {
+      return account.entityId === currentEntity.id || !account.entityId; // عرض الحسابات العامة أيضاً
+    }
+    
+    // إذا كان فرع، اعرض حسابات الوحدة الأم
+    if (currentEntity.type === 'branch' && currentEntity.parentId) {
+      return account.entityId === currentEntity.parentId || !account.entityId;
+    }
+    
+    return !account.entityId; // عرض الحسابات العامة فقط
+  });
+
   // Filter accounts for parent selection (only Groups can be parents)
-  const groupAccounts = accounts.filter(a => a.isGroup);
+  const groupAccounts = filteredAccountsByEntity.filter(a => a.isGroup);
 
   // Get visible accounts for rendering
-  const visibleAccounts = accounts.filter(isVisible);
+  const visibleAccounts = filteredAccountsByEntity.filter(isVisible);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
