@@ -91,6 +91,7 @@ const otherMenuItems = [
   { icon: Target, label: "مراكز التكلفة", href: "/cost-centers" },
   { icon: Landmark, label: "تسوية البنك", href: "/bank-reconciliation" },
   { icon: Calculator, label: "إدارة الضريبة", href: "/tax" },
+  { icon: DollarSign, label: "إدارة العملات", href: "/currencies" },
   { icon: PieChart, label: "التقارير", href: "/reports" },
   { icon: Network, label: "الهيكل التنظيمي", href: "/organization" },
   { icon: Settings, label: "الإعدادات", href: "/settings" },
