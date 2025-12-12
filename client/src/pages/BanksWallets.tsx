@@ -82,7 +82,7 @@ interface BankWalletAccount {
 const initialBanksWallets: BankWalletAccount[] = [
   {
     id: "1",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "الحوشبي للصرافة",
     type: "exchange",
     accountType: "current",
@@ -99,7 +99,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "2",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "محفظة جوالي - 774424555",
     type: "wallet",
     accountType: "wallet",
@@ -116,7 +116,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "3",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "محفظة جوالي - 771506017",
     type: "wallet",
     accountType: "wallet",
@@ -133,7 +133,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "4",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "محفظة جيب",
     type: "wallet",
     accountType: "wallet",
@@ -150,7 +150,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "5",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "محفظة ون كاش",
     type: "wallet",
     accountType: "wallet",
@@ -167,7 +167,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "6",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "الكريمي الحديدة - حساب جاري",
     type: "bank",
     accountType: "current",
@@ -184,7 +184,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "7",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "الكريمي الحديدة - حساب توفير",
     type: "bank",
     accountType: "savings",
@@ -201,7 +201,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "8",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "الكريمي صنعاء - حساب توفير",
     type: "bank",
     accountType: "savings",
@@ -218,7 +218,7 @@ const initialBanksWallets: BankWalletAccount[] = [
   },
   {
     id: "9",
-    entityId: "unit-1",
+    entityId: "UNIT-002",
     name: "الكريمي صنعاء - حساب جاري",
     type: "bank",
     accountType: "current",
@@ -266,7 +266,11 @@ export default function BanksWallets() {
 
   // Filter items
   const visibleItems = banksWallets.filter(item => {
-    if (currentEntity.type !== 'holding' && item.entityId !== currentEntity.id) return false;
+    // الشركة القابضة ليس لها حسابات
+    if (currentEntity.type === 'holding') return false;
+    
+    // فقط عرض حسابات الوحدة الحالية
+    if (item.entityId !== currentEntity.id) return false;
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          item.accountNumber.includes(searchTerm);
     const matchesTypeFilter = filterType === "all" || item.type === filterType;
