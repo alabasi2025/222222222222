@@ -96,7 +96,6 @@ const accountSubtypes = [
 
 // Initial Mock data with Banks, Exchanges, and Wallets accounts
 const initialAccountsData: Account[] = [
-  // 1. الأصول المتداولة (رئيسي)
   {
     id: "1",
     name: "الأصول المتداولة",
@@ -110,7 +109,6 @@ const initialAccountsData: Account[] = [
     subtype: "general",
     allowedCurrencies: ["YER", "SAR", "USD"]
   },
-  // 1.1 البنوك (فرعي)
   {
     id: "1.1",
     name: "البنوك",
@@ -124,7 +122,6 @@ const initialAccountsData: Account[] = [
     subtype: "bank",
     allowedCurrencies: ["YER", "SAR", "USD"]
   },
-  // 1.2 الصرافين (فرعي)
   {
     id: "1.2",
     name: "الصرافين",
@@ -138,7 +135,6 @@ const initialAccountsData: Account[] = [
     subtype: "bank",
     allowedCurrencies: ["YER", "SAR", "USD"]
   },
-  // 1.3 المحافظ (فرعي)
   {
     id: "1.3",
     name: "المحافظ",
@@ -192,9 +188,7 @@ export default function ChartOfAccounts() {
     parent: "none",
     isGroup: true, // Default to Group (Main)
     subtype: "general",
-    allowedCurrencies: ["YER", "SAR", "USD"] as string[], // العملات المحددة
-    defaultCurrency: "YER", // العملة الافتراضية
-    accountGroup: "none" // مجموعة الحسابات (اختياري)
+    allowedCurrencies: ["YER", "SAR", "USD"] as string[] // العملات المسموح بها
   });
 
   const toggleExpand = (id: string) => {
@@ -252,8 +246,8 @@ export default function ChartOfAccounts() {
         parentId: newAccount.parent === "none" ? null : newAccount.parent,
         isGroup: newAccount.isGroup,
         subtype: newAccount.subtype,
-          allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"]
-        };
+        allowedCurrencies: newAccount.allowedCurrencies || ["YER", "SAR", "USD"]
+      };
 
       // If adding to a parent, update parent to have children and be expanded
       let updatedAccounts = [...accounts];
@@ -277,7 +271,8 @@ export default function ChartOfAccounts() {
       type: "asset", 
       parent: "none", 
       isGroup: true, 
-      subtype: "general" 
+      subtype: "general",
+      allowedCurrencies: ["YER", "SAR", "USD"]
     });
   };
 
@@ -299,7 +294,8 @@ export default function ChartOfAccounts() {
       type: account.type,
       parent: account.parentId || 'none',
       isGroup: account.isGroup,
-      subtype: account.subtype || ''
+      subtype: account.subtype || '',
+      allowedCurrencies: account.allowedCurrencies || ["YER", "SAR", "USD"]
     });
     setEditingAccountId(account.id);
     setIsNewAccountOpen(true);
