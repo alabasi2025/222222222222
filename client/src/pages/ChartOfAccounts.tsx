@@ -296,6 +296,63 @@ const initialAccountsData: Account[] = [
     subtype: "bank",
     allowedCurrencies: ["YER", "SAR", "USD"],
     entityId: "UNIT-002"
+  },
+  // Cash Boxes for Hodeidah Unit
+  {
+    id: "2",
+    name: "الصناديق",
+    type: "asset",
+    level: 1,
+    balance: 0,
+    hasChildren: true,
+    expanded: true,
+    parentId: null,
+    isGroup: true,
+    subtype: "cash",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-001"
+  },
+  {
+    id: "2.1",
+    name: "صندوق التحصيل والتوريد الدهمية",
+    type: "asset",
+    level: 2,
+    balance: 0,
+    hasChildren: false,
+    expanded: false,
+    parentId: "2",
+    isGroup: false,
+    subtype: "cash",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-001"
+  },
+  {
+    id: "2.2",
+    name: "صندوق التحصيل والتوريد الصبالية",
+    type: "asset",
+    level: 2,
+    balance: 0,
+    hasChildren: false,
+    expanded: false,
+    parentId: "2",
+    isGroup: false,
+    subtype: "cash",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-001"
+  },
+  {
+    id: "2.3",
+    name: "صندوق التحصيل والتوريد غليل",
+    type: "asset",
+    level: 2,
+    balance: 0,
+    hasChildren: false,
+    expanded: false,
+    parentId: "2",
+    isGroup: false,
+    subtype: "cash",
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-001"
   }
 ];
 
