@@ -123,7 +123,8 @@ const initialAccountsData: Account[] = [
     parentId: null,
     isGroup: true,
     subtype: "general",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.1",
@@ -136,7 +137,8 @@ const initialAccountsData: Account[] = [
     parentId: "1",
     isGroup: true,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.2",
@@ -149,7 +151,8 @@ const initialAccountsData: Account[] = [
     parentId: "1",
     isGroup: true,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   {
     id: "1.3",
@@ -162,7 +165,8 @@ const initialAccountsData: Account[] = [
     parentId: "1",
     isGroup: true,
     subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"]
+    allowedCurrencies: ["YER", "SAR", "USD"],
+    entityId: "UNIT-002"
   },
   // Bank Accounts
   {
