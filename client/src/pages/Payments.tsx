@@ -78,6 +78,7 @@ export default function Payments() {
     amount: "",
     date: new Date().toISOString().split('T')[0],
     method: "cash",
+    currency: "YER",
     reference: ""
   });
 
@@ -206,6 +207,19 @@ export default function Payments() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="currency" className="text-right">العملة</Label>
+                  <Select onValueChange={(v) => handleSelectChange("currency", v)} defaultValue={formData.currency}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر العملة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
+                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
+                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="reference" className="text-right">المرجع</Label>
                   <Input id="reference" name="reference" value={formData.reference} onChange={handleInputChange} className="col-span-3" placeholder="رقم الشيك / التحويل" />
                 </div>
@@ -274,6 +288,19 @@ export default function Payments() {
                       <SelectItem value="exchange">صراف</SelectItem>
                       <SelectItem value="check">شيك</SelectItem>
                       <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="currency-out" className="text-right">العملة</Label>
+                  <Select onValueChange={(v) => handleSelectChange("currency", v)} defaultValue={formData.currency}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر العملة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
+                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
+                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
