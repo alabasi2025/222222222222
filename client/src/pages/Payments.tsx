@@ -19,7 +19,8 @@ import {
   CreditCard,
   Wallet,
   Banknote,
-  Calendar as CalendarIcon
+  AlertCircle,
+  AlertTriangle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -50,21 +51,47 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Mock data for Cash Boxes - should be fetched from API/Context in real app
-const cashBoxes: any[] = [];
+// Mock data - should be fetched from API/Context in real app
+const cashBoxes = [
+  { id: "1", name: "صندوق الرئيسي", type: "cash" },
+  { id: "2", name: "صندوق الفرع", type: "cash" }
+];
 
-// Initial clean data
+const banks = [
+  { id: "3", name: "الكريمي الحديدة - حساب جاري", type: "bank" },
+  { id: "4", name: "الكريمي الحديدة - حساب توفير", type: "bank" },
+  { id: "5", name: "الكريمي صنعاء - حساب جاري", type: "bank" },
+  { id: "6", name: "الكريمي صنعاء - حساب توفير", type: "bank" }
+];
+
+const exchanges = [
+  { id: "7", name: "الحوشبي للصرافة", type: "exchange" }
+];
+
+const wallets = [
+  { id: "8", name: "محفظة جوالي - 774424555", type: "wallet" },
+  { id: "9", name: "محفظة جوالي - 771506017", type: "wallet" },
+  { id: "10", name: "محفظة جيب", type: "wallet" },
+  { id: "11", name: "محفظة ون كاش", type: "wallet" }
+];
+
 const initialPayments: any[] = [];
 
 const methodMap: Record<string, { label: string, icon: any }> = {
   cash: { label: "نقدي", icon: Wallet },
-  bank_transfer: { label: "بنكي", icon: CreditCard },
+  bank: { label: "بنكي", icon: CreditCard },
   wallet: { label: "محفظة", icon: Wallet },
   exchange: { label: "صراف", icon: Banknote },
-  check: { label: "شيك", icon: Banknote },
-  credit_card: { label: "بطاقة ائتمان", icon: CreditCard },
 };
+
+// Currency rates data
+const currencies = [
+  { code: "YER", name: "ريال يمني", currentRate: 1, maxRate: 1, minRate: 1 },
+  { code: "SAR", name: "ريال سعودي", currentRate: 140, maxRate: 145, minRate: 135 },
+  { code: "USD", name: "دولار أمريكي", currentRate: 535, maxRate: 540, minRate: 530 }
+];
 
 export default function Payments() {
   const [payments, setPayments] = useState(initialPayments);
@@ -73,200 +100,350 @@ export default function Payments() {
 
   // Form states
   const [formData, setFormData] = useState({
-    box: "",
+    method: "cash",
+    account: "",
     party: "",
     amount: "",
     date: new Date().toISOString().split('T')[0],
-    method: "cash",
     currency: "YER",
+    exchangeRate: "1",
     reference: ""
   });
+
+  const [rateError, setRateError] = useState("");
+  const [rateWarning, setRateWarning] = useState("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === "exchangeRate") {
+      validateExchangeRate(value, formData.currency);
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Reset account when method changes
+    if (name === "method") {
+      setFormData(prev => ({ ...prev, account: "" }));
+    }
+    
+    // Auto-update exchange rate when currency changes
+    if (name === "currency") {
+      const currency = currencies.find(c => c.code === value);
+      if (currency) {
+        setFormData(prev => ({ ...prev, exchangeRate: currency.currentRate.toString() }));
+        validateExchangeRate(currency.currentRate.toString(), value);
+      }
+    }
+  };
+
+  const validateExchangeRate = (rate: string, currencyCode: string) => {
+    const rateNum = parseFloat(rate);
+    const currency = currencies.find(c => c.code === currencyCode);
+    
+    if (!currency) return;
+    
+    setRateError("");
+    setRateWarning("");
+    
+    if (rateNum > currency.maxRate) {
+      setRateError(`سعر الصرف أعلى من الحد الأقصى المسموح (${currency.maxRate})`);
+    } else if (rateNum < currency.minRate) {
+      setRateError(`سعر الصرف أقل من الحد الأدنى المسموح (${currency.minRate})`);
+    } else if (rateNum >= currency.maxRate - 2 || rateNum <= currency.minRate + 2) {
+      setRateWarning(`تنبيه: سعر الصرف قريب من الحدود (المسموح: ${currency.minRate} - ${currency.maxRate})`);
+    }
+  };
+
+  const getAccountsByMethod = (method: string) => {
+    switch (method) {
+      case "cash":
+        return cashBoxes;
+      case "bank":
+        return banks;
+      case "exchange":
+        return exchanges;
+      case "wallet":
+        return wallets;
+      default:
+        return [];
+    }
   };
 
   const handleSubmit = (type: 'in' | 'out') => {
-    if (!formData.box || !formData.party || !formData.amount) {
-      toast.error("الرجاء تعبئة الحقول المطلوبة (الصندوق، الطرف، المبلغ)");
+    if (!formData.account || !formData.party || !formData.amount) {
+      toast.error("الرجاء تعبئة جميع الحقول المطلوبة");
       return;
     }
 
-    const boxName = cashBoxes.find(b => b.id === formData.box)?.name || formData.box;
+    // Validate exchange rate
+    if (rateError) {
+      toast.error("لا يمكن حفظ السند: " + rateError);
+      return;
+    }
+
+    const allAccounts = [...cashBoxes, ...banks, ...exchanges, ...wallets];
+    const accountName = allAccounts.find(a => a.id === formData.account)?.name || formData.account;
 
     const newPayment = {
-      id: `PAY-00${payments.length + 1}`,
+      id: `PAY-${payments.length + 1}`,
+      type,
       party: formData.party,
-      type: type,
-      amount: parseFloat(formData.amount),
+      account: accountName,
       date: formData.date,
       method: formData.method,
-      reference: formData.reference || "-",
-      box: boxName
+      currency: formData.currency,
+      exchangeRate: parseFloat(formData.exchangeRate),
+      amount: parseFloat(formData.amount),
+      reference: formData.reference
     };
 
     setPayments([newPayment, ...payments]);
     toast.success(type === 'in' ? "تم إنشاء سند القبض بنجاح" : "تم إنشاء سند الصرف بنجاح");
     
-    // Reset form and close dialog
+    // Reset form
     setFormData({
-      box: "",
+      method: "cash",
+      account: "",
       party: "",
       amount: "",
       date: new Date().toISOString().split('T')[0],
-      method: "cash",
+      currency: "YER",
+      exchangeRate: "1",
       reference: ""
     });
+    setRateError("");
+    setRateWarning("");
     
-    if (type === 'in') setIsReceiveOpen(false);
-    else setIsPayOpen(false);
+    if (type === 'in') {
+      setIsReceiveOpen(false);
+    } else {
+      setIsPayOpen(false);
+    }
   };
 
-  // Calculate totals
-  const totalIn = payments.filter(p => p.type === 'in').reduce((sum, p) => sum + p.amount, 0);
-  const totalOut = payments.filter(p => p.type === 'out').reduce((sum, p) => sum + p.amount, 0);
+  const totalIn = payments.filter(p => p.type === 'in').reduce((sum, p) => sum + (p.amount * p.exchangeRate), 0);
+  const totalOut = payments.filter(p => p.type === 'out').reduce((sum, p) => sum + (p.amount * p.exchangeRate), 0);
   const netFlow = totalIn - totalOut;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">المدفوعات</h2>
-          <p className="text-muted-foreground mt-1">سجل المقبوضات والمدفوعات</p>
+          <h1 className="text-3xl font-bold">المدفوعات</h1>
+          <p className="text-muted-foreground">سجل المقبوضات والمدفوعات</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 ml-2" />
+            <Download className="ml-2 h-4 w-4" />
             تصدير
           </Button>
-          
-          {/* Receive Payment Dialog */}
           <Dialog open={isReceiveOpen} onOpenChange={setIsReceiveOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="w-4 h-4 ml-2" />
+                <Plus className="ml-2 h-4 w-4" />
                 سند قبض جديد
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>إنشاء سند قبض جديد</DialogTitle>
                 <DialogDescription>
-                  أدخل تفاصيل المبلغ المستلم. يجب تحديد الصندوق أولاً.
+                  أدخل تفاصيل المبلغ المستلم
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="box" className="text-right font-bold">الصندوق/الحساب</Label>
-                  <Select onValueChange={(v) => handleSelectChange("box", v)} value={formData.box}>
-                    <SelectTrigger className="col-span-3 border-emerald-200 bg-emerald-50">
-                      <SelectValue placeholder="اختر الصندوق أو البنك" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cashBoxes.length === 0 ? (
-                        <SelectItem value="none" disabled>لا توجد صناديق متاحة</SelectItem>
-                      ) : (
-                        cashBoxes.map(box => (
-                          <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="party" className="text-right">مستلم من</Label>
-                  <Input id="party" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم العميل / الشركة" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amount" className="text-right">المبلغ</Label>
-                  <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleInputChange} className="col-span-3" placeholder="0.00" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="date" className="text-right">التاريخ</Label>
-                  <Input id="date" name="date" type="date" value={formData.date} onChange={handleInputChange} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="method" className="text-right">طريقة الدفع</Label>
+                  <Label htmlFor="method-in" className="text-right">نوع العملية</Label>
                   <Select onValueChange={(v) => handleSelectChange("method", v)} defaultValue={formData.method}>
                     <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر طريقة الدفع" />
+                      <SelectValue placeholder="اختر نوع العملية" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cash">نقدي</SelectItem>
-                      <SelectItem value="bank_transfer">بنكي</SelectItem>
+                      <SelectItem value="bank">بنكي</SelectItem>
                       <SelectItem value="wallet">محفظة</SelectItem>
                       <SelectItem value="exchange">صراف</SelectItem>
-                      <SelectItem value="check">شيك</SelectItem>
-                      <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="currency" className="text-right">العملة</Label>
-                  <Select onValueChange={(v) => handleSelectChange("currency", v)} defaultValue={formData.currency}>
+                  <Label htmlFor="account-in" className="text-right">
+                    {formData.method === "cash" && "الصندوق"}
+                    {formData.method === "bank" && "البنك"}
+                    {formData.method === "wallet" && "المحفظة"}
+                    {formData.method === "exchange" && "الصراف"}
+                  </Label>
+                  <Select onValueChange={(v) => handleSelectChange("account", v)} value={formData.account}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAccountsByMethod(formData.method).map(account => (
+                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="party-in" className="text-right">مستلم من</Label>
+                  <Input id="party-in" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم العميل / الشركة" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="currency-in" className="text-right">العملة</Label>
+                  <Select onValueChange={(v) => handleSelectChange("currency", v)} value={formData.currency}>
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر العملة" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
-                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
-                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
+                      {currencies.map(curr => (
+                        <SelectItem key={curr.code} value={curr.code}>{curr.name} ({curr.code})</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
+                {formData.currency !== "YER" && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="exchangeRate-in" className="text-right">سعر الصرف</Label>
+                    <div className="col-span-3 space-y-2">
+                      <Input 
+                        id="exchangeRate-in" 
+                        name="exchangeRate" 
+                        type="number" 
+                        step="0.01"
+                        value={formData.exchangeRate} 
+                        onChange={handleInputChange} 
+                        placeholder="سعر الصرف مقابل الريال اليمني" 
+                      />
+                      {rateError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{rateError}</AlertDescription>
+                        </Alert>
+                      )}
+                      {rateWarning && !rateError && (
+                        <Alert className="border-yellow-500 text-yellow-700">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{rateWarning}</AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="reference" className="text-right">المرجع</Label>
-                  <Input id="reference" name="reference" value={formData.reference} onChange={handleInputChange} className="col-span-3" placeholder="رقم الشيك / التحويل" />
+                  <Label htmlFor="amount-in" className="text-right">المبلغ</Label>
+                  <Input id="amount-in" name="amount" type="number" value={formData.amount} onChange={handleInputChange} className="col-span-3" placeholder="0.00" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="date-in" className="text-right">التاريخ</Label>
+                  <Input id="date-in" name="date" type="date" value={formData.date} onChange={handleInputChange} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="reference-in" className="text-right">المرجع</Label>
+                  <Input id="reference-in" name="reference" value={formData.reference} onChange={handleInputChange} className="col-span-3" placeholder="رقم الشيك / التحويل" />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleSubmit('in')}>حفظ سند القبض</Button>
+                <Button onClick={() => handleSubmit('in')} className="bg-emerald-600 hover:bg-emerald-700">حفظ سند القبض</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
-          {/* Pay Payment Dialog */}
           <Dialog open={isPayOpen} onOpenChange={setIsPayOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="destructive">
-                <Plus className="w-4 h-4 ml-2" />
+                <Plus className="ml-2 h-4 w-4" />
                 سند صرف جديد
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>إنشاء سند صرف جديد</DialogTitle>
                 <DialogDescription>
-                  أدخل تفاصيل المبلغ المدفوع. يجب تحديد الصندوق أولاً.
+                  أدخل تفاصيل المبلغ المدفوع
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="box-out" className="text-right font-bold">الصندوق/الحساب</Label>
-                  <Select onValueChange={(v) => handleSelectChange("box", v)} value={formData.box}>
-                    <SelectTrigger className="col-span-3 border-rose-200 bg-rose-50">
-                      <SelectValue placeholder="اختر الصندوق أو البنك" />
+                  <Label htmlFor="method-out" className="text-right">نوع العملية</Label>
+                  <Select onValueChange={(v) => handleSelectChange("method", v)} defaultValue={formData.method}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر نوع العملية" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cashBoxes.length === 0 ? (
-                        <SelectItem value="none" disabled>لا توجد صناديق متاحة</SelectItem>
-                      ) : (
-                        cashBoxes.map(box => (
-                          <SelectItem key={box.id} value={box.id}>{box.name}</SelectItem>
-                        ))
-                      )}
+                      <SelectItem value="cash">نقدي</SelectItem>
+                      <SelectItem value="bank">بنكي</SelectItem>
+                      <SelectItem value="wallet">محفظة</SelectItem>
+                      <SelectItem value="exchange">صراف</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="party-out" className="text-right">مدفوع لـ</Label>
-                  <Input id="party-out" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم المورد / المستفيد" />
+                  <Label htmlFor="account-out" className="text-right">
+                    {formData.method === "cash" && "الصندوق"}
+                    {formData.method === "bank" && "البنك"}
+                    {formData.method === "wallet" && "المحفظة"}
+                    {formData.method === "exchange" && "الصراف"}
+                  </Label>
+                  <Select onValueChange={(v) => handleSelectChange("account", v)} value={formData.account}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAccountsByMethod(formData.method).map(account => (
+                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="party-out" className="text-right">مدفوع إلى</Label>
+                  <Input id="party-out" name="party" value={formData.party} onChange={handleInputChange} className="col-span-3" placeholder="اسم المورد / الشركة" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="currency-out" className="text-right">العملة</Label>
+                  <Select onValueChange={(v) => handleSelectChange("currency", v)} value={formData.currency}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر العملة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map(curr => (
+                        <SelectItem key={curr.code} value={curr.code}>{curr.name} ({curr.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.currency !== "YER" && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="exchangeRate-out" className="text-right">سعر الصرف</Label>
+                    <div className="col-span-3 space-y-2">
+                      <Input 
+                        id="exchangeRate-out" 
+                        name="exchangeRate" 
+                        type="number" 
+                        step="0.01"
+                        value={formData.exchangeRate} 
+                        onChange={handleInputChange} 
+                        placeholder="سعر الصرف مقابل الريال اليمني" 
+                      />
+                      {rateError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{rateError}</AlertDescription>
+                        </Alert>
+                      )}
+                      {rateWarning && !rateError && (
+                        <Alert className="border-yellow-500 text-yellow-700">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{rateWarning}</AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="amount-out" className="text-right">المبلغ</Label>
                   <Input id="amount-out" name="amount" type="number" value={formData.amount} onChange={handleInputChange} className="col-span-3" placeholder="0.00" />
@@ -276,160 +453,125 @@ export default function Payments() {
                   <Input id="date-out" name="date" type="date" value={formData.date} onChange={handleInputChange} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="method-out" className="text-right">طريقة الدفع</Label>
-                  <Select onValueChange={(v) => handleSelectChange("method", v)} defaultValue={formData.method}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر طريقة الدفع" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">نقدي</SelectItem>
-                      <SelectItem value="bank_transfer">بنكي</SelectItem>
-                      <SelectItem value="wallet">محفظة</SelectItem>
-                      <SelectItem value="exchange">صراف</SelectItem>
-                      <SelectItem value="check">شيك</SelectItem>
-                      <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="currency-out" className="text-right">العملة</Label>
-                  <Select onValueChange={(v) => handleSelectChange("currency", v)} defaultValue={formData.currency}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر العملة" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
-                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
-                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="reference-out" className="text-right">المرجع</Label>
                   <Input id="reference-out" name="reference" value={formData.reference} onChange={handleInputChange} className="col-span-3" placeholder="رقم الشيك / التحويل" />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" variant="destructive" onClick={() => handleSubmit('out')}>حفظ سند الصرف</Button>
+                <Button onClick={() => handleSubmit('out')} variant="destructive">حفظ سند الصرف</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">إجمالي المقبوضات (هذا الشهر)</CardTitle>
-            <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+            <ArrowUpRight className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{totalIn.toLocaleString()} ر.س</div>
+            <div className="text-2xl font-bold text-emerald-600">{totalIn.toFixed(2)} ر.ي</div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">إجمالي المدفوعات (هذا الشهر)</CardTitle>
-            <ArrowDownRight className="h-4 w-4 text-rose-500" />
+            <ArrowDownRight className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-600">{totalOut.toLocaleString()} ر.س</div>
+            <div className="text-2xl font-bold text-red-600">{totalOut.toFixed(2)} ر.ي</div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">صافي التدفق النقدي</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netFlow >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {netFlow.toLocaleString()} ر.س
+            <div className={`text-2xl font-bold ${netFlow >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {netFlow.toFixed(2)} ر.ي
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      {/* Search and Filter */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input placeholder="بحث برقم السند أو الاسم..." className="pr-9" />
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
-            <Filter className="w-4 h-4 ml-2" />
-            تصفية
-          </Button>
-        </div>
+        <Button variant="outline">
+          <Filter className="ml-2 h-4 w-4" />
+          تصفية
+        </Button>
       </div>
 
-      <div className="rounded-md border bg-card shadow-sm overflow-hidden">
+      {/* Table */}
+      <Card>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>رقم السند</TableHead>
-              <TableHead>الطرف</TableHead>
-              <TableHead>الصندوق/الحساب</TableHead>
-              <TableHead>التاريخ</TableHead>
-              <TableHead>طريقة الدفع</TableHead>
-              <TableHead>المبلغ</TableHead>
-              <TableHead className="text-left">إجراءات</TableHead>
+              <TableHead className="text-right">رقم السند</TableHead>
+              <TableHead className="text-right">الطرف</TableHead>
+              <TableHead className="text-right">الصندوق/الحساب</TableHead>
+              <TableHead className="text-right">التاريخ</TableHead>
+              <TableHead className="text-right">طريقة الدفع</TableHead>
+              <TableHead className="text-right">العملة</TableHead>
+              <TableHead className="text-right">سعر الصرف</TableHead>
+              <TableHead className="text-right">المبلغ</TableHead>
+              <TableHead className="text-right">إجراءات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   لا توجد سندات مسجلة. قم بإنشاء سند قبض أو صرف جديد.
                 </TableCell>
               </TableRow>
             ) : (
-              payments.map((payment) => {
-                const MethodIcon = methodMap[payment.method]?.icon || Wallet;
-                return (
-                  <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="font-medium">{payment.id}</TableCell>
-                    <TableCell>{payment.party}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-normal">
-                        {payment.box || "الصندوق الرئيسي"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{payment.date}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <MethodIcon className="w-4 h-4 text-muted-foreground" />
-                        <span>{methodMap[payment.method]?.label || payment.method}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-bold ${payment.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {payment.type === 'in' ? '+' : '-'}{payment.amount.toLocaleString()} ر.س
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                          <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
-                          <DropdownMenuItem>طباعة السند</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">إلغاء السند</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              payments.map((payment) => (
+                <TableRow key={payment.id}>
+                  <TableCell className="font-medium">{payment.id}</TableCell>
+                  <TableCell>{payment.party}</TableCell>
+                  <TableCell>{payment.account}</TableCell>
+                  <TableCell>{payment.date}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{methodMap[payment.method]?.label}</Badge>
+                  </TableCell>
+                  <TableCell>{payment.currency}</TableCell>
+                  <TableCell>{payment.exchangeRate.toFixed(2)}</TableCell>
+                  <TableCell className={payment.type === 'in' ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>
+                    {payment.type === 'in' ? '+' : '-'}{payment.amount.toFixed(2)} {payment.currency}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
+                        <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
+                        <DropdownMenuItem>طباعة</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
     </div>
   );
 }
