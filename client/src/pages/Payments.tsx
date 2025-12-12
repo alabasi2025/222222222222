@@ -58,9 +58,11 @@ const cashBoxes: any[] = [];
 const initialPayments: any[] = [];
 
 const methodMap: Record<string, { label: string, icon: any }> = {
-  bank_transfer: { label: "تحويل بنكي", icon: CreditCard },
-  check: { label: "شيك", icon: Banknote },
   cash: { label: "نقدي", icon: Wallet },
+  bank_transfer: { label: "بنكي", icon: CreditCard },
+  wallet: { label: "محفظة", icon: Wallet },
+  exchange: { label: "صراف", icon: Banknote },
+  check: { label: "شيك", icon: Banknote },
   credit_card: { label: "بطاقة ائتمان", icon: CreditCard },
 };
 
@@ -195,7 +197,9 @@ export default function Payments() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cash">نقدي</SelectItem>
-                      <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
+                      <SelectItem value="bank_transfer">بنكي</SelectItem>
+                      <SelectItem value="wallet">محفظة</SelectItem>
+                      <SelectItem value="exchange">صراف</SelectItem>
                       <SelectItem value="check">شيك</SelectItem>
                       <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
                     </SelectContent>
@@ -265,7 +269,9 @@ export default function Payments() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cash">نقدي</SelectItem>
-                      <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
+                      <SelectItem value="bank_transfer">بنكي</SelectItem>
+                      <SelectItem value="wallet">محفظة</SelectItem>
+                      <SelectItem value="exchange">صراف</SelectItem>
                       <SelectItem value="check">شيك</SelectItem>
                       <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
                     </SelectContent>
