@@ -452,13 +452,6 @@ export default function ChartOfAccounts() {
     setIsNewAccountOpen(true);
   };
 
-  // Helper to check if an account should be visible based on parent expansion
-  const isVisible = (account: any): boolean => {
-    if (!account.parentId) return true;
-    const parent = accounts.find(a => a.id === account.parentId);
-    return parent ? (parent.expanded && isVisible(parent)) : true;
-  };
-
   // Filter accounts based on current entity
   const filteredAccountsByEntity = accounts.filter(account => {
     // إذا كانت الشركة القابضة، اعرض جميع الحسابات
@@ -477,11 +470,18 @@ export default function ChartOfAccounts() {
     return !account.entityId; // عرض الحسابات العامة فقط
   });
 
+  // Helper to check if an account should be visible based on parent expansion
+  const isVisible = (account: any, filteredList: Account[]): boolean => {
+    if (!account.parentId) return true;
+    const parent = filteredList.find(a => a.id === account.parentId);
+    return parent ? (parent.expanded && isVisible(parent, filteredList)) : false;
+  };
+
   // Filter accounts for parent selection (only Groups can be parents)
   const groupAccounts = filteredAccountsByEntity.filter(a => a.isGroup);
 
   // Get visible accounts for rendering
-  const visibleAccounts = filteredAccountsByEntity.filter(isVisible);
+  const visibleAccounts = filteredAccountsByEntity.filter(acc => isVisible(acc, filteredAccountsByEntity));
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
