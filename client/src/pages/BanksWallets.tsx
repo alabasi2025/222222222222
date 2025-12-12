@@ -57,6 +57,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
+import { initialAccountsData } from "./ChartOfAccounts";
 
 // Multi-currency account structure
 interface CurrencyBalance {
@@ -250,6 +251,7 @@ export default function BanksWallets() {
     type: "bank",
     accountType: "current",
     accountNumber: "",
+    chartAccountId: "",
     allowedCurrencies: ["YER", "SAR", "USD"] as string[]
   });
 
@@ -263,6 +265,13 @@ export default function BanksWallets() {
     }
     setExpandedRows(newExpanded);
   };
+
+  // Get bank accounts from chart of accounts
+  const bankAccounts = initialAccountsData.filter(account => 
+    account.subtype === 'bank' && 
+    !account.isGroup && 
+    account.entityId === currentEntity.id
+  );
 
   // Filter items
   const visibleItems = banksWallets.filter(item => {
@@ -294,6 +303,7 @@ export default function BanksWallets() {
       type: newItem.type,
       accountType: newItem.accountType,
       accountNumber: newItem.accountNumber,
+      chartAccountId: newItem.chartAccountId,
       allowedCurrencies: newItem.allowedCurrencies,
       balances: newItem.allowedCurrencies.map(currency => ({
         currency,
@@ -518,6 +528,25 @@ export default function BanksWallets() {
                     className="col-span-3" 
                     placeholder="مثال: 774424555"
                   />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="chartAccountId" className="text-right">حساب من الدليل</Label>
+                  <Select 
+                    value={newItem.chartAccountId} 
+                    onValueChange={(v) => setNewItem({...newItem, chartAccountId: v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب المربوط" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">لا يوجد حساب</SelectItem>
+                      {bankAccounts.map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.id} - {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-4 items-start gap-4">
                   <Label className="text-right mt-2">العملات المسموح بها</Label>

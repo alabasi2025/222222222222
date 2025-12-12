@@ -52,6 +52,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
+import { initialAccountsData } from "./ChartOfAccounts";
 
 // Initial clean data
 const initialCashBoxes: any[] = [
@@ -112,6 +113,13 @@ export default function CashBoxes() {
     branchId: "", // الفرع المربوط
     responsiblePerson: "" // مسؤول الصندوق
   });
+
+  // Get cash accounts from chart of accounts
+  const cashAccounts = initialAccountsData.filter(account => 
+    account.subtype === 'cash' && 
+    !account.isGroup && 
+    account.entityId === currentEntity.id
+  );
 
   // Filter cash boxes based on current entity
   // In a real app, this would be a backend query. Here we filter by an 'entityId' property we'll add.
@@ -266,7 +274,12 @@ export default function CashBoxes() {
                       <SelectValue placeholder="اختر الحساب المربوط" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">لا يوجد حساب</SelectItem>
+                      <SelectItem value="">لا يوجد حساب</SelectItem>
+                      {cashAccounts.map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.id} - {account.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
