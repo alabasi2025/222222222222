@@ -62,6 +62,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
 import { useLocation } from "wouter";
+import { accountsApi } from "@/lib/api";
 import {
   DndContext,
   closestCenter,
@@ -92,272 +93,19 @@ interface Account {
   isGroup: boolean;
   subtype: string;
   allowedCurrencies: string[];
-  entityId?: string; // معرف الوحدة التي ينتمي لها الحساب
-  branchId?: string; // معرف الفرع التي ينتمي له الحساب (للحسابات الفرعية)
+  entityId?: string;
+  branchId?: string;
 }
 
 // Account Subtypes
 const accountSubtypes = [
-  { value: "general", label: "عام", icon: FileText },
-  { value: "cash", label: "صندوق / نقدية", icon: Wallet },
-  { value: "bank", label: "بنك", icon: Landmark },
-  { value: "receivable", label: "عميل (ذمم مدينة)", icon: Users },
-  { value: "payable", label: "مورد (ذمم دائنة)", icon: Users },
-  { value: "inventory", label: "مخزون", icon: Package },
-  { value: "cost_of_goods", label: "تكلفة بضاعة", icon: Package },
-  { value: "expense", label: "مصروف", icon: FileText },
-  { value: "income", label: "إيراد", icon: FileText },
-  { value: "equity", label: "حقوق ملكية", icon: FileText },
-  { value: "tax", label: "ضريبة", icon: FileText },
-];
-
-// Initial Mock data with Banks, Exchanges, and Wallets accounts
-export const initialAccountsData: Account[] = [
-  {
-    id: "1",
-    name: "الأصول المتداولة",
-    type: "asset",
-    level: 1,
-    balance: 0,
-    hasChildren: true,
-    expanded: true,
-    parentId: null,
-    isGroup: true,
-    subtype: "general",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.1",
-    name: "البنوك",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: true,
-    expanded: true,
-    parentId: "1",
-    isGroup: true,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.2",
-    name: "الصرافين",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: true,
-    expanded: true,
-    parentId: "1",
-    isGroup: true,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.3",
-    name: "المحافظ",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: true,
-    expanded: true,
-    parentId: "1",
-    isGroup: true,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  // Bank Accounts
-  {
-    id: "1.1.1",
-    name: "الكريمي الحديدة - حساب جاري",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.1",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.1.2",
-    name: "الكريمي الحديدة - حساب توفير",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.1",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.1.3",
-    name: "الكريمي صنعاء - حساب جاري",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.1",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.1.4",
-    name: "الكريمي صنعاء - حساب توفير",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.1",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  // Exchange Offices
-  {
-    id: "1.2.1",
-    name: "الحوشبي للصرافة",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.2",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  // Mobile Wallets
-  {
-    id: "1.3.1",
-    name: "محفظة جوالي - 774424555",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.3",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.3.2",
-    name: "محفظة جوالي - 771506017",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.3",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.3.3",
-    name: "محفظة جيب",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.3",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  {
-    id: "1.3.4",
-    name: "محفظة ون كاش",
-    type: "asset",
-    level: 3,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "1.3",
-    isGroup: false,
-    subtype: "bank",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-002"
-  },
-  // Cash Boxes for Hodeidah Unit
-  {
-    id: "2",
-    name: "الصناديق",
-    type: "asset",
-    level: 1,
-    balance: 0,
-    hasChildren: true,
-    expanded: true,
-    parentId: null,
-    isGroup: true,
-    subtype: "cash",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-001"
-  },
-  {
-    id: "2.1",
-    name: "صندوق التحصيل والتوريد الدهمية",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "2",
-    isGroup: false,
-    subtype: "cash",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-001",
-    branchId: "BR-003"
-  },
-  {
-    id: "2.2",
-    name: "صندوق التحصيل والتوريد الصبالية",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "2",
-    isGroup: false,
-    subtype: "cash",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-001",
-    branchId: "BR-004"
-  },
-  {
-    id: "2.3",
-    name: "صندوق التحصيل والتوريد غليل",
-    type: "asset",
-    level: 2,
-    balance: 0,
-    hasChildren: false,
-    expanded: false,
-    parentId: "2",
-    isGroup: false,
-    subtype: "cash",
-    allowedCurrencies: ["YER", "SAR", "USD"],
-    entityId: "UNIT-001",
-    branchId: "BR-005"
-  }
+  { value: "general", label: "عام" },
+  { value: "cash", label: "نقدية" },
+  { value: "bank", label: "بنك" },
+  { value: "receivable", label: "مستحقات" },
+  { value: "payable", label: "مدفوعات" },
+  { value: "inventory", label: "مخزون" },
+  { value: "fixed_asset", label: "أصول ثابتة" },
 ];
 
 const typeMap: Record<string, { label: string, color: string }> = {
@@ -369,9 +117,10 @@ const typeMap: Record<string, { label: string, color: string }> = {
 };
 
 export default function ChartOfAccounts() {
-  const { currentEntity } = useEntity();
+  const { currentEntity, isEntityVisible } = useEntity();
   const [location, setLocation] = useLocation();
-  const [accounts, setAccounts] = useState(initialAccountsData);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
 
@@ -382,26 +131,48 @@ export default function ChartOfAccounts() {
     })
   );
 
+  // Load accounts from API
+  useEffect(() => {
+    loadAccounts();
+  }, []);
+
+  const loadAccounts = async () => {
+    try {
+      setLoading(true);
+      const data = await accountsApi.getAll();
+      setAccounts(data.map((acc: any) => ({
+        ...acc,
+        expanded: false,
+        hasChildren: data.some((a: any) => a.parentId === acc.id)
+      })));
+    } catch (error) {
+      console.error('Failed to load accounts:', error);
+      toast.error('فشل تحميل الحسابات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle query params for quick actions
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('action') === 'add') {
       setIsNewAccountOpen(true);
-      // Clean up URL without refreshing
       window.history.replaceState({}, '', '/coa');
     }
   }, [location]);
+
   const [newAccount, setNewAccount] = useState({
     name: "",
     code: "",
     type: "asset",
     parent: "none",
-    isGroup: true, // Default to Group (Main)
+    isGroup: true,
     subtype: "general",
-    currencies: ["YER", "SAR", "USD"] as string[], // العملات المدعومة
-    defaultCurrency: "YER" as string, // العملة الافتراضية
-    accountGroup: "none" as string, // مجموعة الحسابات
-    branchId: undefined as string | undefined // الفرع المربوط
+    currencies: ["YER", "SAR", "USD"] as string[],
+    defaultCurrency: "YER" as string,
+    accountGroup: "none" as string,
+    branchId: undefined as string | undefined
   });
 
   const toggleExpand = (id: string) => {
@@ -410,667 +181,368 @@ export default function ChartOfAccounts() {
     ));
   };
 
-  const handleAddAccount = () => {
+  const handleAddAccount = async () => {
     if (!newAccount.name || !newAccount.code) {
       toast.error("يرجى تعبئة جميع الحقول المطلوبة");
       return;
     }
 
-    // Check if we're editing an existing account
-    if (editingAccountId) {
-      // Update existing account
+    try {
       const parent = accounts.find(a => a.id === newAccount.parent);
       const level = parent ? parent.level + 1 : 1;
-      
-      setAccounts(accounts.map(acc => 
-        acc.id === editingAccountId ? {
-          ...acc,
-          id: newAccount.code,
-          name: newAccount.name,
-          type: newAccount.type,
-          level: level,
-          parentId: newAccount.parent === "none" ? null : newAccount.parent,
-          isGroup: newAccount.isGroup,
-          subtype: newAccount.subtype,
-          currencies: newAccount.currencies || ["YER", "SAR", "USD"],
-          defaultCurrency: newAccount.defaultCurrency || 'YER',
-          accountGroup: newAccount.accountGroup === 'none' ? undefined : newAccount.accountGroup,
-          branchId: newAccount.branchId,
-          entityId: currentEntity.type === 'unit' ? currentEntity.id : currentEntity.type === 'branch' ? currentEntity.parentId || undefined : undefined
-        } : acc
-      ));
-      toast.success("تم تحديث الحساب بنجاح");
-    } else {
-      // Add new account
-      const parent = accounts.find(a => a.id === newAccount.parent);
-      
-      // Validation: Cannot add child to a non-group account
-      if (parent && !parent.isGroup) {
-        toast.error("لا يمكن إضافة حساب فرعي لحساب ليس رئيسياً (مجموعة)");
-        return;
-      }
 
-      const level = parent ? parent.level + 1 : 1;
-      
-      const newAcc: Account = {
+      const accountData = {
         id: newAccount.code,
         name: newAccount.name,
         type: newAccount.type,
         level: level,
         balance: 0,
-        hasChildren: false,
-        expanded: false,
         parentId: newAccount.parent === "none" ? null : newAccount.parent,
         isGroup: newAccount.isGroup,
         subtype: newAccount.subtype,
-        currencies: newAccount.currencies || ["YER", "SAR", "USD"],
+        allowedCurrencies: newAccount.currencies || ["YER", "SAR", "USD"],
         defaultCurrency: newAccount.defaultCurrency || 'YER',
-        accountGroup: newAccount.accountGroup === 'none' ? undefined : newAccount.accountGroup,
-        branchId: newAccount.branchId,
-        entityId: currentEntity.type === 'unit' ? currentEntity.id : currentEntity.type === 'branch' ? currentEntity.parentId || undefined : undefined
+        accountGroup: newAccount.accountGroup === 'none' ? null : newAccount.accountGroup,
+        branchId: newAccount.branchId || null,
+        entityId: currentEntity.type === 'unit' ? currentEntity.id : 
+                  currentEntity.type === 'branch' ? currentEntity.parentId || null : null
       };
 
-      // If adding to a parent, update parent to have children and be expanded
-      let updatedAccounts = [...accounts];
-      if (parent) {
-        updatedAccounts = updatedAccounts.map(acc => 
-          acc.id === parent.id ? { ...acc, hasChildren: true, expanded: true } : acc
-        );
+      if (editingAccountId) {
+        // Update existing account
+        await accountsApi.update(editingAccountId, accountData);
+        toast.success("تم تحديث الحساب بنجاح");
+      } else {
+        // Add new account
+        if (parent && !parent.isGroup) {
+          toast.error("لا يمكن إضافة حساب فرعي لحساب ليس رئيسياً (مجموعة)");
+          return;
+        }
+        await accountsApi.create(accountData);
+        toast.success("تم إضافة الحساب بنجاح");
       }
 
-      updatedAccounts.push(newAcc);
-      setAccounts(updatedAccounts);
-      toast.success("تم إضافة الحساب بنجاح");
+      // Reload accounts
+      await loadAccounts();
+      
+      // Reset form
+      setNewAccount({
+        name: "",
+        code: "",
+        type: "asset",
+        parent: "none",
+        isGroup: true,
+        subtype: "general",
+        currencies: ["YER", "SAR", "USD"],
+        defaultCurrency: "YER",
+        accountGroup: "none",
+        branchId: undefined
+      });
+      setIsNewAccountOpen(false);
+      setEditingAccountId(null);
+    } catch (error: any) {
+      console.error('Failed to save account:', error);
+      toast.error(error.message || 'فشل حفظ الحساب');
     }
-
-    // Reset form
-    setIsNewAccountOpen(false);
-    setEditingAccountId(null);
-    setNewAccount({ 
-      name: "", 
-      code: "", 
-      type: "asset", 
-      parent: "none", 
-      isGroup: true, 
-      subtype: "general",
-      currencies: ["YER", "SAR", "USD"],
-      defaultCurrency: "YER",
-      accountGroup: "none",
-      branchId: undefined
-    });
   };
 
-  const handleDeleteAccount = (id: string) => {
-    const hasChildren = accounts.some(a => a.parentId === id);
-    if (hasChildren) {
-      toast.error("لا يمكن حذف حساب رئيسي يحتوي على حسابات فرعية");
-      return;
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا الحساب؟")) return;
+
+    try {
+      await accountsApi.delete(id);
+      toast.success("تم حذف الحساب بنجاح");
+      await loadAccounts();
+    } catch (error: any) {
+      console.error('Failed to delete account:', error);
+      toast.error(error.message || 'فشل حذف الحساب');
     }
-    setAccounts(accounts.filter(a => a.id !== id));
-    toast.success("تم حذف الحساب بنجاح");
   };
 
-  const handleEditAccount = (account: any) => {
-    // Set the form to edit mode with the selected account data
+  const handleEditAccount = (account: Account) => {
+    setEditingAccountId(account.id);
     setNewAccount({
       name: account.name,
       code: account.id,
       type: account.type,
-      parent: account.parentId || 'none',
+      parent: account.parentId || "none",
       isGroup: account.isGroup,
-      subtype: account.subtype || '',
-      currencies: account.currencies || ["YER", "SAR", "USD"],
-      defaultCurrency: account.defaultCurrency || 'YER',
-      accountGroup: account.accountGroup || 'none',
-      branchId: account.branchId || undefined
+      subtype: account.subtype,
+      currencies: account.allowedCurrencies || ["YER", "SAR", "USD"],
+      defaultCurrency: (account as any).defaultCurrency || 'YER',
+      accountGroup: (account as any).accountGroup || 'none',
+      branchId: account.branchId
     });
-    setEditingAccountId(account.id);
     setIsNewAccountOpen(true);
   };
 
-  // Filter accounts based on current entity
-  const filteredAccountsByEntity = accounts.filter(account => {
-    // الشركة القابضة ليس لها حسابات خاصة بها
-    if (currentEntity.type === 'holding') return false;
-    
-    // إذا كانت وحدة، اعرض فقط حسابات هذه الوحدة
-    if (currentEntity.type === 'unit') {
-      return account.entityId === currentEntity.id || !account.entityId; // عرض الحسابات العامة أيضاً
-    }
-    
-    // إذا كان فرع، اعرض حسابات الوحدة الأم
-    if (currentEntity.type === 'branch' && currentEntity.parentId) {
-      return account.entityId === currentEntity.parentId || !account.entityId;
-    }
-    
-    return !account.entityId; // عرض الحسابات العامة فقط
-  });
-
-  // Helper to check if an account should be visible based on parent expansion
-  const isVisible = (account: any, filteredList: Account[]): boolean => {
-    if (!account.parentId) return true;
-    const parent = filteredList.find(a => a.id === account.parentId);
-    return parent ? (parent.expanded && isVisible(parent, filteredList)) : false;
-  };
-
-  // Filter accounts for parent selection (only Groups can be parents)
-  const groupAccounts = filteredAccountsByEntity.filter(a => a.isGroup);
-
-  // Get visible accounts for rendering
-  const visibleAccounts = filteredAccountsByEntity.filter(acc => isVisible(acc, filteredAccountsByEntity));
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (!over || active.id === over.id) return;
 
-    setAccounts((items) => {
-      const oldIndex = items.findIndex((item) => item.id === active.id);
-      const newIndex = items.findIndex((item) => item.id === over.id);
-      
-      if (oldIndex === -1 || newIndex === -1) return items;
+    const oldIndex = accounts.findIndex((acc) => acc.id === active.id);
+    const newIndex = accounts.findIndex((acc) => acc.id === over.id);
 
-      // 1. Identify the block to move (item + all its descendants)
-      const activeItem = items[oldIndex];
-      let blockSize = 1;
-      
-      // Iterate starting from the next item
-      for (let i = oldIndex + 1; i < items.length; i++) {
-        // If the item has a deeper level, it's a descendant (assuming strict order)
-        if (items[i].level > activeItem.level) {
-          blockSize++;
-        } else {
-          // Found a sibling or parent (level <= activeItem.level), stop
-          break;
-        }
-      }
-      
-      // 2. Extract the block
-      const newItems = [...items];
-      const block = newItems.splice(oldIndex, blockSize);
-      
-      // 3. Find the new insertion index in the modified array
-      // We need to find where the 'over' item ended up
-      let targetIndex = newItems.findIndex(item => item.id === over.id);
-      
-      if (targetIndex === -1) {
-        // Should not happen unless we dragged onto a descendant (which is hidden/removed)
-        return items; 
-      }
-
-      // If we are dragging down (original position was above new position),
-      // we generally want to insert AFTER the target item.
-      // However, if the target item has children, we might want to skip them too?
-      // For simplicity in this "reorder" mode, we insert immediately after/before the target row.
-      // If dragging down: insert after target.
-      // If dragging up: insert before target.
-      
-      if (oldIndex < newIndex) {
-        targetIndex += 1;
-      }
-      
-      // Insert the block at the new position
-      newItems.splice(targetIndex, 0, ...block);
-      
-      return newItems;
-    });
+    setAccounts(arrayMove(accounts, oldIndex, newIndex));
+    toast.success("تم تحديث ترتيب الحسابات");
   };
 
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            شجرة الحسابات
-            <Badge variant="outline" className="mr-2 font-normal">
-              {currentEntity.name}
-            </Badge>
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            {currentEntity.type === 'holding' 
-              ? "الدليل المحاسبي الموحد للشركة القابضة" 
-              : "الدليل المحاسبي الخاص بالوحدة/الفرع"}
-          </p>
+  // Filter accounts based on current entity
+  const filteredAccounts = accounts.filter(acc => {
+    if (!acc.entityId) return false;
+    return isEntityVisible(acc.entityId);
+  });
+
+  // Build tree structure
+  const buildTree = (parentId: string | null = null, level: number = 0): Account[] => {
+    return filteredAccounts
+      .filter(acc => acc.parentId === parentId)
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .flatMap(acc => {
+        const children = buildTree(acc.id, level + 1);
+        return acc.expanded ? [acc, ...children] : [acc];
+      });
+  };
+
+  const visibleAccounts = buildTree();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري تحميل الحسابات...</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 ml-2" />
-            تصدير
-          </Button>
-          
-          <Dialog open={isNewAccountOpen} onOpenChange={(open) => {
-            setIsNewAccountOpen(open);
-            if (!open) {
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <FolderTree className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">شجرة الحسابات</h1>
+            <p className="text-sm text-muted-foreground">
+              {currentEntity.name}
+            </p>
+          </div>
+        </div>
+
+        <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => {
               setEditingAccountId(null);
-              setNewAccount({ 
-                name: "", 
-                code: "", 
-                type: "asset", 
-                parent: "none", 
-                isGroup: true, 
-                subtype: "general" 
+              setNewAccount({
+                name: "",
+                code: "",
+                type: "asset",
+                parent: "none",
+                isGroup: true,
+                subtype: "general",
+                currencies: ["YER", "SAR", "USD"],
+                defaultCurrency: "YER",
+                accountGroup: "none",
+                branchId: undefined
               });
-            }
-          }}>
-            <DialogContent className="max-w-2xl flex flex-col p-0 gap-0" style={{maxHeight: '90vh'}}>
-              <DialogHeader className="p-6 pb-2 border-b">
-                <DialogTitle>{editingAccountId ? "تعديل الحساب" : "إضافة حساب جديد"}</DialogTitle>
-                <DialogDescription>
-                  {editingAccountId ? "قم بتعديل بيانات الحساب." : "أدخل تفاصيل الحساب الجديد لإضافته إلى الشجرة."}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-6 p-6 overflow-y-auto" style={{flex: '1 1 auto', minHeight: 0}}>
-                
-                {/* Account Nature (Group vs Ledger) */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right font-bold">نوع الحساب</Label>
-                  <div className="col-span-3 flex gap-4">
-                    <div 
-                      className={`flex-1 p-4 border rounded-lg cursor-pointer transition-all ${newAccount.isGroup ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-muted/50'}`}
-                      onClick={() => setNewAccount({...newAccount, isGroup: true})}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Folder className={`w-5 h-5 ${newAccount.isGroup ? 'text-primary' : 'text-muted-foreground'}`} />
-                        <span className="font-bold">حساب رئيسي (مجموعة)</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">يستخدم للتنظيم والترتيب، ولا يمكن إجراء عمليات مالية عليه مباشرة.</p>
-                    </div>
-                    
-                    <div 
-                      className={`flex-1 p-4 border rounded-lg cursor-pointer transition-all ${!newAccount.isGroup ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-muted/50'}`}
-                      onClick={() => setNewAccount({...newAccount, isGroup: false})}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <FileText className={`w-5 h-5 ${!newAccount.isGroup ? 'text-primary' : 'text-muted-foreground'}`} />
-                        <span className="font-bold">حساب فرعي (تحليلي)</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">يستخدم لتسجيل العمليات المالية والقيود اليومية.</p>
-                    </div>
-                  </div>
-                </div>
+            }}>
+              <Plus className="h-4 w-4 ml-2" />
+              حساب جديد
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editingAccountId ? 'تعديل الحساب' : 'إضافة حساب جديد'}</DialogTitle>
+            </DialogHeader>
 
-                {/* Subtype Selection (Only for Ledger Accounts) */}
-                {!newAccount.isGroup && (
-                  <div className="grid grid-cols-4 items-center gap-4 animate-in fade-in slide-in-from-top-2">
-                    <Label htmlFor="subtype" className="text-right font-bold">تصنيف الحساب</Label>
-                    <div className="col-span-3">
-                      <Select 
-                        value={newAccount.subtype} 
-                        onValueChange={(value) => setNewAccount({...newAccount, subtype: value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر تصنيف الحساب" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accountSubtypes.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              <div className="flex items-center gap-2">
-                                <type.icon className="w-4 h-4 text-muted-foreground" />
-                                {type.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-1">يساعد التصنيف في أتمتة العمليات والتقارير (مثل ربط العملاء والموردين).</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right font-bold">اسم الحساب</Label>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>اسم الحساب</Label>
                   <Input
-                    id="name"
                     value={newAccount.name}
-                    onChange={(e) => setNewAccount({...newAccount, name: e.target.value})}
-                    className="col-span-3"
-                    placeholder="مثال: الصندوق الرئيسي"
+                    onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
+                    placeholder="مثال: البنك الأهلي"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="code" className="text-right font-bold">رمز الحساب</Label>
+                <div>
+                  <Label>رمز الحساب</Label>
                   <Input
-                    id="code"
                     value={newAccount.code}
-                    onChange={(e) => setNewAccount({...newAccount, code: e.target.value})}
-                    className="col-span-3"
-                    placeholder="مثال: 1101"
+                    onChange={(e) => setNewAccount({ ...newAccount, code: e.target.value })}
+                    placeholder="مثال: 1.1.1"
+                    disabled={!!editingAccountId}
                   />
                 </div>
-                {/* طبيعة الحساب - يظهر فقط للحسابات الفرعية */}
-                {newAccount.isGroup === false && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="type" className="text-right font-bold">طبيعة الحساب</Label>
-                    <Select 
-                      value={newAccount.type} 
-                      onValueChange={(value) => setNewAccount({...newAccount, type: value})}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="اختر النوع" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asset">أصول</SelectItem>
-                        <SelectItem value="liability">خصوم</SelectItem>
-                        <SelectItem value="equity">حقوق ملكية</SelectItem>
-                        <SelectItem value="income">إيرادات</SelectItem>
-                        <SelectItem value="expense">مصروفات</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                
-                {/* العملات - يظهر فقط للحسابات الفرعية */}
-                {newAccount.isGroup === false && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-4 items-start gap-4">
-                      <Label className="text-right font-bold pt-2">العملات المدعومة</Label>
-                      <div className="col-span-3 space-y-3">
-                        <div className="flex items-center space-x-2 space-x-reverse">
-                          <Checkbox 
-                            id="currency-yer"
-                            checked={newAccount.currencies.includes("YER")}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setNewAccount({...newAccount, currencies: [...newAccount.currencies, "YER"]});
-                              } else {
-                                setNewAccount({...newAccount, currencies: newAccount.currencies.filter(c => c !== "YER")});
-                              }
-                            }}
-                          />
-                          <label htmlFor="currency-yer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            ريال يمني (YER)
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2 space-x-reverse">
-                          <Checkbox 
-                            id="currency-sar"
-                            checked={newAccount.currencies.includes("SAR")}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setNewAccount({...newAccount, currencies: [...newAccount.currencies, "SAR"]});
-                              } else {
-                                setNewAccount({...newAccount, currencies: newAccount.currencies.filter(c => c !== "SAR")});
-                              }
-                            }}
-                          />
-                          <label htmlFor="currency-sar" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            ريال سعودي (SAR)
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2 space-x-reverse">
-                          <Checkbox 
-                            id="currency-usd"
-                            checked={newAccount.currencies.includes("USD")}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setNewAccount({...newAccount, currencies: [...newAccount.currencies, "USD"]});
-                              } else {
-                                setNewAccount({...newAccount, currencies: newAccount.currencies.filter(c => c !== "USD")});
-                              }
-                            }}
-                          />
-                          <label htmlFor="currency-usd" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            دولار أمريكي (USD)
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* العملة الافتراضية */}
-                    {newAccount.currencies.length > 0 && (
-                      <div className="grid grid-cols-4 items-start gap-4">
-                        <Label className="text-right font-bold pt-2">العملة الافتراضية</Label>
-                        <RadioGroup 
-                          value={newAccount.defaultCurrency} 
-                          onValueChange={(value) => setNewAccount({...newAccount, defaultCurrency: value})}
-                          className="col-span-3 space-y-2"
-                        >
-                          {newAccount.currencies.includes("YER") && (
-                            <div className="flex items-center space-x-2 space-x-reverse">
-                              <RadioGroupItem value="YER" id="default-yer" />
-                              <label htmlFor="default-yer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                ريال يمني
-                              </label>
-                            </div>
-                          )}
-                          {newAccount.currencies.includes("SAR") && (
-                            <div className="flex items-center space-x-2 space-x-reverse">
-                              <RadioGroupItem value="SAR" id="default-sar" />
-                              <label htmlFor="default-sar" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                ريال سعودي
-                              </label>
-                            </div>
-                          )}
-                          {newAccount.currencies.includes("USD") && (
-                            <div className="flex items-center space-x-2 space-x-reverse">
-                              <RadioGroupItem value="USD" id="default-usd" />
-                              <label htmlFor="default-usd" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                دولار أمريكي
-                              </label>
-                            </div>
-                          )}
-                        </RadioGroup>
-                      </div>
-                    )}
-                  </div>
-                )}
+              </div>
 
-                {/* حقل مجموعة الحسابات (اختياري) - يظهر فقط للحسابات الفرعية */}
-                {!newAccount.isGroup && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="accountGroup" className="text-right font-bold">مجموعة الحسابات (اختياري)</Label>
-                    <Select 
-                      value={newAccount.accountGroup} 
-                      onValueChange={(value) => setNewAccount({...newAccount, accountGroup: value})}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="اختر مجموعة الحسابات" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">بدون مجموعة</SelectItem>
-                        <SelectItem value="1">أعمال الموظفين</SelectItem>
-                        <SelectItem value="2">أعمال الموظفين الدهمية</SelectItem>
-                        <SelectItem value="3">أعمال الموظفين الصبالية</SelectItem>
-                        <SelectItem value="4">أعمال الموظفين غليل</SelectItem>
-                        {/* سيتم تحميل المجموعات من API لاحقاً */}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* خانة اختيار الفرع - يظهر فقط للحسابات الفرعية */}
-                {!newAccount.isGroup && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="branchId" className="text-right font-bold">الفرع المربوط (اختياري)</Label>
-                    <Select 
-                      value={newAccount.branchId || "none"} 
-                      onValueChange={(value) => setNewAccount({...newAccount, branchId: value === "none" ? undefined : value})}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="اختر الفرع" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">بدون فرع (عام للوحدة)</SelectItem>
-                        {entities.filter(e => e.type === 'branch' && e.parentId === currentEntity.id).map((branch) => (
-                          <SelectItem key={branch.id} value={branch.id}>
-                            {branch.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="parent" className="text-right font-bold">الحساب الرئيسي</Label>
-                  <Select 
-                    value={newAccount.parent} 
-                    onValueChange={(value) => setNewAccount({...newAccount, parent: value})}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر الحساب الرئيسي" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>نوع الحساب</Label>
+                  <Select value={newAccount.type} onValueChange={(value) => setNewAccount({ ...newAccount, type: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">بدون (حساب رئيسي)</SelectItem>
-                      {groupAccounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.id} - {acc.name}
-                        </SelectItem>
+                      <SelectItem value="asset">أصول</SelectItem>
+                      <SelectItem value="liability">خصوم</SelectItem>
+                      <SelectItem value="equity">حقوق ملكية</SelectItem>
+                      <SelectItem value="income">إيرادات</SelectItem>
+                      <SelectItem value="expense">مصروفات</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>الحساب الأب</Label>
+                  <Select value={newAccount.parent} onValueChange={(value) => setNewAccount({ ...newAccount, parent: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">لا يوجد (حساب رئيسي)</SelectItem>
+                      {filteredAccounts.filter(acc => acc.isGroup).map(acc => (
+                        <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <DialogFooter className="p-6 border-t bg-background flex gap-2 justify-end" style={{flexShrink: 0}}>
-                <Button variant="outline" onClick={() => setIsNewAccountOpen(false)}>إلغاء</Button>
-                <Button onClick={handleAddAccount} className="bg-blue-600 hover:bg-blue-700 text-white">{editingAccountId ? "تحديث الحساب" : "حفظ الحساب"}</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
 
-          <Button 
-            onClick={() => setIsNewAccountOpen(true)} 
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            إضافة حساب
-          </Button>
-          
-          <Button variant="outline" size="icon" onClick={() => setAccounts(accounts.map(a => ({...a, expanded: false})))}>
-            <FolderTree className="w-4 h-4" />
-          </Button>
-        </div>
+              <div>
+                <Label>نوع الحساب الفرعي</Label>
+                <Select value={newAccount.subtype} onValueChange={(value) => setNewAccount({ ...newAccount, subtype: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accountSubtypes.map(st => (
+                      <SelectItem key={st.value} value={st.value}>{st.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>هل هذا حساب رئيسي (مجموعة)؟</Label>
+                <RadioGroup value={newAccount.isGroup ? "group" : "account"} onValueChange={(value) => setNewAccount({ ...newAccount, isGroup: value === "group" })}>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <RadioGroupItem value="group" id="group" />
+                    <Label htmlFor="group">حساب رئيسي (مجموعة)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <RadioGroupItem value="account" id="account" />
+                    <Label htmlFor="account">حساب فرعي</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label>العملات المسموح بها</Label>
+                <div className="flex gap-4 mt-2">
+                  {["YER", "SAR", "USD"].map(currency => (
+                    <div key={currency} className="flex items-center space-x-2 space-x-reverse">
+                      <Checkbox
+                        checked={newAccount.currencies.includes(currency)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setNewAccount({ ...newAccount, currencies: [...newAccount.currencies, currency] });
+                          } else {
+                            setNewAccount({ ...newAccount, currencies: newAccount.currencies.filter(c => c !== currency) });
+                          }
+                        }}
+                      />
+                      <Label>{currency}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsNewAccountOpen(false)}>
+                إلغاء
+              </Button>
+              <Button onClick={handleAddAccount}>
+                <Save className="h-4 w-4 ml-2" />
+                {editingAccountId ? 'تحديث' : 'حفظ'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="flex gap-4 items-center bg-muted/30 p-4 rounded-lg border">
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="بحث في الحسابات..." className="pr-9 bg-background" />
-        </div>
-        <Button variant="outline" size="icon">
-          <Filter className="w-4 h-4" />
-        </Button>
-      </div>
-
-      <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[40px]"></TableHead>
-                <TableHead className="w-[300px] text-right">اسم الحساب</TableHead>
-                <TableHead className="text-right">الرمز</TableHead>
-                <TableHead className="text-right">النوع</TableHead>
-                <TableHead className="text-right">التصنيف</TableHead>
-                <TableHead className="text-right">الرصيد</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <SortableContext 
-                items={visibleAccounts.map(a => a.id)}
-                strategy={verticalListSortingStrategy}
-              >
+      {/* Accounts Table */}
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12"></TableHead>
+              <TableHead>اسم الحساب</TableHead>
+              <TableHead>رمز الحساب</TableHead>
+              <TableHead>النوع</TableHead>
+              <TableHead>الرصيد</TableHead>
+              <TableHead className="w-12"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={visibleAccounts.map(a => a.id)} strategy={verticalListSortingStrategy}>
                 {visibleAccounts.map((account) => (
                   <SortableRow key={account.id} id={account.id}>
-                    <TableCell className="font-medium">
-                      <div 
-                        className="flex items-center gap-2"
-                        style={{ paddingRight: `${(account.level - 1) * 24}px` }}
-                      >
-                        {account.hasChildren ? (
-                          <button 
-                            onClick={() => toggleExpand(account.id)}
-                            className="p-1 hover:bg-muted rounded-sm transition-colors"
-                          >
-                            {account.expanded ? (
-                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                            )}
-                          </button>
-                        ) : (
-                          <span className="w-6" />
-                        )}
-                        
-                        {account.isGroup ? (
-                          <Folder className={`w-4 h-4 ${account.expanded ? 'text-amber-500' : 'text-amber-400/80'}`} />
-                        ) : (
-                          <FileText className="w-4 h-4 text-blue-500" />
-                        )}
-                        
-                        <span className={account.isGroup ? "font-bold text-foreground" : "text-muted-foreground"}>
-                          {account.name}
-                        </span>
-                      </div>
-                    </TableCell>
                     <TableCell>
-                      <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                        {account.id}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant="secondary" 
-                        className={`${typeMap[account.type]?.color} border`}
-                      >
-                        {typeMap[account.type]?.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {!account.isGroup && account.subtype && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          {(() => {
-                            const subtype = accountSubtypes.find(s => s.value === account.subtype);
-                            if (!subtype) return null;
-                            const Icon = subtype.icon;
-                            return (
-                              <>
-                                <Icon className="w-3.5 h-3.5" />
-                                <span>{subtype.label}</span>
-                              </>
-                            );
-                          })()}
-                        </div>
+                      {account.hasChildren && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpand(account.id)}
+                        >
+                          {account.expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className={account.balance < 0 ? "text-red-600 font-medium" : "font-medium"}>
-                        {account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 justify-end">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          onClick={() => handleEditAccount(account)}
-                        >
-                          <Edit className="h-4 w-4 ml-1" />
-                          تعديل
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteAccount(account.id)}
-                        >
-                          <Trash2 className="h-4 w-4 ml-1" />
-                          حذف
-                        </Button>
+                      <div className="flex items-center gap-2" style={{ paddingRight: `${account.level * 20}px` }}>
+                        {account.isGroup ? <Folder className="h-4 w-4 text-amber-500" /> : <FileText className="h-4 w-4 text-blue-500" />}
+                        <span>{account.name}</span>
                       </div>
+                    </TableCell>
+                    <TableCell>{account.id}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={typeMap[account.type]?.color}>
+                        {typeMap[account.type]?.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{account.balance.toLocaleString()} ريال</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEditAccount(account)}>
+                            <Edit className="h-4 w-4 ml-2" />
+                            تعديل
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteAccount(account.id)} className="text-red-600">
+                            <Trash2 className="h-4 w-4 ml-2" />
+                            حذف
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </SortableRow>
                 ))}
               </SortableContext>
-            </TableBody>
-          </Table>
-        </DndContext>
+            </DndContext>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

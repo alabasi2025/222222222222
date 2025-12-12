@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { entitiesApi } from '../lib/api';
 
 export type EntityType = 'holding' | 'unit' | 'branch';
 
@@ -36,11 +37,55 @@ interface EntityContextType {
 const EntityContext = createContext<EntityContextType | undefined>(undefined);
 
 export function EntityProvider({ children }: { children: ReactNode }) {
-  const [entities, setEntities] = useState<Entity[]>(initialEntities);
-  const [currentEntity, setCurrentEntity] = useState<Entity>(initialEntities[1]); // وحدة العباسي خاص
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [currentEntity, setCurrentEntity] = useState<Entity | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load entities from API on mount
+  useEffect(() => {
+    loadEntities();
+  }, []);
+
+  const loadEntities = async () => {
+    try {
+      setLoading(true);
+      const data = await entitiesApi.getAll();
+      if (data.length === 0) {
+        // If no entities in DB, seed with initial data
+        await seedInitialEntities();
+        return;
+      }
+      setEntities(data);
+      // Set default entity to UNIT-002 or first unit
+      const defaultEntity = data.find((e: Entity) => e.id === 'UNIT-002') || data.find((e: Entity) => e.type === 'unit') || data[0];
+      setCurrentEntity(defaultEntity);
+    } catch (error) {
+      console.error('Failed to load entities:', error);
+      // Fallback to initial data if API fails
+      setEntities(initialEntities);
+      setCurrentEntity(initialEntities[1]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const seedInitialEntities = async () => {
+    try {
+      for (const entity of initialEntities) {
+        await entitiesApi.create(entity);
+      }
+      await loadEntities();
+    } catch (error) {
+      console.error('Failed to seed entities:', error);
+      setEntities(initialEntities);
+      setCurrentEntity(initialEntities[1]);
+      setLoading(false);
+    }
+  };
 
   // Update CSS variables when entity changes
   useEffect(() => {
+    if (!currentEntity) return;
     const color = getThemeColor(currentEntity.id);
     document.documentElement.style.setProperty('--primary', hexToHSL(color));
     // Also update ring color for focus states
@@ -129,6 +174,17 @@ export function EntityProvider({ children }: { children: ReactNode }) {
       setCurrentEntity(prev => ({ ...prev, logo }));
     }
   };
+
+  if (loading || !currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <EntityContext.Provider value={{ 

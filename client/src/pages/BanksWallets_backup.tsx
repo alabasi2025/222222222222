@@ -54,10 +54,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-import { banksWalletsApi, accountsApi } from "@/lib/api";
+import { initialAccountsData } from "./ChartOfAccounts";
 
 // Multi-currency account structure
 interface CurrencyBalance {
@@ -237,10 +237,8 @@ const initialBanksWallets: BankWalletAccount[] = [
 ];
 
 export default function BanksWallets() {
-  const { currentEntity } = useEntity();
-  const [banksWallets, setBanksWallets] = useState<BankWalletAccount[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { currentEntity, getThemeColor } = useEntity();
+  const [banksWallets, setBanksWallets] = useState<BankWalletAccount[]>(initialBanksWallets);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BankWalletAccount | null>(null);
@@ -257,28 +255,6 @@ export default function BanksWallets() {
     allowedCurrencies: ["YER", "SAR", "USD"] as string[]
   });
 
-  // Load data from API
-  useEffect(() => {
-    loadData();
-  }, [currentEntity.id]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [walletsData, accountsData] = await Promise.all([
-        banksWalletsApi.getAll(),
-        accountsApi.getAll()
-      ]);
-      setBanksWallets(walletsData);
-      setAccounts(accountsData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      toast.error('فشل تحميل البيانات');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Toggle row expansion
   const toggleRow = (id: string) => {
     const newExpanded = new Set(expandedRows);
@@ -291,7 +267,7 @@ export default function BanksWallets() {
   };
 
   // Get bank accounts from chart of accounts
-  const allBankAccounts = accounts.filter(account => 
+  const allBankAccounts = initialAccountsData.filter(account => 
     account.subtype === 'bank' && 
     !account.isGroup && 
     account.entityId === currentEntity.id
@@ -318,7 +294,7 @@ export default function BanksWallets() {
     return matchesSearch && matchesTypeFilter;
   });
 
-  const handleAddItem = async () => {
+  const handleAddItem = () => {
     if (!newItem.name) {
       toast.error("يرجى إدخال الاسم");
       return;
@@ -328,42 +304,36 @@ export default function BanksWallets() {
       return;
     }
 
-    try {
-      const item = {
-        entityId: currentEntity.id,
-        name: newItem.name,
-        type: newItem.type,
-        accountType: newItem.accountType,
-        accountNumber: newItem.accountNumber || null,
-        chartAccountId: newItem.chartAccountId || null,
-        allowedCurrencies: newItem.allowedCurrencies,
-        balances: newItem.allowedCurrencies.map(currency => ({
-          currency,
-          balance: 0.00
-        })),
-        status: "active",
-        lastTransaction: null
-      };
+    const item: BankWalletAccount = {
+      id: `${Date.now()}`,
+      entityId: currentEntity.id,
+      name: newItem.name,
+      type: newItem.type,
+      accountType: newItem.accountType,
+      accountNumber: newItem.accountNumber,
+      chartAccountId: newItem.chartAccountId,
+      allowedCurrencies: newItem.allowedCurrencies,
+      balances: newItem.allowedCurrencies.map(currency => ({
+        currency,
+        balance: 0.00
+      })),
+      status: "active",
+      lastTransaction: "-"
+    };
 
-      await banksWalletsApi.create(item);
-      toast.success(`تم الإضافة بنجاح (${newItem.allowedCurrencies.length} عملة)`);
-      await loadData();
-      setIsNewItemOpen(false);
-      setNewItem({ 
-        name: "", 
-        type: "bank", 
-        accountType: "current", 
-        accountNumber: "",
-        chartAccountId: "",
-        allowedCurrencies: ["YER", "SAR", "USD"]
-      });
-    } catch (error: any) {
-      console.error('Failed to add bank/wallet:', error);
-      toast.error(error.message || 'فشل الإضافة');
-    }
+    setBanksWallets([...banksWallets, item]);
+    toast.success(`تم الإضافة بنجاح (${newItem.allowedCurrencies.length} عملة)`);
+    setIsNewItemOpen(false);
+    setNewItem({ 
+      name: "", 
+      type: "bank", 
+      accountType: "current", 
+      accountNumber: "",
+      allowedCurrencies: ["YER", "SAR", "USD"]
+    });
   };
 
-  const handleEditItem = async () => {
+  const handleEditItem = () => {
     if (!editingItem || !editingItem.name) {
       toast.error("يرجى إدخال الاسم");
       return;
@@ -373,27 +343,24 @@ export default function BanksWallets() {
       return;
     }
 
-    try {
-      // Update balances based on allowed currencies
-      const updatedBalances = editingItem.allowedCurrencies.map(currency => {
-        const existing = editingItem.balances.find(b => b.currency === currency);
-        return existing || { currency, balance: 0.00 };
-      });
+    // Update balances based on allowed currencies
+    const updatedBalances = editingItem.allowedCurrencies.map(currency => {
+      const existing = editingItem.balances.find(b => b.currency === currency);
+      return existing || { currency, balance: 0.00 };
+    });
 
-      const updated = { ...editingItem, balances: updatedBalances };
+    const updated = { ...editingItem, balances: updatedBalances };
 
-      await banksWalletsApi.update(updated.id, updated);
-      toast.success("تم التحديث بنجاح");
-      await loadData();
-      setIsEditItemOpen(false);
-      setEditingItem(null);
-    } catch (error: any) {
-      console.error('Failed to update bank/wallet:', error);
-      toast.error(error.message || 'فشل التحديث');
-    }
+    setBanksWallets(banksWallets.map(item => 
+      item.id === updated.id ? updated : item
+    ));
+    
+    toast.success("تم التحديث بنجاح");
+    setIsEditItemOpen(false);
+    setEditingItem(null);
   };
 
-  const handleDeleteItem = async (id: string) => {
+  const handleDeleteItem = (id: string) => {
     const item = banksWallets.find(b => b.id === id);
     if (item && item.balances.some(b => b.balance !== 0)) {
       toast.error("لا يمكن الحذف. يحتوي على رصيد. يرجى تصفير جميع الأرصدة أولاً.");
@@ -401,14 +368,8 @@ export default function BanksWallets() {
     }
 
     if (confirm("هل أنت متأكد من الحذف؟")) {
-      try {
-        await banksWalletsApi.delete(id);
-        toast.success("تم الحذف بنجاح");
-        await loadData();
-      } catch (error: any) {
-        console.error('Failed to delete bank/wallet:', error);
-        toast.error(error.message || 'فشل الحذف');
-      }
+      setBanksWallets(banksWallets.filter(b => b.id !== id));
+      toast.success("تم الحذف بنجاح");
     }
   };
 

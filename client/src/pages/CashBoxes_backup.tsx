@@ -49,10 +49,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-import { cashBoxesApi, accountsApi } from "@/lib/api";
+import { initialAccountsData } from "./ChartOfAccounts";
 
 // Initial clean data
 const initialCashBoxes: any[] = [
@@ -100,9 +100,7 @@ const recentTransactions: any[] = [];
 
 export default function CashBoxes() {
   const { currentEntity } = useEntity();
-  const [cashBoxes, setCashBoxes] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cashBoxes, setCashBoxes] = useState(initialCashBoxes);
   const [isNewBoxOpen, setIsNewBoxOpen] = useState(false);
   const [isEditBoxOpen, setIsEditBoxOpen] = useState(false);
   const [editingBox, setEditingBox] = useState<any>(null);
@@ -116,30 +114,8 @@ export default function CashBoxes() {
     responsiblePerson: "" // مسؤول الصندوق
   });
 
-  // Load data from API
-  useEffect(() => {
-    loadData();
-  }, [currentEntity.id]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [boxesData, accountsData] = await Promise.all([
-        cashBoxesApi.getAll(),
-        accountsApi.getAll()
-      ]);
-      setCashBoxes(boxesData);
-      setAccounts(accountsData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      toast.error('فشل تحميل البيانات');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Get cash accounts from chart of accounts
-  const allCashAccounts = accounts.filter(account => 
+  const allCashAccounts = initialAccountsData.filter(account => 
     account.subtype === 'cash' && 
     !account.isGroup && 
     account.entityId === currentEntity.id
@@ -165,56 +141,49 @@ export default function CashBoxes() {
     return true;
   });
 
-  const handleAddBox = async () => {
+  const handleAddBox = () => {
     if (!newBox.name) {
       toast.error("يرجى إدخال اسم الصندوق");
       return;
     }
 
-    try {
-      const box = {
-        entityId: currentEntity.id,
-        name: newBox.name,
-        balance: 0.00,
-        currency: newBox.currency,
-        type: newBox.type,
-        accountId: newBox.accountId || null,
-        branchId: newBox.branchId || null,
-        responsiblePerson: newBox.responsiblePerson || null,
-        status: "active",
-        lastTransaction: null
-      };
+    const newId = `111${cashBoxes.length + 1}`; // Simple ID generation
+    const box = {
+      id: newId,
+      entityId: currentEntity.id, // Associate with current entity
+      name: newBox.name,
+      balance: 0.00,
+      currency: newBox.currency,
+      type: newBox.type,
+      accountId: newBox.accountId,
+      branchId: newBox.branchId,
+      responsiblePerson: newBox.responsiblePerson,
+      status: "active",
+      lastTransaction: "-"
+    };
 
-      await cashBoxesApi.create(box);
-      toast.success("تم إضافة الصندوق بنجاح");
-      await loadData();
-      setIsNewBoxOpen(false);
-      setNewBox({ name: "", currency: "SAR", type: "cash_box", accountId: "", branchId: "", responsiblePerson: "" });
-    } catch (error: any) {
-      console.error('Failed to add cash box:', error);
-      toast.error(error.message || 'فشل إضافة الصندوق');
-    }
+    setCashBoxes([...cashBoxes, box]);
+    toast.success("تم إضافة الصندوق بنجاح");
+    setIsNewBoxOpen(false);
+    setNewBox({ name: "", currency: "SAR", type: "cash_box", accountId: "", branchId: "", responsiblePerson: "" });
   };
 
-  const handleEditBox = async () => {
+  const handleEditBox = () => {
     if (!editingBox || !editingBox.name) {
       toast.error("يرجى إدخال اسم الصندوق");
       return;
     }
 
-    try {
-      await cashBoxesApi.update(editingBox.id, editingBox);
-      toast.success("تم تحديث بيانات الصندوق بنجاح");
-      await loadData();
-      setIsEditBoxOpen(false);
-      setEditingBox(null);
-    } catch (error: any) {
-      console.error('Failed to update cash box:', error);
-      toast.error(error.message || 'فشل تحديث الصندوق');
-    }
+    setCashBoxes(cashBoxes.map(box => 
+      box.id === editingBox.id ? editingBox : box
+    ));
+    
+    toast.success("تم تحديث بيانات الصندوق بنجاح");
+    setIsEditBoxOpen(false);
+    setEditingBox(null);
   };
 
-  const handleDeleteBox = async (id: string) => {
+  const handleDeleteBox = (id: string) => {
     const box = cashBoxes.find(b => b.id === id);
     if (box && box.balance !== 0) {
       toast.error("لا يمكن حذف صندوق يحتوي على رصيد. يرجى تصفير الرصيد أولاً.");
@@ -222,14 +191,8 @@ export default function CashBoxes() {
     }
 
     if (confirm("هل أنت متأكد من حذف هذا الصندوق؟")) {
-      try {
-        await cashBoxesApi.delete(id);
-        toast.success("تم حذف الصندوق بنجاح");
-        await loadData();
-      } catch (error: any) {
-        console.error('Failed to delete cash box:', error);
-        toast.error(error.message || 'فشل حذف الصندوق');
-      }
+      setCashBoxes(cashBoxes.filter(b => b.id !== id));
+      toast.success("تم حذف الصندوق بنجاح");
     }
   };
 
