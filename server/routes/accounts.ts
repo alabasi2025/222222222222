@@ -86,6 +86,25 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Partial update account (PATCH)
+router.patch('/:id', async (req, res) => {
+  try {
+    const updated = await db
+      .update(accounts)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(accounts.id, req.params.id))
+      .returning();
+    
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error updating account:', error);
+    res.status(500).json({ error: 'Failed to update account' });
+  }
+});
+
 // Delete account
 router.delete('/:id', async (req, res) => {
   try {

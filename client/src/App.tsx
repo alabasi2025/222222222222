@@ -29,6 +29,7 @@ import AccountGroups from "./pages/AccountGroups";
 import BanksWallets from "./pages/BanksWallets";
 import Currencies from "./pages/Currencies";
 import InterUnitTransfers from "./pages/InterUnitTransfers";
+import InterUnitAccounts from "./pages/InterUnitAccounts";
 
 function Router() {
   return (
@@ -57,6 +58,7 @@ function Router() {
         <Route path="/financial/settings/coa/groups" component={AccountGroups} />
         <Route path="/banks-wallets" component={BanksWallets} />
         <Route path="/inter-unit-transfers" component={InterUnitTransfers} />
+        <Route path="/inter-unit-accounts" component={InterUnitAccounts} />
         
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
