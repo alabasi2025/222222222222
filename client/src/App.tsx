@@ -28,6 +28,7 @@ import OrganizationStructure from "./pages/OrganizationStructure";
 import AccountGroups from "./pages/AccountGroups";
 import BanksWallets from "./pages/BanksWallets";
 import Currencies from "./pages/Currencies";
+import InterUnitTransfers from "./pages/InterUnitTransfers";
 
 function Router() {
   return (
@@ -55,6 +56,7 @@ function Router() {
         <Route path="/currencies" component={Currencies} />
         <Route path="/financial/settings/coa/groups" component={AccountGroups} />
         <Route path="/banks-wallets" component={BanksWallets} />
+        <Route path="/inter-unit-transfers" component={InterUnitTransfers} />
         
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

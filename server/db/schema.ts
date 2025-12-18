@@ -184,3 +184,36 @@ export const stockMovements = pgTable('stock_movements', {
   createdBy: text('created_by'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+
+// جدول التحويلات بين الوحدات
+export const interUnitTransfers = pgTable('inter_unit_transfers', {
+  id: text('id').primaryKey(),
+  transferNumber: text('transfer_number').notNull().unique(),
+  fromEntityId: text('from_entity_id').notNull().references(() => entities.id),
+  toEntityId: text('to_entity_id').notNull().references(() => entities.id),
+  fromAccountId: text('from_account_id').notNull().references(() => accounts.id),
+  toAccountId: text('to_account_id').notNull().references(() => accounts.id),
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  currency: text('currency').default('YER').notNull(),
+  description: text('description'),
+  date: timestamp('date').notNull(),
+  status: text('status').default('completed').notNull(), // 'pending' | 'completed' | 'cancelled'
+  fromJournalEntryId: text('from_journal_entry_id').references(() => journalEntries.id),
+  toJournalEntryId: text('to_journal_entry_id').references(() => journalEntries.id),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// جدول حسابات الجاري بين الوحدات
+export const interUnitAccounts = pgTable('inter_unit_accounts', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id').notNull().references(() => entities.id),
+  relatedEntityId: text('related_entity_id').notNull().references(() => entities.id),
+  accountId: text('account_id').notNull().references(() => accounts.id),
+  balance: decimal('balance', { precision: 15, scale: 2 }).default('0').notNull(),
+  currency: text('currency').default('YER').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

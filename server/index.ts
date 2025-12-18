@@ -12,6 +12,7 @@ import inventoryRouter from "./routes/inventory";
 import warehousesRouter from "./routes/warehouses";
 import stockMovementsRouter from "./routes/stockMovements";
 import itemCategoriesRouter from "./routes/itemCategories";
+import interUnitTransfersRouter from "./routes/interUnitTransfers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +34,7 @@ async function startServer() {
   app.use("/api/warehouses", warehousesRouter);
   app.use("/api/stock-movements", stockMovementsRouter);
   app.use("/api/item-categories", itemCategoriesRouter);
+  app.use("/api/inter-unit-transfers", interUnitTransfersRouter);
 
   // Serve static files from dist/public in production
   const staticPath =
