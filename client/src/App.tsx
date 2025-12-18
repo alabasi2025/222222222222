@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import Invoices from "./pages/Invoices";
 import Purchases from "./pages/Purchases";
 import Inventory from "./pages/Inventory";
+import Warehouses from "./pages/Warehouses";
+import StockMovements from "./pages/StockMovements";
 import Contacts from "./pages/Contacts";
 import Payments from "./pages/Payments";
 import JournalEntries from "./pages/JournalEntries";
@@ -33,19 +35,20 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/invoices" component={Invoices} />
-        {/* Placeholder routes for other pages */}
         <Route path="/purchases" component={Purchases} />
         <Route path="/inventory" component={Inventory} />
+        <Route path="/warehouses" component={Warehouses} />
+        <Route path="/stock-movements" component={StockMovements} />
         <Route path="/contacts" component={Contacts} />
         <Route path="/payments" component={Payments} />
         <Route path="/journals" component={JournalEntries} />
         <Route path="/ledger" component={Ledger} />
         <Route path="/coa" component={ChartOfAccounts} />
         <Route path="/cash-boxes" component={CashBoxes} />
-      <Route path="/assets" component={FixedAssets} />
-      <Route path="/cost-centers" component={CostCenters} />
-      <Route path="/bank-reconciliation" component={BankReconciliation} />
-      <Route path="/tax" component={TaxManagement} />
+        <Route path="/assets" component={FixedAssets} />
+        <Route path="/cost-centers" component={CostCenters} />
+        <Route path="/bank-reconciliation" component={BankReconciliation} />
+        <Route path="/tax" component={TaxManagement} />
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
         <Route path="/organization" component={OrganizationStructure} />

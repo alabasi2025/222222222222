@@ -30,7 +30,9 @@ import {
   Coins,
   Layers,
   Moon,
-  Sun
+  Sun,
+  Warehouse,
+  ArrowLeftRight
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -53,6 +55,8 @@ const menuItems = [
   { icon: FileText, label: "الفواتير", href: "/invoices" },
   { icon: ShoppingCart, label: "المشتريات", href: "/purchases" },
   { icon: Package, label: "المخزون", href: "/inventory" },
+  { icon: Warehouse, label: "المستودعات", href: "/warehouses" },
+  { icon: ArrowLeftRight, label: "حركات المخزون", href: "/stock-movements" },
   { icon: Users, label: "العملاء والموردين", href: "/contacts" },
 ];
 

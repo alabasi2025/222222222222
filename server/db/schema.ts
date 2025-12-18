@@ -87,3 +87,100 @@ export const journalEntryLines = pgTable('journal_entry_lines', {
   description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+
+// جدول المستودعات
+export const warehouses = pgTable('warehouses', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id').notNull().references(() => entities.id),
+  branchId: text('branch_id').references(() => entities.id),
+  name: text('name').notNull(),
+  code: text('code').notNull(),
+  address: text('address'),
+  manager: text('manager'),
+  phone: text('phone'),
+  type: text('type').default('main').notNull(), // 'main' | 'sub' | 'transit'
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// جدول وحدات القياس
+export const units = pgTable('units', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  symbol: text('symbol').notNull(),
+  baseUnit: text('base_unit'),
+  conversionFactor: decimal('conversion_factor', { precision: 10, scale: 4 }).default('1'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// جدول فئات الأصناف
+export const itemCategories = pgTable('item_categories', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id').notNull().references(() => entities.id),
+  name: text('name').notNull(),
+  parentId: text('parent_id'),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// جدول الأصناف
+export const items = pgTable('items', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id').notNull().references(() => entities.id),
+  code: text('code').notNull(),
+  name: text('name').notNull(),
+  nameEn: text('name_en'),
+  barcode: text('barcode'),
+  categoryId: text('category_id').references(() => itemCategories.id),
+  unitId: text('unit_id').references(() => units.id),
+  type: text('type').default('stock').notNull(), // 'stock' | 'service' | 'consumable'
+  purchasePrice: decimal('purchase_price', { precision: 15, scale: 2 }).default('0'),
+  salePrice: decimal('sale_price', { precision: 15, scale: 2 }).default('0'),
+  minStock: decimal('min_stock', { precision: 15, scale: 3 }).default('0'),
+  maxStock: decimal('max_stock', { precision: 15, scale: 3 }),
+  reorderPoint: decimal('reorder_point', { precision: 15, scale: 3 }).default('0'),
+  taxRate: decimal('tax_rate', { precision: 5, scale: 2 }).default('15'),
+  accountId: text('account_id').references(() => accounts.id), // حساب المخزون
+  cogsAccountId: text('cogs_account_id').references(() => accounts.id), // حساب تكلفة البضاعة المباعة
+  revenueAccountId: text('revenue_account_id').references(() => accounts.id), // حساب الإيرادات
+  description: text('description'),
+  image: text('image'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// جدول أرصدة المخزون (لكل صنف في كل مستودع)
+export const itemStock = pgTable('item_stock', {
+  id: text('id').primaryKey(),
+  itemId: text('item_id').notNull().references(() => items.id),
+  warehouseId: text('warehouse_id').notNull().references(() => warehouses.id),
+  quantity: decimal('quantity', { precision: 15, scale: 3 }).default('0').notNull(),
+  avgCost: decimal('avg_cost', { precision: 15, scale: 2 }).default('0'),
+  lastPurchasePrice: decimal('last_purchase_price', { precision: 15, scale: 2 }),
+  lastSalePrice: decimal('last_sale_price', { precision: 15, scale: 2 }),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// جدول حركات المخزون
+export const stockMovements = pgTable('stock_movements', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id').notNull().references(() => entities.id),
+  itemId: text('item_id').notNull().references(() => items.id),
+  warehouseId: text('warehouse_id').notNull().references(() => warehouses.id),
+  toWarehouseId: text('to_warehouse_id').references(() => warehouses.id), // للتحويلات
+  type: text('type').notNull(), // 'in' | 'out' | 'transfer' | 'adjustment' | 'return'
+  quantity: decimal('quantity', { precision: 15, scale: 3 }).notNull(),
+  unitCost: decimal('unit_cost', { precision: 15, scale: 2 }),
+  totalCost: decimal('total_cost', { precision: 15, scale: 2 }),
+  reference: text('reference'), // رقم الفاتورة أو أمر الشراء
+  referenceType: text('reference_type'), // 'invoice' | 'purchase' | 'manual'
+  notes: text('notes'),
+  date: timestamp('date').notNull(),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});

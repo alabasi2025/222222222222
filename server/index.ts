@@ -8,6 +8,10 @@ import entitiesRouter from "./routes/entities";
 import accountsRouter from "./routes/accounts";
 import cashBoxesRouter from "./routes/cashBoxes";
 import banksWalletsRouter from "./routes/banksWallets";
+import inventoryRouter from "./routes/inventory";
+import warehousesRouter from "./routes/warehouses";
+import stockMovementsRouter from "./routes/stockMovements";
+import itemCategoriesRouter from "./routes/itemCategories";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +29,10 @@ async function startServer() {
   app.use("/api/accounts", accountsRouter);
   app.use("/api/cash-boxes", cashBoxesRouter);
   app.use("/api/banks-wallets", banksWalletsRouter);
+  app.use("/api/inventory", inventoryRouter);
+  app.use("/api/warehouses", warehousesRouter);
+  app.use("/api/stock-movements", stockMovementsRouter);
+  app.use("/api/item-categories", itemCategoriesRouter);
 
   // Serve static files from dist/public in production
   const staticPath =

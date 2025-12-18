@@ -1,0 +1,91 @@
+import { Router } from 'express';
+import { db } from '../db/index';
+import { items, itemStock, itemCategories } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
+
+const router = Router();
+
+// Get all items
+router.get('/', async (_req, res) => {
+  try {
+    const allItems = await db.select().from(items);
+    res.json(allItems);
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+// Get items by entity
+router.get('/entity/:entityId', async (req, res) => {
+  try {
+    const entityItems = await db.select().from(items).where(eq(items.entityId, req.params.entityId));
+    res.json(entityItems);
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+// Get item by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const item = await db.select().from(items).where(eq(items.id, req.params.id));
+    if (item.length === 0) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.json(item[0]);
+  } catch (error) {
+    console.error('Error fetching item:', error);
+    res.status(500).json({ error: 'Failed to fetch item' });
+  }
+});
+
+// Create new item
+router.post('/', async (req, res) => {
+  try {
+    const newItem = await db.insert(items).values({
+      id: req.body.id || `ITM-${Date.now()}`,
+      ...req.body,
+    }).returning();
+    res.status(201).json(newItem[0]);
+  } catch (error) {
+    console.error('Error creating item:', error);
+    res.status(500).json({ error: 'Failed to create item' });
+  }
+});
+
+// Update item
+router.put('/:id', async (req, res) => {
+  try {
+    const updated = await db
+      .update(items)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(items.id, req.params.id))
+      .returning();
+    
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error updating item:', error);
+    res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+// Delete item
+router.delete('/:id', async (req, res) => {
+  try {
+    const deleted = await db.delete(items).where(eq(items.id, req.params.id)).returning();
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
+export default router;

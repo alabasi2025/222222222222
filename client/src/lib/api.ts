@@ -124,3 +124,79 @@ export const journalEntryLinesApi = {
     method: 'DELETE',
   }),
 };
+
+
+// Inventory (Items) API
+export const inventoryApi = {
+  getAll: () => apiCall<any[]>('/inventory'),
+  getById: (id: string) => apiCall<any>(`/inventory/${id}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/inventory/entity/${entityId}`),
+  create: (data: any) => apiCall<any>('/inventory', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: any) => apiCall<any>(`/inventory/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => apiCall<void>(`/inventory/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Warehouses API
+export const warehousesApi = {
+  getAll: () => apiCall<any[]>('/warehouses'),
+  getById: (id: string) => apiCall<any>(`/warehouses/${id}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/warehouses/entity/${entityId}`),
+  create: (data: any) => apiCall<any>('/warehouses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: any) => apiCall<any>(`/warehouses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => apiCall<void>(`/warehouses/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Item Categories API
+export const itemCategoriesApi = {
+  getAll: () => apiCall<any[]>('/item-categories'),
+  getById: (id: string) => apiCall<any>(`/item-categories/${id}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/item-categories/entity/${entityId}`),
+  create: (data: any) => apiCall<any>('/item-categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: any) => apiCall<any>(`/item-categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => apiCall<void>(`/item-categories/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Stock Movements API
+export const stockMovementsApi = {
+  getAll: () => apiCall<any[]>('/stock-movements'),
+  getById: (id: string) => apiCall<any>(`/stock-movements/${id}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/stock-movements/entity/${entityId}`),
+  getByItem: (itemId: string) => apiCall<any[]>(`/stock-movements/item/${itemId}`),
+  getByWarehouse: (warehouseId: string) => apiCall<any[]>(`/stock-movements/warehouse/${warehouseId}`),
+  create: (data: any) => apiCall<any>('/stock-movements', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+// Item Stock API (stock levels per warehouse)
+export const itemStockApi = {
+  getByItem: (itemId: string) => apiCall<any[]>(`/item-stock/item/${itemId}`),
+  getByWarehouse: (warehouseId: string) => apiCall<any[]>(`/item-stock/warehouse/${warehouseId}`),
+  getByItemAndWarehouse: (itemId: string, warehouseId: string) => 
+    apiCall<any>(`/item-stock/${itemId}/${warehouseId}`),
+};
