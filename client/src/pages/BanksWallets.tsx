@@ -237,7 +237,7 @@ const initialBanksWallets: BankWalletAccount[] = [
 ];
 
 export default function BanksWallets() {
-  const { currentEntity } = useEntity();
+  const { currentEntity, getThemeColor } = useEntity();
   const [banksWallets, setBanksWallets] = useState<BankWalletAccount[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
