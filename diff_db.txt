@@ -1,0 +1,15 @@
+diff --git a/server/db/index.ts b/server/db/index.ts
+index 8d82f9a..174c3d4 100644
+--- a/server/db/index.ts
++++ b/server/db/index.ts
+@@ -2,8 +2,8 @@ import { drizzle } from 'drizzle-orm/postgres-js';
+ import postgres from 'postgres';
+ import * as schema from './schema';
+ 
+-// اتصال PostgreSQL
+-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/accounting';
++// اتصال PostgreSQL للنظام 2222222
++const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:774424555@localhost:5432/db_2222222';
+ 
+ export const client = postgres(connectionString);
+ export const db = drizzle(client, { schema });

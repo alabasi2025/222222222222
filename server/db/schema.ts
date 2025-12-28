@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, json, decimal } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, json, decimal, index } from 'drizzle-orm/pg-core';
 
 // جدول الكيانات (الشركة القابضة، الوحدات، الفروع)
 export const entities = pgTable('entities', {
@@ -8,6 +8,10 @@ export const entities = pgTable('entities', {
   parentId: text('parent_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    typeIdx: index('idx_entities_type').on(table.type),
+  };
 });
 
 // جدول الحسابات (شجرة الحسابات)
@@ -27,6 +31,10 @@ export const accounts = pgTable('accounts', {
   branchId: text('branch_id').references(() => entities.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    entityIdx: index('idx_accounts_entity').on(table.entityId),
+  };
 });
 
 // جدول الصناديق والعهد
@@ -74,6 +82,10 @@ export const journalEntries = pgTable('journal_entries', {
   createdBy: text('created_by'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    dateIdx: index('idx_journal_entries_date').on(table.date),
+  };
 });
 
 // جدول تفاصيل القيود اليومية
@@ -183,6 +195,10 @@ export const stockMovements = pgTable('stock_movements', {
   date: timestamp('date').notNull(),
   createdBy: text('created_by'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    itemWarehouseIdx: index('idx_stock_movements_item_warehouse').on(table.itemId, table.warehouseId),
+  };
 });
 
 

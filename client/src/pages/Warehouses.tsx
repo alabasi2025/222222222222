@@ -104,45 +104,7 @@ export default function Warehouses() {
       setWarehouses(data);
     } catch (error) {
       console.error('Failed to load warehouses:', error);
-      // Demo data
-      setWarehouses([
-        {
-          id: "WH-001",
-          code: "WH-MAIN",
-          name: "المستودع الرئيسي",
-          address: "الرياض - حي العليا",
-          manager: "أحمد محمد",
-          phone: "0501234567",
-          type: "main",
-          isActive: true,
-          itemsCount: 150,
-          totalValue: 450000,
-        },
-        {
-          id: "WH-002",
-          code: "WH-JED",
-          name: "مستودع جدة",
-          address: "جدة - حي الروضة",
-          manager: "خالد علي",
-          phone: "0507654321",
-          type: "sub",
-          isActive: true,
-          itemsCount: 85,
-          totalValue: 220000,
-        },
-        {
-          id: "WH-003",
-          code: "WH-TRN",
-          name: "مستودع العبور",
-          address: "الدمام - المنطقة الصناعية",
-          manager: "سعيد أحمد",
-          phone: "0509876543",
-          type: "transit",
-          isActive: true,
-          itemsCount: 25,
-          totalValue: 75000,
-        },
-      ]);
+      toast.error("فشل تحميل بيانات المستودعات");
     } finally {
       setLoading(false);
     }
@@ -433,7 +395,7 @@ export default function Warehouses() {
                         ) : '-'}
                       </TableCell>
                       <TableCell>{wh.itemsCount}</TableCell>
-                      <TableCell className="font-medium">{wh.totalValue.toLocaleString()} ر.س</TableCell>
+                      <TableCell className="font-medium">{wh.totalValue ? wh.totalValue.toLocaleString() : '-'} ر.س</TableCell>
                       <TableCell className="text-left">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

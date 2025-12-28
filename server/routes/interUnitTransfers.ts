@@ -83,186 +83,191 @@ router.post('/', async (req, res) => {
     const transferDate = date ? new Date(date) : new Date();
     const transferId = `transfer-${Date.now()}`;
 
-    // الحصول على أسماء الوحدات
-    const [fromEntity] = await db.select().from(entities).where(eq(entities.id, fromEntityId));
-    const [toEntity] = await db.select().from(entities).where(eq(entities.id, toEntityId));
+    // Wrap in transaction
+    const transfer = await db.transaction(async (tx) => {
+      // الحصول على أسماء الوحدات
+      const [fromEntity] = await tx.select().from(entities).where(eq(entities.id, fromEntityId));
+      const [toEntity] = await tx.select().from(entities).where(eq(entities.id, toEntityId));
 
-    if (!fromEntity || !toEntity) {
-      return res.status(400).json({ error: 'Invalid entity IDs' });
-    }
+      if (!fromEntity || !toEntity) {
+        throw new Error('Invalid entity IDs');
+      }
 
-    // البحث عن أو إنشاء حساب جاري للوحدة المستلمة في الوحدة المُحوِّلة
-    let fromInterAccount = await db.select()
-      .from(interUnitAccounts)
-      .where(
-        and(
-          eq(interUnitAccounts.entityId, fromEntityId),
-          eq(interUnitAccounts.relatedEntityId, toEntityId)
-        )
-      );
+      // البحث عن أو إنشاء حساب جاري للوحدة المستلمة في الوحدة المُحوِّلة
+      let fromInterAccount = await tx.select()
+        .from(interUnitAccounts)
+        .where(
+          and(
+            eq(interUnitAccounts.entityId, fromEntityId),
+            eq(interUnitAccounts.relatedEntityId, toEntityId)
+          )
+        );
 
-    let fromInterAccountId: string;
-    if (fromInterAccount.length === 0) {
-      // إنشاء حساب جاري جديد
-      const newAccountId = `ACC-INTER-${fromEntityId}-${toEntityId}`;
-      await db.insert(accounts).values({
-        id: newAccountId,
-        name: `جاري ${toEntity.name}`,
-        type: 'asset',
-        level: 3,
-        balance: '0',
-        isGroup: false,
-        subtype: 'intercompany',
+      let fromInterAccountId: string;
+      if (fromInterAccount.length === 0) {
+        // إنشاء حساب جاري جديد
+        const newAccountId = `ACC-INTER-${fromEntityId}-${toEntityId}`;
+        await tx.insert(accounts).values({
+          id: newAccountId,
+          name: `جاري ${toEntity.name}`,
+          type: 'asset',
+          level: 3,
+          balance: '0',
+          isGroup: false,
+          subtype: 'intercompany',
+          entityId: fromEntityId,
+        });
+
+        await tx.insert(interUnitAccounts).values({
+          id: `IUA-${fromEntityId}-${toEntityId}`,
+          entityId: fromEntityId,
+          relatedEntityId: toEntityId,
+          accountId: newAccountId,
+          balance: '0',
+          currency,
+        });
+
+        fromInterAccountId = newAccountId;
+      } else {
+        fromInterAccountId = fromInterAccount[0].accountId;
+      }
+
+      // البحث عن أو إنشاء حساب جاري للوحدة المُحوِّلة في الوحدة المستلمة
+      let toInterAccount = await tx.select()
+        .from(interUnitAccounts)
+        .where(
+          and(
+            eq(interUnitAccounts.entityId, toEntityId),
+            eq(interUnitAccounts.relatedEntityId, fromEntityId)
+          )
+        );
+
+      let toInterAccountId: string;
+      if (toInterAccount.length === 0) {
+        // إنشاء حساب جاري جديد
+        const newAccountId = `ACC-INTER-${toEntityId}-${fromEntityId}`;
+        await tx.insert(accounts).values({
+          id: newAccountId,
+          name: `جاري ${fromEntity.name}`,
+          type: 'liability',
+          level: 3,
+          balance: '0',
+          isGroup: false,
+          subtype: 'intercompany',
+          entityId: toEntityId,
+        });
+
+        await tx.insert(interUnitAccounts).values({
+          id: `IUA-${toEntityId}-${fromEntityId}`,
+          entityId: toEntityId,
+          relatedEntityId: fromEntityId,
+          accountId: newAccountId,
+          balance: '0',
+          currency,
+        });
+
+        toInterAccountId = newAccountId;
+      } else {
+        toInterAccountId = toInterAccount[0].accountId;
+      }
+
+      // إنشاء القيد في الوحدة المُحوِّلة
+      const fromJournalId = `JE-${fromEntityId}-${Date.now()}`;
+      await tx.insert(journalEntries).values({
+        id: fromJournalId,
         entityId: fromEntityId,
+        date: transferDate,
+        description: `تحويل إلى ${toEntity.name} - ${description || transferNumber}`,
+        reference: transferNumber,
+        type: 'auto',
+        status: 'posted',
       });
 
-      await db.insert(interUnitAccounts).values({
-        id: `IUA-${fromEntityId}-${toEntityId}`,
-        entityId: fromEntityId,
-        relatedEntityId: toEntityId,
-        accountId: newAccountId,
-        balance: '0',
+      // سطور القيد في الوحدة المُحوِّلة
+      // مدين: جاري الوحدة المستلمة
+      await tx.insert(journalEntryLines).values({
+        id: `JEL-${fromJournalId}-1`,
+        entryId: fromJournalId,
+        accountId: fromInterAccountId,
+        debit: amount.toString(),
+        credit: '0',
         currency,
+        description: `تحويل إلى ${toEntity.name}`,
       });
 
-      fromInterAccountId = newAccountId;
-    } else {
-      fromInterAccountId = fromInterAccount[0].accountId;
-    }
-
-    // البحث عن أو إنشاء حساب جاري للوحدة المُحوِّلة في الوحدة المستلمة
-    let toInterAccount = await db.select()
-      .from(interUnitAccounts)
-      .where(
-        and(
-          eq(interUnitAccounts.entityId, toEntityId),
-          eq(interUnitAccounts.relatedEntityId, fromEntityId)
-        )
-      );
-
-    let toInterAccountId: string;
-    if (toInterAccount.length === 0) {
-      // إنشاء حساب جاري جديد
-      const newAccountId = `ACC-INTER-${toEntityId}-${fromEntityId}`;
-      await db.insert(accounts).values({
-        id: newAccountId,
-        name: `جاري ${fromEntity.name}`,
-        type: 'liability',
-        level: 3,
-        balance: '0',
-        isGroup: false,
-        subtype: 'intercompany',
-        entityId: toEntityId,
-      });
-
-      await db.insert(interUnitAccounts).values({
-        id: `IUA-${toEntityId}-${fromEntityId}`,
-        entityId: toEntityId,
-        relatedEntityId: fromEntityId,
-        accountId: newAccountId,
-        balance: '0',
+      // دائن: الحساب المحدد (صندوق/بنك)
+      await tx.insert(journalEntryLines).values({
+        id: `JEL-${fromJournalId}-2`,
+        entryId: fromJournalId,
+        accountId: fromAccountId,
+        debit: '0',
+        credit: amount.toString(),
         currency,
+        description: `تحويل إلى ${toEntity.name}`,
       });
 
-      toInterAccountId = newAccountId;
-    } else {
-      toInterAccountId = toInterAccount[0].accountId;
-    }
+      // إنشاء القيد في الوحدة المستلمة
+      const toJournalId = `JE-${toEntityId}-${Date.now()}`;
+      await tx.insert(journalEntries).values({
+        id: toJournalId,
+        entityId: toEntityId,
+        date: transferDate,
+        description: `استلام من ${fromEntity.name} - ${description || transferNumber}`,
+        reference: transferNumber,
+        type: 'auto',
+        status: 'posted',
+      });
 
-    // إنشاء القيد في الوحدة المُحوِّلة
-    const fromJournalId = `JE-${fromEntityId}-${Date.now()}`;
-    await db.insert(journalEntries).values({
-      id: fromJournalId,
-      entityId: fromEntityId,
-      date: transferDate,
-      description: `تحويل إلى ${toEntity.name} - ${description || transferNumber}`,
-      reference: transferNumber,
-      type: 'auto',
-      status: 'posted',
+      // سطور القيد في الوحدة المستلمة
+      // مدين: الحساب المحدد (صندوق/بنك)
+      await tx.insert(journalEntryLines).values({
+        id: `JEL-${toJournalId}-1`,
+        entryId: toJournalId,
+        accountId: toAccountId,
+        debit: amount.toString(),
+        credit: '0',
+        currency,
+        description: `استلام من ${fromEntity.name}`,
+      });
+
+      // دائن: جاري الوحدة المُحوِّلة
+      await tx.insert(journalEntryLines).values({
+        id: `JEL-${toJournalId}-2`,
+        entryId: toJournalId,
+        accountId: toInterAccountId,
+        debit: '0',
+        credit: amount.toString(),
+        currency,
+        description: `استلام من ${fromEntity.name}`,
+      });
+
+      // إنشاء سجل التحويل
+      const [newTransfer] = await tx.insert(interUnitTransfers).values({
+        id: transferId,
+        transferNumber,
+        fromEntityId,
+        toEntityId,
+        fromAccountId,
+        toAccountId,
+        amount: amount.toString(),
+        currency,
+        description,
+        date: transferDate,
+        status: 'completed',
+        fromJournalEntryId: fromJournalId,
+        toJournalEntryId: toJournalId,
+      }).returning();
+
+      return newTransfer;
     });
-
-    // سطور القيد في الوحدة المُحوِّلة
-    // مدين: جاري الوحدة المستلمة
-    await db.insert(journalEntryLines).values({
-      id: `JEL-${fromJournalId}-1`,
-      entryId: fromJournalId,
-      accountId: fromInterAccountId,
-      debit: amount.toString(),
-      credit: '0',
-      currency,
-      description: `تحويل إلى ${toEntity.name}`,
-    });
-
-    // دائن: الحساب المحدد (صندوق/بنك)
-    await db.insert(journalEntryLines).values({
-      id: `JEL-${fromJournalId}-2`,
-      entryId: fromJournalId,
-      accountId: fromAccountId,
-      debit: '0',
-      credit: amount.toString(),
-      currency,
-      description: `تحويل إلى ${toEntity.name}`,
-    });
-
-    // إنشاء القيد في الوحدة المستلمة
-    const toJournalId = `JE-${toEntityId}-${Date.now()}`;
-    await db.insert(journalEntries).values({
-      id: toJournalId,
-      entityId: toEntityId,
-      date: transferDate,
-      description: `استلام من ${fromEntity.name} - ${description || transferNumber}`,
-      reference: transferNumber,
-      type: 'auto',
-      status: 'posted',
-    });
-
-    // سطور القيد في الوحدة المستلمة
-    // مدين: الحساب المحدد (صندوق/بنك)
-    await db.insert(journalEntryLines).values({
-      id: `JEL-${toJournalId}-1`,
-      entryId: toJournalId,
-      accountId: toAccountId,
-      debit: amount.toString(),
-      credit: '0',
-      currency,
-      description: `استلام من ${fromEntity.name}`,
-    });
-
-    // دائن: جاري الوحدة المُحوِّلة
-    await db.insert(journalEntryLines).values({
-      id: `JEL-${toJournalId}-2`,
-      entryId: toJournalId,
-      accountId: toInterAccountId,
-      debit: '0',
-      credit: amount.toString(),
-      currency,
-      description: `استلام من ${fromEntity.name}`,
-    });
-
-    // إنشاء سجل التحويل
-    const [transfer] = await db.insert(interUnitTransfers).values({
-      id: transferId,
-      transferNumber,
-      fromEntityId,
-      toEntityId,
-      fromAccountId,
-      toAccountId,
-      amount: amount.toString(),
-      currency,
-      description,
-      date: transferDate,
-      status: 'completed',
-      fromJournalEntryId: fromJournalId,
-      toJournalEntryId: toJournalId,
-    }).returning();
 
     res.status(201).json({
       success: true,
       transfer,
       message: 'تم التحويل بنجاح وإنشاء القيود في كلا الوحدتين',
       journals: {
-        from: fromJournalId,
-        to: toJournalId,
+        from: transfer.fromJournalEntryId,
+        to: transfer.toJournalEntryId,
       },
     });
   } catch (error) {

@@ -13,12 +13,17 @@ import warehousesRouter from "./routes/warehouses";
 import stockMovementsRouter from "./routes/stockMovements";
 import itemCategoriesRouter from "./routes/itemCategories";
 import interUnitTransfersRouter from "./routes/interUnitTransfers";
+import modelSwitchRouter from "./routes/modelSwitch";
+import dashboardRouter from "./routes/dashboard";
+import journalEntriesRouter from "./routes/journalEntries";
+import { startExecutionWatcher } from "./agentExecutionBridge";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export const app = express();
+
 async function startServer() {
-  const app = express();
   const server = createServer(app);
 
   // Middleware
@@ -35,6 +40,9 @@ async function startServer() {
   app.use("/api/stock-movements", stockMovementsRouter);
   app.use("/api/item-categories", itemCategoriesRouter);
   app.use("/api/inter-unit-transfers", interUnitTransfersRouter);
+  app.use("/api/model-switch", modelSwitchRouter);
+  app.use("/api/dashboard", dashboardRouter);
+  app.use("/api/journal-entries", journalEntriesRouter);
 
   // Serve static files from dist/public in production
   const staticPath =
@@ -49,11 +57,15 @@ async function startServer() {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 
-  const port = process.env.PORT || 3000;
+  // استخدام منفذ 10001 بناءً على طلب المستخدم
+  const port = 10001;
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
     console.log(`API available at http://localhost:${port}/api`);
+    
+    // Start the Agent Bridge
+    startExecutionWatcher();
   });
 }
 

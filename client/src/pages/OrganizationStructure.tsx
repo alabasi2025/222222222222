@@ -1,4 +1,107 @@
+import { entitiesApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+
+// ... existing imports
+
+  const handleAddEntity = async () => {
+    if (!newEntity.name) {
+      toast.error("يرجى تعبئة الاسم");
+      return;
+    }
+
+    // Determine type and parent based on current context
+    let type: "unit" | "branch" = "branch";
+    let parentId = currentEntity.id;
+
+    if (isHoldingView) {
+      type = "unit";
+    } else if (isUnitView) {
+      type = "branch";
+    } else if (isBranchView) {
+      // Allow adding a sibling branch (same parent unit)
+      type = "branch";
+      parentId = currentEntity.parentId || "";
+      if (!parentId) {
+        toast.error("خطأ في تحديد الوحدة التابعة");
+        return;
+      }
+    }
+
+    // Generate ID logic remains same for now or move to server? 
+    // Server accepts "id" in body so we can keep generation here or let server handle.
+    // For consistency with current mock logic, let's keep generation here or use nanoid if available.
+    // Using simple counter based generation as in previous code for simplicity of migration.
+    const prefix = type === "unit" ? "UNIT" : "BR";
+    // NOTE: This ID generation is not concurrency safe but fine for demo.
+    const newId = `${prefix}-${String(entities.length + 100).padStart(3, '0')}`; // Offset to avoid conflict with initial data
+
+    const newEnt: Entity = {
+      id: newId,
+      name: newEntity.name,
+      type: type,
+      parentId: parentId,
+      themeColor: type === 'unit' ? '#2563eb' : undefined // Default blue for units, branches inherit
+    };
+
+    try {
+      await entitiesApi.create(newEnt);
+      setEntities([...entities, newEnt]);
+      toast.success(`تم إضافة ${type === 'unit' ? 'وحدة الأعمال' : 'الفرع'} بنجاح`);
+      setIsNewEntityOpen(false);
+      setNewEntity({ name: "", type: "branch", parent: "" });
+    } catch (error) {
+      console.error(error);
+      toast.error("فشل إضافة الكيان");
+    }
+  };
+
+  const handleEditEntity = async () => {
+    if (!editingEntity || !editingEntity.name) {
+      toast.error("يرجى إدخال اسم الكيان");
+      return;
+    }
+
+    try {
+      await entitiesApi.update(editingEntity.id, editingEntity);
+      
+      const updatedEntities = entities.map(e => 
+        e.id === editingEntity.id ? editingEntity : e
+      );
+      
+      setEntities(updatedEntities);
+      
+      // If we edited the current entity, update it in context too
+      if (currentEntity.id === editingEntity.id) {
+        setCurrentEntity(editingEntity);
+      }
+      
+      toast.success("تم تحديث البيانات بنجاح");
+      setIsEditEntityOpen(false);
+      setEditingEntity(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("فشل تحديث الكيان");
+    }
+  };
+
+  const handleDeleteEntity = async (id: string) => {
+    const hasChildren = entities.some(e => e.parentId === id);
+    if (hasChildren) {
+      toast.error("لا يمكن حذف كيان يحتوي على كيانات فرعية.");
+      return;
+    }
+
+    if (confirm("هل أنت متأكد من الحذف؟")) {
+      try {
+        await entitiesApi.delete(id);
+        setEntities(entities.filter(e => e.id !== id));
+        toast.success("تم الحذف بنجاح");
+      } catch (error) {
+        console.error(error);
+        toast.error("فشل حذف الكيان");
+      }
+    }
+  };
 import { Input } from "@/components/ui/input";
 import { 
   Plus, 
@@ -96,7 +199,7 @@ export default function OrganizationStructure() {
     }
   }, []);
 
-  const handleAddEntity = () => {
+  const handleAddEntity = async () => {
     if (!newEntity.name) {
       toast.error("يرجى تعبئة الاسم");
       return;
@@ -121,45 +224,58 @@ export default function OrganizationStructure() {
     }
 
     const prefix = type === "unit" ? "UNIT" : "BR";
-    const newId = `${prefix}-${String(entities.length + 1).padStart(3, '0')}`;
+    const newId = `${prefix}-${String(entities.length + 100).padStart(3, '0')}`;
 
     const newEnt: Entity = {
       id: newId,
       name: newEntity.name,
       type: type,
       parentId: parentId,
-      themeColor: type === 'unit' ? '#2563eb' : undefined // Default blue for units, branches inherit
+      themeColor: type === 'unit' ? '#2563eb' : undefined 
     };
 
-    setEntities([...entities, newEnt]);
-    toast.success(`تم إضافة ${type === 'unit' ? 'وحدة الأعمال' : 'الفرع'} بنجاح`);
-    setIsNewEntityOpen(false);
-    setNewEntity({ name: "", type: "branch", parent: "" });
+    try {
+      await entitiesApi.create(newEnt);
+      setEntities([...entities, newEnt]);
+      toast.success(`تم إضافة ${type === 'unit' ? 'وحدة الأعمال' : 'الفرع'} بنجاح`);
+      setIsNewEntityOpen(false);
+      setNewEntity({ name: "", type: "branch", parent: "" });
+    } catch (error) {
+      console.error(error);
+      toast.error("فشل إضافة الكيان");
+    }
   };
 
-  const handleEditEntity = () => {
+  const handleEditEntity = async () => {
     if (!editingEntity || !editingEntity.name) {
       toast.error("يرجى إدخال اسم الكيان");
       return;
     }
 
-    const updatedEntities = entities.map(e => 
-      e.id === editingEntity.id ? editingEntity : e
-    );
-    
-    setEntities(updatedEntities);
-    
-    // If we edited the current entity, update it in context too
-    if (currentEntity.id === editingEntity.id) {
-      setCurrentEntity(editingEntity);
+    try {
+      await entitiesApi.update(editingEntity.id, editingEntity);
+      
+      const updatedEntities = entities.map(e => 
+        e.id === editingEntity.id ? editingEntity : e
+      );
+      
+      setEntities(updatedEntities);
+      
+      // If we edited the current entity, update it in context too
+      if (currentEntity.id === editingEntity.id) {
+        setCurrentEntity(editingEntity);
+      }
+      
+      toast.success("تم تحديث البيانات بنجاح");
+      setIsEditEntityOpen(false);
+      setEditingEntity(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("فشل تحديث الكيان");
     }
-    
-    toast.success("تم تحديث البيانات بنجاح");
-    setIsEditEntityOpen(false);
-    setEditingEntity(null);
   };
 
-  const handleDeleteEntity = (id: string) => {
+  const handleDeleteEntity = async (id: string) => {
     const hasChildren = entities.some(e => e.parentId === id);
     if (hasChildren) {
       toast.error("لا يمكن حذف كيان يحتوي على كيانات فرعية.");
@@ -167,8 +283,14 @@ export default function OrganizationStructure() {
     }
 
     if (confirm("هل أنت متأكد من الحذف؟")) {
-      setEntities(entities.filter(e => e.id !== id));
-      toast.success("تم الحذف بنجاح");
+      try {
+        await entitiesApi.delete(id);
+        setEntities(entities.filter(e => e.id !== id));
+        toast.success("تم الحذف بنجاح");
+      } catch (error) {
+        console.error(error);
+        toast.error("فشل حذف الكيان");
+      }
     }
   };
 

@@ -5,10 +5,22 @@ import { eq, and, isNull, or } from 'drizzle-orm';
 
 const router = Router();
 
+// Simple in-memory cache
+let accountsCache: any[] | null = null;
+
+const invalidateCache = () => {
+  accountsCache = null;
+};
+
 // Get all accounts
 router.get('/', async (req, res) => {
   try {
     const { entityId, branchId } = req.query;
+    
+    // Return cached data if available and no filters
+    if (!entityId && !branchId && accountsCache) {
+      return res.json(accountsCache);
+    }
     
     let query = db.select().from(accounts);
     
@@ -35,6 +47,12 @@ router.get('/', async (req, res) => {
     }
     
     const allAccounts = await query;
+    
+    // Cache the result if no filters
+    if (!entityId && !branchId) {
+      accountsCache = allAccounts;
+    }
+    
     res.json(allAccounts);
   } catch (error) {
     console.error('Error fetching accounts:', error);
@@ -60,6 +78,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const newAccount = await db.insert(accounts).values(req.body).returning();
+    invalidateCache();
     res.status(201).json(newAccount[0]);
   } catch (error) {
     console.error('Error creating account:', error);
@@ -79,6 +98,7 @@ router.put('/:id', async (req, res) => {
     if (updated.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
+    invalidateCache();
     res.json(updated[0]);
   } catch (error) {
     console.error('Error updating account:', error);
@@ -98,6 +118,7 @@ router.patch('/:id', async (req, res) => {
     if (updated.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
+    invalidateCache();
     res.json(updated[0]);
   } catch (error) {
     console.error('Error updating account:', error);
@@ -112,6 +133,7 @@ router.delete('/:id', async (req, res) => {
     if (deleted.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
+    invalidateCache();
     res.json({ message: 'Account deleted successfully' });
   } catch (error) {
     console.error('Error deleting account:', error);

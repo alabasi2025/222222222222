@@ -200,3 +200,19 @@ export const itemStockApi = {
   getByItemAndWarehouse: (itemId: string, warehouseId: string) => 
     apiCall<any>(`/item-stock/${itemId}/${warehouseId}`),
 };
+
+// Journal Entries API
+
+
+// Dashboard API
+export const dashboardApi = {
+  getStats: () => apiCall<any>('/dashboard/stats'),
+  getRevenueChart: () => apiCall<any[]>('/dashboard/charts/revenue'),
+};
+
+export const api = {
+  get: <T>(url: string) => apiCall<T>(url),
+  post: <T>(url: string, data: any) => apiCall<T>(url, { method: 'POST', body: JSON.stringify(data) }),
+  put: <T>(url: string, data: any) => apiCall<T>(url, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: <T>(url: string) => apiCall<T>(url, { method: 'DELETE' }),
+};

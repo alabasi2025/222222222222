@@ -56,8 +56,11 @@ export function EntityProvider({ children }: { children: ReactNode }) {
         return;
       }
       setEntities(data);
-      // Set default entity to UNIT-002 or first unit
-      const defaultEntity = data.find((e: Entity) => e.id === 'UNIT-002') || data.find((e: Entity) => e.type === 'unit') || data[0];
+      // Set default entity: Prefer Holding -> UNIT-002 -> First Unit -> First Item
+      const defaultEntity = data.find((e: Entity) => e.type === 'holding') || 
+                           data.find((e: Entity) => e.id === 'UNIT-002') || 
+                           data.find((e: Entity) => e.type === 'unit') || 
+                           data[0];
       setCurrentEntity(defaultEntity);
     } catch (error) {
       console.error('Failed to load entities:', error);

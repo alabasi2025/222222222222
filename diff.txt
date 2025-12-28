@@ -1,0 +1,14 @@
+diff --git a/server/index.ts b/server/index.ts
+index 3d0ca73..3a69842 100644
+--- a/server/index.ts
++++ b/server/index.ts
+@@ -49,7 +49,8 @@ async function startServer() {
+     res.sendFile(path.join(staticPath, "index.html"));
+   });
+ 
+-  const port = process.env.PORT || 3000;
++  // استخدام منفذ 10001 بناءً على طلب المستخدم
++  const port = 10001;
+ 
+   server.listen(port, () => {
+     console.log(`Server running on http://localhost:${port}/`);

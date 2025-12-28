@@ -24,8 +24,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 3000,
-    strictPort: false, // Will find next available port if 3000 is busy
+    port: 10002,
+    strictPort: false,
     host: true,
     allowedHosts: [
       ".manuspre.computer",
@@ -41,8 +41,8 @@ export default defineConfig({
       deny: ["**/.*"],
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
+      "/api": {
+        target: "http://localhost:10001",
         changeOrigin: true,
       },
     },

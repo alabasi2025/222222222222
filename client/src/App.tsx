@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import ModelSwitcherButton from "./components/ModelSwitcherButton";
 import { Layout } from "./components/Layout";
 import { EntityProvider } from "./contexts/EntityContext";
 import Dashboard from "./pages/Dashboard";
@@ -34,6 +35,7 @@ import InterUnitAccounts from "./pages/InterUnitAccounts";
 function Router() {
   return (
     <Layout>
+      <ModelSwitcherButton />
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/invoices" component={Invoices} />

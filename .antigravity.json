@@ -1,0 +1,35 @@
+{
+  "agent_configs": {
+    "orchestrator": {
+      "name": "System Orchestrator",
+      "role": "Master Coordinator",
+      "primary_model": "gemini-3-pro-high",
+  "active_model": "gemini-3-pro-high",
+  "available_models": ["gemini-3-pro-high","claude-opus-4.5-thinking","claude-sonnet-4.5","gemini-3-flash"],
+      "auto_routing": true,
+      "capabilities": [
+        "model_switching",
+        "parallel_execution",
+        "file_system_access",
+        "web_browsing",
+        "mcp_tools"
+      ],
+      "routing_rules": [
+        { "task_type": "ui_design", "model": "claude-sonnet-4.5" },
+        { "task_type": "complex_logic", "model": "claude-opus-4.5-thinking" },
+        { "task_type": "refactoring", "model": "claude-sonnet-4.5" },
+        { "task_type": "unit_testing", "model": "gemini-3-flash" },
+        { "task_type": "documentation", "model": "gemini-3-flash" }
+      ]
+    }
+  },
+  "system_settings": {
+    "priority": "quality",
+    "enable_agent_memory": true,
+    "auto_apply_fixes": true,
+    "active_repositories": [
+        "222222222222",
+        "6666"
+    ]
+  }
+}
