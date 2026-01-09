@@ -24,8 +24,8 @@ export const initialEntities: Entity[] = [
 ];
 
 interface EntityContextType {
-  currentEntity: Entity;
-  setCurrentEntity: (entity: Entity) => void;
+  currentEntity: Entity | null;
+  setCurrentEntity: (entity: Entity | null) => void;
   entities: Entity[];
   setEntities: (entities: Entity[]) => void;
   availableEntities: Entity[];
@@ -56,17 +56,26 @@ export function EntityProvider({ children }: { children: ReactNode }) {
         return;
       }
       setEntities(data);
-      // Set default entity: Prefer Holding -> UNIT-002 -> First Unit -> First Item
-      const defaultEntity = data.find((e: Entity) => e.type === 'holding') || 
-                           data.find((e: Entity) => e.id === 'UNIT-002') || 
-                           data.find((e: Entity) => e.type === 'unit') || 
-                           data[0];
-      setCurrentEntity(defaultEntity);
+      
+      // Check if user has selected an entity before
+      const lastSelectedId = localStorage.getItem('lastSelectedEntityId');
+      if (lastSelectedId) {
+        const lastSelected = data.find((e: Entity) => e.id === lastSelectedId);
+        if (lastSelected) {
+          setCurrentEntity(lastSelected);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // If no previous selection, don't set a default entity
+      // User must select one from EntitySelection page
+      setCurrentEntity(null);
     } catch (error) {
       console.error('Failed to load entities:', error);
       // Fallback to initial data if API fails
       setEntities(initialEntities);
-      setCurrentEntity(initialEntities[1]);
+      setCurrentEntity(null);
     } finally {
       setLoading(false);
     }
@@ -81,7 +90,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to seed entities:', error);
       setEntities(initialEntities);
-      setCurrentEntity(initialEntities[1]);
+      setCurrentEntity(null);
       setLoading(false);
     }
   };
@@ -133,7 +142,9 @@ export function EntityProvider({ children }: { children: ReactNode }) {
   };
 
   const getThemeColor = (entityId?: string) => {
-    const id = entityId || currentEntity.id;
+    if (!currentEntity && !entityId) return "#7c3aed";
+    const id = entityId || currentEntity?.id;
+    if (!id) return "#7c3aed";
     const entity = entities.find(e => e.id === id);
     
     // If entity has explicit color, use it
@@ -149,6 +160,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
   };
 
   const isEntityVisible = (entityId: string) => {
+    if (!currentEntity) return false;
     if (currentEntity.type === 'holding') return true;
 
     const target = entities.find(e => e.id === entityId);
@@ -173,26 +185,76 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     ));
     
     // Also update current entity if it's the one being modified
-    if (currentEntity.id === entityId) {
-      setCurrentEntity(prev => ({ ...prev, logo }));
+    if (currentEntity && currentEntity.id === entityId) {
+      setCurrentEntity(prev => prev ? ({ ...prev, logo }) : null);
     }
   };
 
-  if (loading || !currentEntity) {
+  // Always render the provider, but conditionally render content
+  const setCurrentEntityWithStorage = (entity: Entity | null) => {
+    if (entity) {
+      localStorage.setItem('lastSelectedEntityId', entity.id);
+    } else {
+      localStorage.removeItem('lastSelectedEntityId');
+    }
+    setCurrentEntity(entity);
+  };
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+      <EntityContext.Provider value={{ 
+        currentEntity, 
+        setCurrentEntity: setCurrentEntityWithStorage, 
+        entities,
+        setEntities,
+        availableEntities: entities,
+        isEntityVisible,
+        getThemeColor,
+        updateEntityLogo
+      }}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+          </div>
         </div>
-      </div>
+      </EntityContext.Provider>
+    );
+  }
+  
+  // If no entity selected, show entity selection page
+  if (!currentEntity) {
+    // Import dynamically to avoid circular dependency
+    const EntitySelection = React.lazy(() => import('../pages/EntitySelection'));
+    return (
+      <EntityContext.Provider value={{ 
+        currentEntity, 
+        setCurrentEntity: setCurrentEntityWithStorage, 
+        entities,
+        setEntities,
+        availableEntities: entities,
+        isEntityVisible,
+        getThemeColor,
+        updateEntityLogo
+      }}>
+        <React.Suspense fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">جاري التحميل...</p>
+            </div>
+          </div>
+        }>
+          <EntitySelection />
+        </React.Suspense>
+      </EntityContext.Provider>
     );
   }
 
   return (
     <EntityContext.Provider value={{ 
       currentEntity, 
-      setCurrentEntity, 
+      setCurrentEntity: setCurrentEntityWithStorage, 
       entities,
       setEntities,
       availableEntities: entities,
@@ -212,3 +274,4 @@ export function useEntity() {
   }
   return context;
 }
+

@@ -54,7 +54,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-import { stockMovementsApi, inventoryApi, warehousesApi } from "@/lib/api";
+import { stockMovementsApi, inventoryApi, warehousesApi, accountsApi } from "@/lib/api";
 
 interface Movement {
   id: string;
@@ -88,6 +88,12 @@ interface Warehouse {
   name: string;
 }
 
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+}
+
 const typeMap: Record<string, { label: string, color: string, icon: any }> = {
   in: { label: "وارد", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: ArrowDownToLine },
   out: { label: "صادر", color: "bg-rose-100 text-rose-700 border-rose-200", icon: ArrowUpFromLine },
@@ -101,6 +107,7 @@ export default function StockMovements() {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -114,6 +121,7 @@ export default function StockMovements() {
     quantity: 0,
     unitCost: 0,
     reference: "",
+    toAccountId: "", // حساب الصرف (لحركات الصرف)
     notes: "",
     date: new Date().toISOString().split('T')[0],
   });
@@ -125,14 +133,16 @@ export default function StockMovements() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [movementsData, itemsData, warehousesData] = await Promise.all([
+      const [movementsData, itemsData, warehousesData, accountsData] = await Promise.all([
         stockMovementsApi.getByEntity(currentEntity.id),
         inventoryApi.getByEntity(currentEntity.id),
         warehousesApi.getByEntity(currentEntity.id),
+        accountsApi.getByEntity(currentEntity.id),
       ]);
       setMovements(movementsData);
       setItems(itemsData);
       setWarehouses(warehousesData);
+      setAccounts(accountsData);
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error("فشل تحميل حركات المخزون");
@@ -149,6 +159,11 @@ export default function StockMovements() {
 
     if (newMovement.type === 'transfer' && !newMovement.toWarehouseId) {
       toast.error("يرجى اختيار المستودع المستلم للتحويل");
+      return;
+    }
+
+    if (newMovement.type === 'out' && !newMovement.toAccountId) {
+      toast.error("يرجى اختيار حساب الصرف");
       return;
     }
 
@@ -179,6 +194,7 @@ export default function StockMovements() {
         quantity: 0,
         unitCost: 0,
         reference: "",
+        toAccountId: "",
         notes: "",
         date: new Date().toISOString().split('T')[0],
       });
@@ -189,8 +205,8 @@ export default function StockMovements() {
   };
 
   const filteredMovements = movements.filter(mov => {
-    const matchesSearch = mov.itemName.includes(searchTerm) || 
-                         mov.itemCode.includes(searchTerm) ||
+    const matchesSearch = (mov.itemName || '').includes(searchTerm) || 
+                         (mov.itemCode || '').includes(searchTerm) ||
                          (mov.reference && mov.reference.includes(searchTerm));
     const matchesType = filterType === "all" || mov.type === filterType;
     return matchesSearch && matchesType;
@@ -335,6 +351,78 @@ export default function StockMovements() {
                     />
                   </div>
                 </div>
+                {newMovement.type === 'out' && (
+                  <div className="space-y-2">
+                    <Label>حساب الصرف *</Label>
+                    <Select
+                      value={newMovement.toAccountId}
+                      onValueChange={(value) => setNewMovement({ ...newMovement, toAccountId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر حساب الصرف من شجرة الحسابات" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {(() => {
+                          // Filter accounts for current entity
+                          const entityAccounts = accounts.filter(acc => 
+                            (!acc.entityId || acc.entityId === currentEntity.id) &&
+                            (acc.type === 'expense' || acc.type === 'asset')
+                          );
+                          
+                          // Build flat list with hierarchy indication
+                          const buildAccountList = (parentId: string | null = null, level: number = 0): any[] => {
+                            const children = entityAccounts
+                              .filter(acc => acc.parentId === parentId)
+                              .sort((a, b) => a.id.localeCompare(b.id));
+                            
+                            const result: any[] = [];
+                            
+                            for (const acc of children) {
+                              // Only include non-group accounts (leaf nodes)
+                              if (!acc.isGroup) {
+                                const indent = '  '.repeat(level);
+                                result.push(
+                                  <SelectItem key={acc.id} value={acc.id}>
+                                    {indent}{acc.id} - {acc.name}
+                                  </SelectItem>
+                                );
+                              }
+                              
+                              // Recursively add children
+                              const childItems = buildAccountList(acc.id, level + 1);
+                              result.push(...childItems);
+                            }
+                            
+                            return result;
+                          };
+                          
+                          const accountList = buildAccountList();
+                          
+                          if (accountList.length === 0) {
+                            return (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                لا توجد حسابات متاحة. يرجى إضافة حسابات من شجرة الحسابات
+                              </div>
+                            );
+                          }
+                          
+                          return accountList;
+                        })()}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <p>سيتم خصم قيمة المخزون من حساب المخزون وخصمها على هذا الحساب</p>
+                      <a 
+                        href="/coa" 
+                        target="_blank" 
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        إدارة شجرة الحسابات
+                      </a>
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>المرجع</Label>
                   <Input

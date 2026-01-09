@@ -14,6 +14,8 @@ import Inventory from "./pages/Inventory";
 import Warehouses from "./pages/Warehouses";
 import StockMovements from "./pages/StockMovements";
 import Contacts from "./pages/Contacts";
+import Customers from "./pages/Customers";
+import Suppliers from "./pages/Suppliers";
 import Payments from "./pages/Payments";
 import JournalEntries from "./pages/JournalEntries";
 import Ledger from "./pages/Ledger";
@@ -31,6 +33,7 @@ import BanksWallets from "./pages/BanksWallets";
 import Currencies from "./pages/Currencies";
 import InterUnitTransfers from "./pages/InterUnitTransfers";
 import InterUnitAccounts from "./pages/InterUnitAccounts";
+import Budget from "./pages/Budget";
 
 function Router() {
   return (
@@ -44,6 +47,8 @@ function Router() {
         <Route path="/warehouses" component={Warehouses} />
         <Route path="/stock-movements" component={StockMovements} />
         <Route path="/contacts" component={Contacts} />
+        <Route path="/customers" component={Customers} />
+        <Route path="/suppliers" component={Suppliers} />
         <Route path="/payments" component={Payments} />
         <Route path="/journals" component={JournalEntries} />
         <Route path="/ledger" component={Ledger} />
@@ -61,6 +66,7 @@ function Router() {
         <Route path="/banks-wallets" component={BanksWallets} />
         <Route path="/inter-unit-transfers" component={InterUnitTransfers} />
         <Route path="/inter-unit-accounts" component={InterUnitAccounts} />
+        <Route path="/financial/budget" component={Budget} />
         
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

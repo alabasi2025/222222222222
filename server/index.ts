@@ -16,6 +16,8 @@ import interUnitTransfersRouter from "./routes/interUnitTransfers";
 import modelSwitchRouter from "./routes/modelSwitch";
 import dashboardRouter from "./routes/dashboard";
 import journalEntriesRouter from "./routes/journalEntries";
+import geminiCreditsRouter from "./routes/geminiCredits";
+import antigravityCreditsRouter from "./routes/antigravityCredits";
 import { startExecutionWatcher } from "./agentExecutionBridge";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,6 +45,8 @@ async function startServer() {
   app.use("/api/model-switch", modelSwitchRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/journal-entries", journalEntriesRouter);
+  app.use("/api/gemini-credits", geminiCreditsRouter);
+  app.use("/api/antigravity-credits", antigravityCreditsRouter);
 
   // Serve static files from dist/public in production
   const staticPath =

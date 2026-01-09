@@ -190,7 +190,9 @@ export const stockMovements = pgTable('stock_movements', {
   unitCost: decimal('unit_cost', { precision: 15, scale: 2 }),
   totalCost: decimal('total_cost', { precision: 15, scale: 2 }),
   reference: text('reference'), // رقم الفاتورة أو أمر الشراء
-  referenceType: text('reference_type'), // 'invoice' | 'purchase' | 'manual'
+  referenceType: text('reference_type'), // 'invoice' | 'purchase' | 'manual' | 'issue'
+  toAccountId: text('to_account_id').references(() => accounts.id), // حساب الصرف (لحركات الصرف)
+  journalEntryId: text('journal_entry_id').references(() => journalEntries.id), // القيد المحاسبي المرتبط
   notes: text('notes'),
   date: timestamp('date').notNull(),
   createdBy: text('created_by'),

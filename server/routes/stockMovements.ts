@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index';
-import { stockMovements, itemStock, items } from '../db/schema';
+import { stockMovements, itemStock, items, journalEntries, journalEntryLines, accounts } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
 const router = Router();
@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
     const newMovement = await db.insert(stockMovements).values(movementData).returning();
 
     // Update stock levels based on movement type
-    const { itemId, warehouseId, toWarehouseId, type, quantity, unitCost } = req.body;
+    const { itemId, warehouseId, toWarehouseId, type, quantity, unitCost, totalCost } = req.body;
 
     // Check if item stock record exists
     const existingStock = await db.select().from(itemStock)
@@ -112,6 +112,60 @@ router.post('/', async (req, res) => {
             updatedAt: new Date()
           })
           .where(and(eq(itemStock.itemId, itemId), eq(itemStock.warehouseId, warehouseId)));
+      }
+
+      // Create accounting entry for stock issue (if toAccountId is provided)
+      const { toAccountId } = req.body;
+      const calculatedTotalCost = totalCost || (quantity * (unitCost || 0));
+      if (toAccountId && calculatedTotalCost > 0) {
+        // Get item to find its accounts
+        const item = await db.select().from(items).where(eq(items.id, itemId)).limit(1);
+        if (item.length > 0) {
+          const stockAccountId = item[0].accountId; // حساب المخزون
+          const cogsAccountId = item[0].cogsAccountId || toAccountId; // حساب تكلفة البضاعة المباعة أو الحساب المحدد
+
+          if (stockAccountId && cogsAccountId) {
+            const journalId = `JE-STOCK-${Date.now()}`;
+            
+            // Create journal entry
+            await db.insert(journalEntries).values({
+              id: journalId,
+              entityId: req.body.entityId,
+              date: new Date(req.body.date),
+              description: `صرف مخزون - ${req.body.reference || newMovement[0].id}`,
+              reference: req.body.reference || newMovement[0].id,
+              type: 'auto',
+              status: 'posted',
+            });
+
+            // Debit: COGS account (تكلفة البضاعة المباعة)
+            await db.insert(journalEntryLines).values({
+              id: `JVL-${Date.now()}-1`,
+              entryId: journalId,
+              accountId: cogsAccountId,
+              debit: calculatedTotalCost.toString(),
+              credit: '0',
+              currency: 'YER',
+              description: `صرف مخزون - ${item[0].name || itemId}`,
+            });
+
+            // Credit: Stock account (حساب المخزون)
+            await db.insert(journalEntryLines).values({
+              id: `JVL-${Date.now()}-2`,
+              entryId: journalId,
+              accountId: stockAccountId,
+              debit: '0',
+              credit: calculatedTotalCost.toString(),
+              currency: 'YER',
+              description: `صرف مخزون - ${item[0].name || itemId}`,
+            });
+
+            // Update stock movement with journal entry ID
+            await db.update(stockMovements)
+              .set({ journalEntryId: journalId })
+              .where(eq(stockMovements.id, newMovement[0].id));
+          }
+        }
       }
     } else if (type === 'transfer' && toWarehouseId) {
       // Decrease from source warehouse

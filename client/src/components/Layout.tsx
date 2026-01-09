@@ -3,9 +3,16 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useEntity } from "@/contexts/EntityContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { currentEntity } = useEntity();
+
+  // Don't render layout if no entity is selected (EntitySelection page will be shown)
+  if (!currentEntity) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-background" dir="rtl">

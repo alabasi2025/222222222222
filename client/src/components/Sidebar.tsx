@@ -32,7 +32,10 @@ import {
   Moon,
   Sun,
   Warehouse,
-  ArrowLeftRight
+  ArrowLeftRight,
+  UserCircle,
+  Truck,
+  ShieldCheck
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -54,10 +57,14 @@ const menuItems = [
   { icon: LayoutDashboard, label: "لوحة المعلومات", href: "/" },
   { icon: FileText, label: "الفواتير", href: "/invoices" },
   { icon: ShoppingCart, label: "المشتريات", href: "/purchases" },
-  { icon: Package, label: "المخزون", href: "/inventory" },
+  { icon: UserCircle, label: "العملاء", href: "/customers" },
+  { icon: Truck, label: "الموردين", href: "/suppliers" },
+];
+
+const inventoryItems = [
   { icon: Warehouse, label: "المستودعات", href: "/warehouses" },
   { icon: ArrowLeftRight, label: "حركات المخزون", href: "/stock-movements" },
-  { icon: Users, label: "العملاء والموردين", href: "/contacts" },
+  { icon: Package, label: "المخزون", href: "/inventory" },
 ];
 
 const financialSystemItems = [
@@ -68,6 +75,9 @@ const financialSystemItems = [
   { icon: BarChart3, label: "التحليل المالي", href: "/financial/analysis" },
   { icon: Coins, label: "الموازنة التقديرية", href: "/financial/budget" },
   { icon: CreditCard, label: "إدارة الديون", href: "/financial/debt-management" },
+  { icon: Wallet, label: "السندات المالية", href: "/payments" },
+  { icon: ShieldCheck, label: "الصناديق والعهد", href: "/cash-boxes" },
+  { icon: Landmark, label: "البنوك والمحافظ", href: "/banks-wallets" },
   { 
     icon: Settings, 
     label: "إعدادات النظام المالي", 
@@ -86,9 +96,6 @@ const financialSystemItems = [
 ];
 
 const otherMenuItems = [
-  { icon: Wallet, label: "السندات المالية", href: "/payments" },
-  { icon: Wallet, label: "الصناديق والعهد", href: "/cash-boxes" },
-  { icon: Landmark, label: "البنوك والمحافظ", href: "/banks-wallets" },
   { icon: ArrowLeftRight, label: "التحويلات بين الوحدات", href: "/inter-unit-transfers" },
   { icon: Building2, label: "حسابات الجاري", href: "/inter-unit-accounts" },
   { icon: FileText, label: "قيود اليومية", href: "/journals" },
@@ -106,8 +113,14 @@ const otherMenuItems = [
 export function Sidebar() {
   const [location] = useLocation();
   const { entities, currentEntity, setCurrentEntity, getThemeColor } = useEntity();
+  
+  // Don't render sidebar if no entity is selected
+  if (!currentEntity) {
+    return null;
+  }
   const { theme, toggleTheme } = useTheme();
   const [isFinancialSystemOpen, setIsFinancialSystemOpen] = useState(false);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
   const [openNestedSubMenus, setOpenNestedSubMenus] = useState<Record<string, boolean>>({});
 
@@ -284,6 +297,56 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* المخزون */}
+        <div className="space-y-1">
+          <div
+            onClick={() => setIsInventoryOpen(!isInventoryOpen)}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 cursor-pointer",
+              "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            )}
+          >
+            <Package className="w-5 h-5" />
+            <span className="flex-1">المخزون</span>
+            <ChevronLeft 
+              className={cn(
+                "w-4 h-4 transition-transform duration-200",
+                isInventoryOpen && "rotate-90"
+              )}
+            />
+          </div>
+          
+          {isInventoryOpen && (
+            <div className="pr-4 space-y-1">
+              {inventoryItems.map((item) => {
+                const isActive = location === item.href;
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 cursor-pointer",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                          : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      )}
+                      style={isActive ? { 
+                        backgroundColor: `${getThemeColor()}15`,
+                        color: getThemeColor()
+                      } : undefined}
+                    >
+                      <item.icon 
+                        className={cn("w-4 h-4 transition-colors duration-300")} 
+                        style={{ color: isActive ? getThemeColor() : undefined }}
+                      />
+                      {item.label}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* النظام المالي */}
         <div className="space-y-1">

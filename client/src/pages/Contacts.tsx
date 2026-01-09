@@ -51,7 +51,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
 
@@ -61,13 +61,46 @@ const initialSuppliers: any[] = [];
 
 export default function Contacts() {
   const { currentEntity } = useEntity();
-  const [customers, setCustomers] = useState(initialCustomers);
-  const [suppliers, setSuppliers] = useState(initialSuppliers);
+  
+  // Load from localStorage on mount
+  const loadFromStorage = () => {
+    try {
+      const savedCustomers = localStorage.getItem('customers');
+      const savedSuppliers = localStorage.getItem('suppliers');
+      if (savedCustomers) {
+        return JSON.parse(savedCustomers);
+      }
+      return initialCustomers;
+    } catch {
+      return initialCustomers;
+    }
+  };
+
+  const loadSuppliersFromStorage = () => {
+    try {
+      const savedSuppliers = localStorage.getItem('suppliers');
+      if (savedSuppliers) {
+        return JSON.parse(savedSuppliers);
+      }
+      return initialSuppliers;
+    } catch {
+      return initialSuppliers;
+    }
+  };
+
+  const [customers, setCustomers] = useState(loadFromStorage);
+  const [suppliers, setSuppliers] = useState(loadSuppliersFromStorage);
   const [activeTab, setActiveTab] = useState("customers");
   
   const [isNewContactOpen, setIsNewContactOpen] = useState(false);
   const [isEditContactOpen, setIsEditContactOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
+
+  // Reload contacts when entity changes
+  useEffect(() => {
+    setCustomers(loadFromStorage());
+    setSuppliers(loadSuppliersFromStorage());
+  }, [currentEntity]);
 
   const [newContact, setNewContact] = useState({
     name: "",
@@ -108,10 +141,16 @@ export default function Contacts() {
     };
 
     if (newContact.category === "customer") {
-      setCustomers([...customers, contact]);
+      const updatedCustomers = [...customers, contact];
+      setCustomers(updatedCustomers);
+      // Save to localStorage
+      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
       toast.success("تم إضافة العميل بنجاح");
     } else {
-      setSuppliers([...suppliers, contact]);
+      const updatedSuppliers = [...suppliers, contact];
+      setSuppliers(updatedSuppliers);
+      // Save to localStorage
+      localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
       toast.success("تم إضافة المورد بنجاح");
     }
 
@@ -132,14 +171,18 @@ export default function Contacts() {
     }
 
     if (activeTab === "customers") {
-      setCustomers(customers.map(c => 
+      const updatedCustomers = customers.map(c => 
         c.id === editingContact.id ? editingContact : c
-      ));
+      );
+      setCustomers(updatedCustomers);
+      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
       toast.success("تم تحديث بيانات العميل بنجاح");
     } else {
-      setSuppliers(suppliers.map(s => 
+      const updatedSuppliers = suppliers.map(s => 
         s.id === editingContact.id ? editingContact : s
-      ));
+      );
+      setSuppliers(updatedSuppliers);
+      localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
       toast.success("تم تحديث بيانات المورد بنجاح");
     }
     
@@ -149,14 +192,18 @@ export default function Contacts() {
 
   const handleDeleteCustomer = (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذا العميل؟")) {
-      setCustomers(customers.filter(c => c.id !== id));
+      const updatedCustomers = customers.filter(c => c.id !== id);
+      setCustomers(updatedCustomers);
+      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
       toast.success("تم حذف العميل بنجاح");
     }
   };
 
   const handleDeleteSupplier = (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذا المورد؟")) {
-      setSuppliers(suppliers.filter(s => s.id !== id));
+      const updatedSuppliers = suppliers.filter(s => s.id !== id);
+      setSuppliers(updatedSuppliers);
+      localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
       toast.success("تم حذف المورد بنجاح");
     }
   };
