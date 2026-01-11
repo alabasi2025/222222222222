@@ -236,3 +236,41 @@ export const interUnitAccounts = pgTable('inter_unit_accounts', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// جدول سندات الصرف/القبض
+export const paymentVouchers = pgTable('payment_vouchers', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id').notNull().references(() => entities.id),
+  type: text('type').notNull(), // 'in' | 'out' (سند قبض | سند صرف)
+  cashBoxId: text('cash_box_id').references(() => cashBoxes.id),
+  date: timestamp('date').notNull(),
+  currency: text('currency').default('YER').notNull(),
+  exchangeRate: decimal('exchange_rate', { precision: 15, scale: 4 }).default('1').notNull(),
+  totalAmount: decimal('total_amount', { precision: 15, scale: 2 }).notNull(),
+  reference: text('reference'), // رقم الشيك/التحويل
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    dateIdx: index('idx_payment_vouchers_date').on(table.date),
+    entityIdx: index('idx_payment_vouchers_entity').on(table.entityId),
+  };
+});
+
+// جدول عمليات سندات الصرف/القبض
+export const paymentVoucherOperations = pgTable('payment_voucher_operations', {
+  id: text('id').primaryKey(),
+  voucherId: text('voucher_id').notNull().references(() => paymentVouchers.id, { onDelete: 'cascade' }),
+  accountType: text('account_type').notNull(),
+  accountSubtype: text('account_subtype').notNull(),
+  chartAccountId: text('chart_account_id').notNull().references(() => accounts.id),
+  analyticalAccountId: text('analytical_account_id').references(() => accounts.id),
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    voucherIdx: index('idx_payment_voucher_operations_voucher').on(table.voucherId),
+  };
+});

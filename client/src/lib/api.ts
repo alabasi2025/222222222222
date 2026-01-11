@@ -107,6 +107,25 @@ export const journalEntriesApi = {
   }),
 };
 
+// Payments API (Payment Vouchers)
+export const paymentsApi = {
+  getAll: () => apiCall<any[]>('/payments'),
+  getById: (id: string) => apiCall<any>(`/payments/${id}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/payments?entityId=${entityId}`),
+  getByType: (entityId: string, type: 'in' | 'out') => apiCall<any[]>(`/payments?entityId=${entityId}&type=${type}`),
+  create: (data: any) => apiCall<any>('/payments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: any) => apiCall<any>(`/payments/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => apiCall<void>(`/payments/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
 // Journal Entry Lines API
 export const journalEntryLinesApi = {
   getAll: () => apiCall<any[]>('/journal-entry-lines'),

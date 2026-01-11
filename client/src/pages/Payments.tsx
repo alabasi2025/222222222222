@@ -55,7 +55,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEntity } from "@/contexts/EntityContext";
-import { cashBoxesApi, banksWalletsApi, accountsApi } from "@/lib/api";
+import { cashBoxesApi, banksWalletsApi, accountsApi, paymentsApi } from "@/lib/api";
 import { getAccountTypes } from "@/lib/accountTypes";
 import { getAccountSubtypes } from "@/lib/accountSubtypes";
 import { Textarea } from "@/components/ui/textarea";
@@ -138,6 +138,7 @@ export default function Payments() {
   // Load data from API
   useEffect(() => {
     loadAccounts();
+    loadPayments();
   }, [currentEntity.id]);
 
   const loadAccounts = async () => {
@@ -174,6 +175,35 @@ export default function Payments() {
       toast.error('فشل تحميل الحسابات');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPayments = async () => {
+    try {
+      const paymentsData = await paymentsApi.getByEntity(currentEntity.id);
+      
+      // Transform API data to frontend format
+      const transformedPayments = paymentsData.map((voucher: any) => ({
+        id: voucher.id,
+        type: voucher.type,
+        party: voucher.operations?.[0]?.description || '-',
+        account: voucher.cashBox?.name || '-',
+        cashBox: voucher.cashBox?.name || '-',
+        cashBoxId: voucher.cashBoxId,
+        date: new Date(voucher.date).toISOString().split('T')[0],
+        method: 'cash',
+        currency: voucher.currency,
+        exchangeRate: parseFloat(voucher.exchangeRate || '1'),
+        amount: parseFloat(voucher.totalAmount),
+        totalAmount: parseFloat(voucher.totalAmount),
+        operations: voucher.operations || [],
+        reference: voucher.reference,
+      }));
+      
+      setPayments(transformedPayments);
+    } catch (error) {
+      console.error('Failed to load payments:', error);
+      // Don't show error toast for initial load - might be empty
     }
   };
 
@@ -333,7 +363,7 @@ export default function Payments() {
     }
   };
 
-  const handleSubmit = (type: 'in' | 'out') => {
+  const handleSubmit = async (type: 'in' | 'out') => {
     if (!formData.account || !formData.party || !formData.amount) {
       toast.error("الرجاء تعبئة جميع الحقول المطلوبة");
       return;
@@ -345,48 +375,129 @@ export default function Payments() {
       return;
     }
 
-    const allAccounts = [
-      ...getAccountsByMethod("cash"),
-      ...getAccountsByMethod("bank"),
-      ...getAccountsByMethod("exchange"),
-      ...getAccountsByMethod("wallet")
-    ];
-    const accountName = allAccounts.find(a => a.id === formData.account)?.name || formData.account;
+    try {
+      // Get account details
+      const allAccounts = [
+        ...getAccountsByMethod("cash"),
+        ...getAccountsByMethod("bank"),
+        ...getAccountsByMethod("exchange"),
+        ...getAccountsByMethod("wallet")
+      ];
+      const selectedAccount = allAccounts.find(a => a.id === formData.account);
+      
+      if (!selectedAccount) {
+        toast.error("الرجاء اختيار حساب صحيح");
+        return;
+      }
 
-    const newPayment = {
-      id: `PAY-${payments.length + 1}`,
-      type,
-      party: formData.party,
-      account: accountName,
-      date: formData.date,
-      method: formData.method,
-      currency: formData.currency,
-      exchangeRate: parseFloat(formData.exchangeRate),
-      amount: parseFloat(formData.amount),
-      reference: formData.reference
-    };
+      // Get the chart account ID from cash box/bank/wallet
+      let chartAccountId: string | null = null;
+      
+      if (formData.method === 'cash') {
+        // For cash boxes, get accountId from cash box
+        const cashBox = cashBoxes.find(box => box.id === formData.account);
+        chartAccountId = cashBox?.accountId || null;
+        if (!chartAccountId) {
+          toast.error("الصندوق المحدد غير مربوط بحساب في دليل الحسابات");
+          return;
+        }
+      } else {
+        // For banks/wallets/exchange, get chartAccountId from banksWallets
+        const bankWallet = banksWallets.find(item => item.id === formData.account);
+        chartAccountId = bankWallet?.chartAccountId || null;
+        if (!chartAccountId) {
+          toast.error("الحساب المحدد غير مربوط بحساب في دليل الحسابات");
+          return;
+        }
+      }
 
-    setPayments([newPayment, ...payments]);
-    toast.success(type === 'in' ? "تم إنشاء سند القبض بنجاح" : "تم إنشاء سند الصرف بنجاح");
-    
-    // Reset form
-    setFormData({
-      method: "cash",
-      account: "",
-      party: "",
-      amount: "",
-      date: new Date().toISOString().split('T')[0],
-      currency: "YER",
-      exchangeRate: "1",
-      reference: ""
-    });
-    setRateError("");
-    setRateWarning("");
-    
-    if (type === 'in') {
-      setIsReceiveOpen(false);
-    } else {
-      setIsPayOpen(false);
+      // Get account details from chart of accounts
+      const chartAccount = chartAccounts.find(acc => acc.id === chartAccountId);
+      if (!chartAccount) {
+        toast.error("حساب غير موجود في دليل الحسابات");
+        return;
+      }
+
+      // For receipt voucher (in), we need to create a simple operation
+      // Use the account type/subtype from the chart account
+      const operationsData = [{
+        accountType: chartAccount.type, // Use account type from chart account
+        accountSubtype: chartAccount.subtype || 'general',
+        chartAccountId: chartAccountId,
+        analyticalAccountId: null,
+        amount: parseFloat(formData.amount).toString(),
+        description: formData.party
+      }];
+
+      // Determine cashBoxId based on method
+      let cashBoxId: string | null = null;
+      if (formData.method === 'cash') {
+        cashBoxId = formData.account; // For cash, account ID is cash box ID
+      }
+
+      // Create voucher via API
+      const voucherData = {
+        entityId: currentEntity.id,
+        type: type,
+        cashBoxId: cashBoxId,
+        date: formData.date,
+        currency: formData.currency,
+        exchangeRate: formData.exchangeRate || "1",
+        totalAmount: parseFloat(formData.amount).toString(),
+        reference: formData.reference || null,
+        operations: operationsData,
+        createdBy: 'admin', // TODO: Get from auth context
+      };
+
+      const createdVoucher = await paymentsApi.create(voucherData);
+
+      // Transform API response to frontend format
+      const newPayment = {
+        id: createdVoucher.id,
+        type: createdVoucher.type,
+        party: createdVoucher.operations?.[0]?.description || formData.party,
+        account: selectedAccount.name,
+        cashBox: createdVoucher.cashBox?.name || selectedAccount.name,
+        cashBoxId: createdVoucher.cashBoxId,
+        date: new Date(createdVoucher.date).toISOString().split('T')[0],
+        method: formData.method,
+        currency: createdVoucher.currency,
+        exchangeRate: parseFloat(createdVoucher.exchangeRate || '1'),
+        amount: parseFloat(createdVoucher.totalAmount),
+        totalAmount: parseFloat(createdVoucher.totalAmount),
+        operations: createdVoucher.operations || [],
+        reference: createdVoucher.reference,
+      };
+
+      setPayments([newPayment, ...payments]);
+      toast.success(type === 'in' ? "تم إنشاء سند القبض بنجاح" : "تم إنشاء سند الصرف بنجاح");
+      
+      // Reload cash boxes to get updated balance
+      loadAccounts();
+      loadPayments();
+      
+      // Reset form
+      setFormData({
+        method: "cash",
+        account: "",
+        party: "",
+        amount: "",
+        date: new Date().toISOString().split('T')[0],
+        currency: "YER",
+        exchangeRate: "1",
+        reference: ""
+      });
+      setRateError("");
+      setRateWarning("");
+      
+      if (type === 'in') {
+        setIsReceiveOpen(false);
+      } else {
+        setIsPayOpen(false);
+      }
+    } catch (error: any) {
+      console.error('Failed to create payment voucher:', error);
+      toast.error(error.message || 'فشل إنشاء السند');
     }
   };
 
@@ -540,11 +651,11 @@ export default function Payments() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-6 py-6">
-                {/* Header Information - Onix Pro Style (Wide Layout) */}
-                <div className="grid grid-cols-6 gap-6 p-4 bg-muted/30 rounded-lg border">
+                {/* Header Information - Onyx Pro Style (Wide Layout) */}
+                <div className="grid grid-cols-6 gap-6 p-5 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                   {/* 1. الصندوق */}
                   <div className="col-span-2">
-                    <Label htmlFor="cashBox-out" className="text-sm font-semibold mb-2 block">الصندوق *</Label>
+                    <Label htmlFor="cashBox-out" className="text-sm font-bold mb-2 block text-gray-700">الصندوق *</Label>
                     <Select 
                       onValueChange={(v) => handlePaymentFormChange("cashBox", v)} 
                       value={paymentFormData.cashBox}
@@ -572,7 +683,7 @@ export default function Payments() {
 
                   {/* 2. التاريخ */}
                   <div className="col-span-2">
-                    <Label htmlFor="date-out" className="text-sm font-semibold mb-2 block">التاريخ *</Label>
+                    <Label htmlFor="date-out" className="text-sm font-bold mb-2 block text-gray-700">التاريخ *</Label>
                     <Input 
                       id="date-out" 
                       name="date" 
@@ -585,7 +696,7 @@ export default function Payments() {
 
                   {/* 3. العملة */}
                   <div className="col-span-2">
-                    <Label htmlFor="currency-out" className="text-sm font-semibold mb-2 block">العملة *</Label>
+                    <Label htmlFor="currency-out" className="text-sm font-bold mb-2 block text-gray-700">العملة *</Label>
                     <Select 
                       onValueChange={(v) => handlePaymentFormChange("currency", v)} 
                       value={paymentFormData.currency}
@@ -604,9 +715,9 @@ export default function Payments() {
 
                 {/* سعر الصرف (إذا كانت العملة ليست YER) */}
                 {paymentFormData.currency && paymentFormData.currency !== "YER" && (
-                  <div className="grid grid-cols-6 gap-6 p-4 bg-muted/30 rounded-lg border">
+                  <div className="grid grid-cols-6 gap-6 p-5 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                     <div className="col-span-6">
-                      <Label htmlFor="exchangeRate-out" className="text-sm font-semibold mb-2 block">سعر الصرف</Label>
+                      <Label htmlFor="exchangeRate-out" className="text-sm font-bold mb-2 block text-gray-700">سعر الصرف</Label>
                       <div className="space-y-2">
                         <Input 
                           id="exchangeRate-out" 
@@ -645,13 +756,13 @@ export default function Payments() {
                       </span>
                     </div>
 
-                    {/* Add New Operation Form - Onix Pro Wide Style */}
-                    <Card id="operation-form" className="p-6 bg-muted/20 border-2 border-dashed border-primary/40 shadow-sm">
+                    {/* Add New Operation Form - Onyx Pro Wide Style */}
+                    <Card id="operation-form" className="p-6 bg-amber-50/50 border-2 border-dashed border-amber-300 shadow-sm rounded-lg">
                       <div className="space-y-4">
                         {/* Form Header */}
-                        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-primary/30">
-                          <Plus className="w-5 h-5 text-primary" />
-                          <Label className="font-bold text-lg">
+                        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-amber-400">
+                          <Plus className="w-5 h-5 text-amber-600" />
+                          <Label className="font-bold text-lg text-gray-800">
                             {editingOperationId ? "تعديل العملية" : "إضافة عملية جديدة"}
                           </Label>
                         </div>
@@ -879,12 +990,12 @@ export default function Payments() {
 
                         {/* Cancel edit button */}
                         {editingOperationId && (
-                          <div className="flex justify-end pt-3 border-t-2 border-primary/20">
+                          <div className="flex justify-end pt-3 border-t-2 border-amber-200">
                             <Button
                               type="button"
                               variant="outline"
                               size="lg"
-                              className="text-base"
+                              className="text-base border-gray-300 hover:bg-gray-50"
                               onClick={() => {
                                 setCurrentOperation({
                                   accountType: "",
@@ -989,9 +1100,9 @@ export default function Payments() {
                         </div>
 
                         {/* Total Summary - Excel Style */}
-                        <div className="flex justify-between items-center p-4 bg-gray-100 border border-gray-300 border-t-2 border-t-gray-400">
-                          <span className="text-base font-bold text-gray-900">الإجمالي:</span>
-                          <span className="text-xl font-bold text-gray-900">
+                        <div className="flex justify-between items-center p-4 bg-gray-800 border border-gray-700 border-t-2 border-t-gray-600">
+                          <span className="text-base font-bold text-white">الإجمالي:</span>
+                          <span className="text-xl font-bold text-white">
                             {paymentOperations.reduce((sum, op) => sum + parseFloat(op.amount || "0"), 0).toLocaleString()} {paymentFormData.currency}
                           </span>
                         </div>
@@ -1000,18 +1111,18 @@ export default function Payments() {
 
                     {/* Empty State */}
                     {paymentOperations.length === 0 && !editingOperationId && (
-                      <div className="text-center py-8 border-2 border-dashed rounded-lg bg-muted/20">
-                        <p className="text-muted-foreground">لا توجد عمليات مضافة</p>
-                        <p className="text-xs text-muted-foreground mt-1">استخدم النموذج أعلاه لإضافة عملية جديدة</p>
+                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50/50">
+                        <p className="text-gray-600 font-medium">لا توجد عمليات مضافة</p>
+                        <p className="text-xs text-gray-500 mt-1">استخدم النموذج أعلاه لإضافة عملية جديدة</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* المرجع (اختياري) - Wide Style */}
-                <div className="grid grid-cols-6 gap-6 p-4 bg-muted/30 rounded-lg border">
+                <div className="grid grid-cols-6 gap-6 p-5 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                   <div className="col-span-6">
-                    <Label htmlFor="reference-out" className="text-sm font-semibold mb-2 block">المرجع (اختياري)</Label>
+                    <Label htmlFor="reference-out" className="text-sm font-bold mb-2 block text-gray-700">المرجع (اختياري)</Label>
                     <Input 
                       id="reference-out" 
                       name="reference" 
@@ -1025,7 +1136,7 @@ export default function Payments() {
               </div>
               <DialogFooter>
                 <Button 
-                  onClick={() => {
+                  onClick={async () => {
                     // Validate required fields
                     if (!paymentFormData.cashBox || !paymentFormData.date || !paymentFormData.currency) {
                       toast.error("الرجاء تعبئة الصندوق والتاريخ والعملة");
@@ -1048,58 +1159,82 @@ export default function Payments() {
                     const selectedCashBox = cashBoxes.find(box => box.id === paymentFormData.cashBox);
                     const totalAmount = paymentOperations.reduce((sum, op) => sum + parseFloat(op.amount || "0"), 0);
 
-                    const newPayment = {
-                      id: `PAY-OUT-${Date.now()}`,
-                      type: 'out',
-                      cashBox: selectedCashBox?.name || paymentFormData.cashBox,
-                      cashBoxId: paymentFormData.cashBox,
-                      date: paymentFormData.date,
-                      currency: paymentFormData.currency,
-                      exchangeRate: parseFloat(paymentFormData.exchangeRate || "1"),
-                      totalAmount: totalAmount,
-                      operations: paymentOperations.map(op => {
-                        const chartAccount = chartAccounts.find(acc => acc.id === op.chartAccount);
-                        const analyticalAccount = op.analyticalAccount 
-                          ? chartAccounts.find(acc => acc.id === op.analyticalAccount)
-                          : null;
-                        return {
-                          accountType: op.accountType,
-                          accountSubtype: op.accountSubtype,
-                          chartAccount: chartAccount?.name || op.chartAccount,
-                          chartAccountId: op.chartAccount,
-                          analyticalAccount: analyticalAccount?.name || null,
-                          analyticalAccountId: analyticalAccount?.id || null,
-                          amount: parseFloat(op.amount || "0"),
-                          description: op.description
-                        };
-                      }),
-                      reference: paymentFormData.reference || null
-                    };
+                    try {
+                      // Prepare operations data for API
+                      const operationsData = paymentOperations.map(op => ({
+                        accountType: op.accountType,
+                        accountSubtype: op.accountSubtype,
+                        chartAccountId: op.chartAccount,
+                        analyticalAccountId: op.analyticalAccount || null,
+                        amount: parseFloat(op.amount || "0").toString(),
+                        description: op.description
+                      }));
 
-                    setPayments([newPayment, ...payments]);
-                    toast.success(`تم إنشاء سند الصرف بنجاح (${paymentOperations.length} عملية)`);
-                    
-                    // Reset form
-                    setPaymentFormData({
-                      cashBox: "",
-                      date: new Date().toISOString().split('T')[0],
-                      currency: "YER",
-                      exchangeRate: "1",
-                      reference: ""
-                    });
-                    setPaymentOperations([]);
-                    setCurrentOperation({
-                      accountType: "",
-                      accountSubtype: "",
-                      chartAccount: "",
-                      analyticalAccount: "",
-                      amount: "",
-                      description: ""
-                    });
-                    setEditingOperationId(null);
-                    setRateError("");
-                    setRateWarning("");
-                    setIsPayOpen(false);
+                      // Create voucher via API
+                      const voucherData = {
+                        entityId: currentEntity.id,
+                        type: 'out',
+                        cashBoxId: paymentFormData.cashBox,
+                        date: paymentFormData.date,
+                        currency: paymentFormData.currency,
+                        exchangeRate: paymentFormData.exchangeRate || "1",
+                        totalAmount: totalAmount.toString(),
+                        reference: paymentFormData.reference || null,
+                        operations: operationsData,
+                        createdBy: 'admin', // TODO: Get from auth context
+                      };
+
+                      const createdVoucher = await paymentsApi.create(voucherData);
+
+                      // Transform API response to frontend format
+                      const newPayment = {
+                        id: createdVoucher.id,
+                        type: createdVoucher.type,
+                        party: createdVoucher.operations?.[0]?.description || '-',
+                        account: createdVoucher.cashBox?.name || '-',
+                        cashBox: createdVoucher.cashBox?.name || '-',
+                        cashBoxId: createdVoucher.cashBoxId,
+                        date: new Date(createdVoucher.date).toISOString().split('T')[0],
+                        method: 'cash',
+                        currency: createdVoucher.currency,
+                        exchangeRate: parseFloat(createdVoucher.exchangeRate || '1'),
+                        amount: parseFloat(createdVoucher.totalAmount),
+                        totalAmount: parseFloat(createdVoucher.totalAmount),
+                        operations: createdVoucher.operations || [],
+                        reference: createdVoucher.reference,
+                      };
+
+                      setPayments([newPayment, ...payments]);
+                      toast.success(`تم إنشاء سند الصرف بنجاح (${paymentOperations.length} عملية)`);
+                      
+                      // Reload cash boxes to get updated balance
+                      loadAccounts();
+                      
+                      // Reset form
+                      setPaymentFormData({
+                        cashBox: "",
+                        date: new Date().toISOString().split('T')[0],
+                        currency: "YER",
+                        exchangeRate: "1",
+                        reference: ""
+                      });
+                      setPaymentOperations([]);
+                      setCurrentOperation({
+                        accountType: "",
+                        accountSubtype: "",
+                        chartAccount: "",
+                        analyticalAccount: "",
+                        amount: "",
+                        description: ""
+                      });
+                      setEditingOperationId(null);
+                      setRateError("");
+                      setRateWarning("");
+                      setIsPayOpen(false);
+                    } catch (error: any) {
+                      console.error('Failed to create payment voucher:', error);
+                      toast.error(error.message || 'فشل إنشاء سند الصرف');
+                    }
                   }} 
                   variant="destructive"
                   disabled={paymentOperations.length === 0}

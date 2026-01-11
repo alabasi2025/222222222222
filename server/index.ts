@@ -16,6 +16,7 @@ import interUnitTransfersRouter from "./routes/interUnitTransfers";
 import modelSwitchRouter from "./routes/modelSwitch";
 import dashboardRouter from "./routes/dashboard";
 import journalEntriesRouter from "./routes/journalEntries";
+import paymentsRouter from "./routes/payments";
 import geminiCreditsRouter from "./routes/geminiCredits";
 import antigravityCreditsRouter from "./routes/antigravityCredits";
 import { startExecutionWatcher } from "./agentExecutionBridge";
@@ -45,6 +46,7 @@ async function startServer() {
   app.use("/api/model-switch", modelSwitchRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/journal-entries", journalEntriesRouter);
+  app.use("/api/payments", paymentsRouter);
   app.use("/api/gemini-credits", geminiCreditsRouter);
   app.use("/api/antigravity-credits", antigravityCreditsRouter);
 
