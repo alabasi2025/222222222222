@@ -211,12 +211,12 @@ router.post('/', async (req, res) => {
       .where(eq(paymentVouchers.id, voucherId))
       .limit(1);
     
-    const operations = await db.select()
+    const voucherOperations = await db.select()
       .from(paymentVoucherOperations)
       .where(eq(paymentVoucherOperations.voucherId, voucherId));
     
     const operationsWithAccounts = await Promise.all(
-      operations.map(async (op: any) => {
+      voucherOperations.map(async (op: any) => {
         const chartAccount = await db.select()
           .from(accounts)
           .where(eq(accounts.id, op.chartAccountId))
@@ -310,13 +310,13 @@ router.put('/:id', async (req, res) => {
       .where(eq(paymentVouchers.id, voucherId))
       .limit(1);
     
-    const operations = await db.select()
+    const updatedOperations = await db.select()
       .from(paymentVoucherOperations)
       .where(eq(paymentVoucherOperations.voucherId, voucherId));
     
     res.json({
       ...voucher[0],
-      operations,
+      operations: updatedOperations,
     });
   } catch (error: any) {
     console.error('Error updating payment voucher:', error);

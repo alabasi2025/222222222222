@@ -59,6 +59,7 @@ import { cashBoxesApi, banksWalletsApi, accountsApi, paymentsApi } from "@/lib/a
 import { getAccountTypes } from "@/lib/accountTypes";
 import { getAccountSubtypes } from "@/lib/accountSubtypes";
 import { Textarea } from "@/components/ui/textarea";
+import { OnyxStyleTable } from "@/components/OnyxStyleTable";
 
 const initialPayments: any[] = [];
 
@@ -90,11 +91,15 @@ export default function Payments() {
 
   // Form states for payment voucher (سند صرف)
   const [paymentFormData, setPaymentFormData] = useState({
-    cashBox: "", // الصندوق
+    paymentType: "cash", // نوع الدفع: cash, cheque, transfer
+    cashBox: "", // الصندوق (للنقد)
+    bankWallet: "", // البنك/المحفظة (للشيك/التحويل)
     date: new Date().toISOString().split('T')[0], // التاريخ
     currency: "YER", // العملة
     exchangeRate: "1", // سعر الصرف
-    reference: "" // المرجع
+    reference: "", // المرجع
+    chequeNumber: "", // رقم الشيك (للشيكات)
+    transferReference: "" // مرجع التحويل (للتحويلات)
   });
 
   // Operations/Items for payment voucher (العمليات داخل السند)
@@ -650,39 +655,111 @@ export default function Payments() {
                   أدخل تفاصيل المبلغ المدفوع والعمليات المرتبطة بالسند
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-6 py-6">
-                {/* Header Information - Onyx Pro Style (Wide Layout) */}
-                <div className="grid grid-cols-6 gap-6 p-5 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                  {/* 1. الصندوق */}
-                  <div className="col-span-2">
-                    <Label htmlFor="cashBox-out" className="text-sm font-bold mb-2 block text-gray-700">الصندوق *</Label>
+              <div className="grid gap-4 py-4">
+                {/* Header Information - Onyx Pro Style (Compact) */}
+                <div className="grid grid-cols-12 gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-300 shadow-md">
+                  {/* 0. نوع الدفع - NEW */}
+                  <div className="col-span-3">
+                    <Label htmlFor="paymentType-out" className="text-sm font-bold mb-2 block text-gray-700">نوع الدفع *</Label>
                     <Select 
-                      onValueChange={(v) => handlePaymentFormChange("cashBox", v)} 
-                      value={paymentFormData.cashBox}
+                      onValueChange={(v) => {
+                        handlePaymentFormChange("paymentType", v);
+                        // Reset account fields when payment type changes
+                        handlePaymentFormChange("cashBox", "");
+                        handlePaymentFormChange("bankWallet", "");
+                      }} 
+                      value={paymentFormData.paymentType}
                     >
                       <SelectTrigger className="h-11 text-base">
-                        <SelectValue placeholder="اختر الصندوق" />
+                        <SelectValue placeholder="اختر نوع الدفع" />
                       </SelectTrigger>
                       <SelectContent>
-                        {loading ? (
-                          <SelectItem value="loading" disabled>جاري التحميل...</SelectItem>
-                        ) : cashBoxes.length === 0 ? (
-                          <SelectItem value="no-boxes" disabled>لا توجد صناديق متاحة</SelectItem>
-                        ) : (
-                          cashBoxes.map(box => (
-                            <SelectItem key={box.id} value={box.id}>
-                              {box.name} {box.currencies && box.currencies.length > 0 && (
-                                <span className="text-xs text-muted-foreground"> ({box.currencies.join(", ")})</span>
-                              )}
-                            </SelectItem>
-                          ))
-                        )}
+                        <SelectItem value="cash">
+                          <div className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4" />
+                            نقدًا (Cash)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="cheque">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            شيك (Cheque)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="transfer">
+                          <div className="flex items-center gap-2">
+                            <Banknote className="h-4 w-4" />
+                            تحويل بنكي (Bank Transfer)
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
+                  {/* 1. الصندوق / البنك - CONDITIONAL */}
+                  <div className="col-span-3">
+                    <Label htmlFor="account-out" className="text-sm font-bold mb-2 block text-gray-700">
+                      {paymentFormData.paymentType === "cash" && "الصندوق *"}
+                      {paymentFormData.paymentType === "cheque" && "البنك *"}
+                      {paymentFormData.paymentType === "transfer" && "البنك/المحفظة *"}
+                    </Label>
+                    {paymentFormData.paymentType === "cash" ? (
+                      <Select 
+                        onValueChange={(v) => handlePaymentFormChange("cashBox", v)} 
+                        value={paymentFormData.cashBox}
+                      >
+                        <SelectTrigger className="h-11 text-base">
+                          <SelectValue placeholder="اختر الصندوق" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {loading ? (
+                            <SelectItem value="loading" disabled>جاري التحميل...</SelectItem>
+                          ) : cashBoxes.length === 0 ? (
+                            <SelectItem value="no-boxes" disabled>لا توجد صناديق متاحة</SelectItem>
+                          ) : (
+                            cashBoxes.map(box => (
+                              <SelectItem key={box.id} value={box.id}>
+                                {box.name} {box.currencies && box.currencies.length > 0 && (
+                                  <span className="text-xs text-muted-foreground"> ({box.currencies.join(", ")})</span>
+                                )}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select 
+                        onValueChange={(v) => handlePaymentFormChange("bankWallet", v)} 
+                        value={paymentFormData.bankWallet}
+                      >
+                        <SelectTrigger className="h-11 text-base">
+                          <SelectValue placeholder={
+                            paymentFormData.paymentType === "cheque" ? "اختر البنك" : "اختر البنك/المحفظة"
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {loading ? (
+                            <SelectItem value="loading" disabled>جاري التحميل...</SelectItem>
+                          ) : banksWallets.length === 0 ? (
+                            <SelectItem value="no-banks" disabled>لا توجد بنوك/محافظ متاحة</SelectItem>
+                          ) : (
+                            banksWallets
+                              .filter(bw => 
+                                paymentFormData.paymentType === "cheque" ? bw.type === "bank" : true
+                              )
+                              .map(bw => (
+                                <SelectItem key={bw.id} value={bw.id}>
+                                  {bw.name} ({bw.type === "bank" ? "بنك" : bw.type === "wallet" ? "محفظة" : "صراف"})
+                                </SelectItem>
+                              ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
                   {/* 2. التاريخ */}
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     <Label htmlFor="date-out" className="text-sm font-bold mb-2 block text-gray-700">التاريخ *</Label>
                     <Input 
                       id="date-out" 
@@ -695,7 +772,7 @@ export default function Payments() {
                   </div>
 
                   {/* 3. العملة */}
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     <Label htmlFor="currency-out" className="text-sm font-bold mb-2 block text-gray-700">العملة *</Label>
                     <Select 
                       onValueChange={(v) => handlePaymentFormChange("currency", v)} 
@@ -746,9 +823,55 @@ export default function Payments() {
                   </div>
                 )}
 
-                {/* 4. العمليات داخل السند - Onix Pro Wide Style */}
+                {/* حقول إضافية للشيك والتحويل - NEW */}
+                {(paymentFormData.paymentType === "cheque" || paymentFormData.paymentType === "transfer") && (
+                  <div className="grid grid-cols-6 gap-6 p-5 bg-blue-50 rounded-lg border border-blue-200 shadow-sm">
+                    {paymentFormData.paymentType === "cheque" && (
+                      <div className="col-span-3">
+                        <Label htmlFor="chequeNumber-out" className="text-sm font-bold mb-2 block text-gray-700">رقم الشيك *</Label>
+                        <Input 
+                          id="chequeNumber-out" 
+                          name="chequeNumber" 
+                          type="text"
+                          value={paymentFormData.chequeNumber} 
+                          onChange={(e) => handlePaymentFormChange("chequeNumber", e.target.value)} 
+                          placeholder="أدخل رقم الشيك"
+                          className="h-11 text-base"
+                        />
+                      </div>
+                    )}
+                    {paymentFormData.paymentType === "transfer" && (
+                      <div className="col-span-3">
+                        <Label htmlFor="transferReference-out" className="text-sm font-bold mb-2 block text-gray-700">مرجع التحويل *</Label>
+                        <Input 
+                          id="transferReference-out" 
+                          name="transferReference" 
+                          type="text"
+                          value={paymentFormData.transferReference} 
+                          onChange={(e) => handlePaymentFormChange("transferReference", e.target.value)} 
+                          placeholder="رقم التحويل أو المرجع"
+                          className="h-11 text-base"
+                        />
+                      </div>
+                    )}
+                    <div className="col-span-3">
+                      <Label htmlFor="reference-out" className="text-sm font-bold mb-2 block text-gray-700">ملاحظات إضافية</Label>
+                      <Input 
+                        id="reference-out" 
+                        name="reference" 
+                        type="text"
+                        value={paymentFormData.reference} 
+                        onChange={(e) => handlePaymentFormChange("reference", e.target.value)} 
+                        placeholder="ملاحظات أو مرجع إضافي"
+                        className="h-11 text-base"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. جدول العمليات - Onyx Pro Style (BIG TABLE) */}
                 <div className="border-t-2 pt-6 mt-6">
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between border-b-2 pb-3">
                       <Label className="text-xl font-bold">عمليات السند</Label>
                       <span className="text-base font-semibold text-muted-foreground bg-muted px-3 py-1 rounded">
@@ -756,7 +879,20 @@ export default function Payments() {
                       </span>
                     </div>
 
-                    {/* Add New Operation Form - Onyx Pro Wide Style */}
+                    {/* Onyx Pro Big Table Component */}
+                    <OnyxStyleTable
+                      operations={paymentOperations}
+                      onOperationsChange={setPaymentOperations}
+                      accountTypes={getAccountTypes(currentEntity.id)}
+                      accountSubtypes={getAccountSubtypes(currentEntity.id)}
+                      chartAccounts={chartAccounts}
+                      currency={paymentFormData.currency}
+                      getAccountSubtypes={getAccountSubtypes}
+                      currentEntityId={currentEntity.id}
+                    />
+
+                    {/* Old Form - Hidden for now */}
+                    {false && (
                     <Card id="operation-form" className="p-6 bg-amber-50/50 border-2 border-dashed border-amber-300 shadow-sm rounded-lg">
                       <div className="space-y-4">
                         {/* Form Header */}
@@ -1015,20 +1151,20 @@ export default function Payments() {
                       </div>
                     </Card>
 
-                    {/* Operations List - Excel Style Table */}
+                    {/* Operations List - Onyx Pro Big Table */}
                     {paymentOperations.length > 0 && (
                       <div id="operations-list" className="space-y-3">
-                        <div className="border border-gray-300 overflow-hidden bg-white">
+                        <div className="border-2 border-gray-400 overflow-hidden bg-white shadow-lg rounded-lg">
                           <Table>
                             <TableHeader>
-                              <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-300">
-                                <TableHead className="text-right text-sm font-semibold py-3 px-4 border-r border-gray-300 bg-gray-50">نوع الحساب</TableHead>
-                                <TableHead className="text-right text-sm font-semibold py-3 px-4 border-r border-gray-300 bg-gray-50">النوع الفرعي</TableHead>
-                                <TableHead className="text-right text-sm font-semibold py-3 px-4 border-r border-gray-300 bg-gray-50">الحساب</TableHead>
-                                <TableHead className="text-right text-sm font-semibold py-3 px-4 border-r border-gray-300 bg-gray-50">الحساب التحليلي</TableHead>
-                                <TableHead className="text-right text-sm font-semibold py-3 px-4 border-r border-gray-300 bg-gray-50">المبلغ</TableHead>
-                                <TableHead className="text-right text-sm font-semibold py-3 px-4 border-r border-gray-300 bg-gray-50">البيان</TableHead>
-                                <TableHead className="text-right text-sm font-semibold py-3 px-4 bg-gray-50">إجراءات</TableHead>
+                              <TableRow className="bg-gradient-to-r from-yellow-100 to-yellow-50 hover:from-yellow-100 hover:to-yellow-50 border-b-2 border-gray-400">
+                                <TableHead className="text-right text-base font-bold py-4 px-4 border-r-2 border-gray-400">نوع الحساب</TableHead>
+                                <TableHead className="text-right text-base font-bold py-4 px-4 border-r-2 border-gray-400">النوع الفرعي</TableHead>
+                                <TableHead className="text-right text-base font-bold py-4 px-4 border-r-2 border-gray-400">الحساب</TableHead>
+                                <TableHead className="text-right text-base font-bold py-4 px-4 border-r-2 border-gray-400">الحساب التحليلي</TableHead>
+                                <TableHead className="text-right text-base font-bold py-4 px-4 border-r-2 border-gray-400">المبلغ</TableHead>
+                                <TableHead className="text-right text-base font-bold py-4 px-4 border-r-2 border-gray-400">البيان</TableHead>
+                                <TableHead className="text-right text-base font-bold py-4 px-4">إجراءات</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1043,24 +1179,24 @@ export default function Payments() {
                                 return (
                                   <TableRow 
                                     key={operation.id} 
-                                    className="hover:bg-gray-50 border-b border-gray-200 bg-white group"
+                                    className="hover:bg-yellow-50 border-b border-gray-300 bg-white group"
                                   >
-                                    <TableCell className="text-sm py-2.5 px-4 border-r border-gray-200 font-medium">
+                                    <TableCell className="text-base py-4 px-4 border-r-2 border-gray-300 font-medium">
                                       {accountType?.label || operation.accountType}
                                     </TableCell>
-                                    <TableCell className="text-sm py-2.5 px-4 border-r border-gray-200 text-gray-700">
+                                    <TableCell className="text-base py-4 px-4 border-r-2 border-gray-300 text-gray-700">
                                       {accountSubtype?.label || operation.accountSubtype}
                                     </TableCell>
-                                    <TableCell className="text-sm py-2.5 px-4 border-r border-gray-200">
+                                    <TableCell className="text-base py-4 px-4 border-r-2 border-gray-300">
                                       {chartAccount ? `${chartAccount.id} - ${chartAccount.name}` : operation.chartAccount}
                                     </TableCell>
-                                    <TableCell className="text-sm py-2.5 px-4 border-r border-gray-200 text-gray-600">
+                                    <TableCell className="text-base py-4 px-4 border-r-2 border-gray-300 text-gray-600">
                                       {analyticalAccount ? `${analyticalAccount.id} - ${analyticalAccount.name}` : "-"}
                                     </TableCell>
-                                    <TableCell className="text-sm py-2.5 px-4 border-r border-gray-200 font-semibold text-right">
+                                    <TableCell className="text-base py-4 px-4 border-r-2 border-gray-300 font-bold text-right text-green-700">
                                       {parseFloat(operation.amount || "0").toLocaleString()} {paymentFormData.currency}
                                     </TableCell>
-                                    <TableCell className="text-sm py-2.5 px-4 border-r border-gray-200">
+                                    <TableCell className="text-base py-4 px-4 border-r-2 border-gray-300">
                                       <span className="truncate block max-w-full">{operation.description}</span>
                                     </TableCell>
                                     <TableCell className="py-2.5 px-4">
@@ -1099,47 +1235,42 @@ export default function Payments() {
                           </Table>
                         </div>
 
-                        {/* Total Summary - Excel Style */}
-                        <div className="flex justify-between items-center p-4 bg-gray-800 border border-gray-700 border-t-2 border-t-gray-600">
-                          <span className="text-base font-bold text-white">الإجمالي:</span>
-                          <span className="text-xl font-bold text-white">
+                        {/* Total Summary - Onyx Pro Style */}
+                        <div className="flex justify-between items-center p-5 bg-gradient-to-r from-blue-600 to-blue-700 border-2 border-blue-800 shadow-xl">
+                          <span className="text-xl font-bold text-white">المبلغ الإجمالي:</span>
+                          <span className="text-3xl font-bold text-yellow-300">
                             {paymentOperations.reduce((sum, op) => sum + parseFloat(op.amount || "0"), 0).toLocaleString()} {paymentFormData.currency}
                           </span>
                         </div>
                       </div>
                     )}
-
-                    {/* Empty State */}
-                    {paymentOperations.length === 0 && !editingOperationId && (
-                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50/50">
-                        <p className="text-gray-600 font-medium">لا توجد عمليات مضافة</p>
-                        <p className="text-xs text-gray-500 mt-1">استخدم النموذج أعلاه لإضافة عملية جديدة</p>
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                {/* المرجع (اختياري) - Wide Style */}
-                <div className="grid grid-cols-6 gap-6 p-5 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                  <div className="col-span-6">
-                    <Label htmlFor="reference-out" className="text-sm font-bold mb-2 block text-gray-700">المرجع (اختياري)</Label>
-                    <Input 
-                      id="reference-out" 
-                      name="reference" 
-                      value={paymentFormData.reference} 
-                      onChange={(e) => handlePaymentFormChange("reference", e.target.value)} 
-                      className="h-11 text-base" 
-                      placeholder="رقم الشيك / التحويل" 
-                    />
-                  </div>
-                </div>
+
               </div>
               <DialogFooter>
                 <Button 
                   onClick={async () => {
-                    // Validate required fields
-                    if (!paymentFormData.cashBox || !paymentFormData.date || !paymentFormData.currency) {
-                      toast.error("الرجاء تعبئة الصندوق والتاريخ والعملة");
+                    // Validate required fields based on payment type
+                    if (paymentFormData.paymentType === "cash" && !paymentFormData.cashBox) {
+                      toast.error("الرجاء اختيار الصندوق");
+                      return;
+                    }
+                    if ((paymentFormData.paymentType === "cheque" || paymentFormData.paymentType === "transfer") && !paymentFormData.bankWallet) {
+                      toast.error("الرجاء اختيار البنك أو المحفظة");
+                      return;
+                    }
+                    if (paymentFormData.paymentType === "cheque" && !paymentFormData.chequeNumber) {
+                      toast.error("الرجاء إدخال رقم الشيك");
+                      return;
+                    }
+                    if (paymentFormData.paymentType === "transfer" && !paymentFormData.transferReference) {
+                      toast.error("الرجاء إدخال مرجع التحويل");
+                      return;
+                    }
+                    if (!paymentFormData.date || !paymentFormData.currency) {
+                      toast.error("الرجاء تعبئة التاريخ والعملة");
                       return;
                     }
                     
@@ -1174,12 +1305,16 @@ export default function Payments() {
                       const voucherData = {
                         entityId: currentEntity.id,
                         type: 'out',
-                        cashBoxId: paymentFormData.cashBox,
+                        paymentType: paymentFormData.paymentType,
+                        cashBoxId: paymentFormData.paymentType === "cash" ? paymentFormData.cashBox : null,
+                        bankWalletId: (paymentFormData.paymentType === "cheque" || paymentFormData.paymentType === "transfer") ? paymentFormData.bankWallet : null,
                         date: paymentFormData.date,
                         currency: paymentFormData.currency,
                         exchangeRate: paymentFormData.exchangeRate || "1",
                         totalAmount: totalAmount.toString(),
                         reference: paymentFormData.reference || null,
+                        chequeNumber: paymentFormData.paymentType === "cheque" ? paymentFormData.chequeNumber : null,
+                        transferReference: paymentFormData.paymentType === "transfer" ? paymentFormData.transferReference : null,
                         operations: operationsData,
                         createdBy: 'admin', // TODO: Get from auth context
                       };
