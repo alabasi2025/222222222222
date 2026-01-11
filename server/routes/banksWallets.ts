@@ -40,20 +40,63 @@ router.get('/:id', async (req, res) => {
 // Create new bank/wallet
 router.post('/', async (req, res) => {
   try {
-    const newItem = await db.insert(banksWallets).values(req.body).returning();
+    // Generate ID if not provided
+    const itemData = {
+      ...req.body,
+      id: req.body.id || `BW-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
+    
+    // Transform allowedCurrencies to currencies if needed
+    if (itemData.allowedCurrencies && !itemData.currencies) {
+      itemData.currencies = itemData.allowedCurrencies;
+      delete itemData.allowedCurrencies;
+    }
+    
+    // Transform status to isActive if needed
+    if (itemData.status !== undefined && itemData.isActive === undefined) {
+      itemData.isActive = itemData.status === "active" || itemData.status === true;
+      delete itemData.status;
+    }
+    
+    // Remove fields that don't exist in schema
+    delete itemData.balances;
+    delete itemData.lastTransaction;
+    
+    console.log('Creating bank/wallet with data:', itemData);
+    const newItem = await db.insert(banksWallets).values(itemData).returning();
     res.status(201).json(newItem[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating bank/wallet:', error);
-    res.status(500).json({ error: 'Failed to create bank/wallet' });
+    console.error('Error details:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Failed to create bank/wallet' });
   }
 });
 
 // Update bank/wallet
 router.put('/:id', async (req, res) => {
   try {
+    const body = { ...req.body };
+    
+    // Transform allowedCurrencies to currencies if needed
+    if (body.allowedCurrencies && !body.currencies) {
+      body.currencies = body.allowedCurrencies;
+      delete body.allowedCurrencies;
+    }
+    
+    // Transform status to isActive if needed
+    if (body.status !== undefined && body.isActive === undefined) {
+      body.isActive = body.status === "active" || body.status === true;
+      delete body.status;
+    }
+    
+    // Remove fields that don't exist in schema
+    delete body.balances;
+    delete body.lastTransaction;
+    
+    console.log('Updating bank/wallet with data:', body);
     const updated = await db
       .update(banksWallets)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ ...body, updatedAt: new Date() })
       .where(eq(banksWallets.id, req.params.id))
       .returning();
     
@@ -61,9 +104,10 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Bank/Wallet not found' });
     }
     res.json(updated[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating bank/wallet:', error);
-    res.status(500).json({ error: 'Failed to update bank/wallet' });
+    console.error('Error details:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Failed to update bank/wallet' });
   }
 });
 

@@ -77,12 +77,21 @@ router.get('/:id', async (req, res) => {
 // Create new account
 router.post('/', async (req, res) => {
   try {
-    const newAccount = await db.insert(accounts).values(req.body).returning();
+    // Map allowedCurrencies to currencies if needed
+    const accountData = { ...req.body };
+    if (accountData.allowedCurrencies && !accountData.currencies) {
+      accountData.currencies = accountData.allowedCurrencies;
+      delete accountData.allowedCurrencies;
+    }
+    
+    console.log('Creating account with data:', accountData);
+    const newAccount = await db.insert(accounts).values(accountData).returning();
     invalidateCache();
     res.status(201).json(newAccount[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating account:', error);
-    res.status(500).json({ error: 'Failed to create account' });
+    console.error('Error details:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Failed to create account' });
   }
 });
 

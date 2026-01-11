@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { journalEntriesApi } from "../lib/api";
+import { useEntity } from "@/contexts/EntityContext";
 
 const statusMap: Record<string, { label: string, color: string, icon: any }> = {
   posted: { label: "مرحل", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
@@ -50,17 +51,21 @@ const typeMap: Record<string, string> = {
 };
 
 export default function JournalEntries() {
+  const { currentEntity } = useEntity();
   const [journals, setJournals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadJournals();
-  }, []);
+  }, [currentEntity]);
 
   const loadJournals = async () => {
     try {
       setLoading(true);
-      const data = await journalEntriesApi.getAll();
+      // Use getByEntity if entity is selected, otherwise getAll
+      const data = currentEntity?.id 
+        ? await journalEntriesApi.getByEntity(currentEntity.id)
+        : await journalEntriesApi.getAll();
       setJournals(data);
     } catch (error) {
       console.error("Failed to load journal entries:", error);

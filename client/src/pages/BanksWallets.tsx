@@ -73,10 +73,9 @@ interface BankWalletAccount {
   accountType: string;
   accountNumber: string;
   chartAccountId: string; // ربط بحساب في دليل الحسابات
-  allowedCurrencies: string[]; // العملات المسموح بها
-  balances: CurrencyBalance[]; // الأرصدة بالعملات المختلفة
-  status: string;
-  lastTransaction: string;
+  currencies: string[]; // العملات المسموح بها (changed from allowedCurrencies)
+  balances?: CurrencyBalance[]; // الأرصدة بالعملات المختلفة (optional)
+  isActive: boolean; // Changed from status
 }
 
 // Initial data for Al-Abbasi Unit
@@ -101,7 +100,7 @@ export default function BanksWallets() {
     accountType: "current",
     accountNumber: "",
     chartAccountId: "",
-    allowedCurrencies: ["YER", "SAR", "USD"] as string[]
+    currencies: ["YER", "SAR", "USD"] as string[]
   });
 
   // Load data from API
@@ -109,14 +108,54 @@ export default function BanksWallets() {
     loadData();
   }, [currentEntity.id]);
 
+  // Load currencies from selected account when account is selected
+  useEffect(() => {
+    if (newItem.chartAccountId && newItem.chartAccountId !== "none") {
+      const selectedAccount = accounts.find(acc => acc.id === newItem.chartAccountId);
+      if (selectedAccount && selectedAccount.currencies) {
+        setNewItem(prev => ({
+          ...prev,
+          currencies: selectedAccount.currencies || ["YER", "SAR", "USD"],
+          // Keep existing currencies if account doesn't have currencies defined
+        }));
+      }
+    }
+  }, [newItem.chartAccountId, accounts]);
+
+  // Reset chartAccountId when type changes (because accounts are filtered by type)
+  useEffect(() => {
+    if (newItem.chartAccountId && newItem.chartAccountId !== "none") {
+      const selectedAccount = accounts.find(acc => acc.id === newItem.chartAccountId);
+      // If selected account doesn't match the new type, reset it
+      if (selectedAccount) {
+        const expectedSubtype = newItem.type === 'bank' ? 'bank' : 
+                              newItem.type === 'wallet' ? 'wallet' : 
+                              newItem.type === 'exchange' ? 'exchange' : null;
+        
+        if (expectedSubtype && selectedAccount.subtype !== expectedSubtype) {
+          setNewItem(prev => ({ ...prev, chartAccountId: "" }));
+        }
+      }
+    }
+  }, [newItem.type, accounts]);
+
   const loadData = async () => {
     try {
       setLoading(true);
+      // Pass entityId to API to filter on backend instead of fetching all data
       const [walletsData, accountsData] = await Promise.all([
-        banksWalletsApi.getAll(),
+        currentEntity?.id ? banksWalletsApi.getByEntity(currentEntity.id) : banksWalletsApi.getAll(),
         accountsApi.getAll()
       ]);
-      setBanksWallets(walletsData);
+      
+      // Convert old format to new format if needed
+      const normalizedWallets = walletsData.map((item: any) => ({
+        ...item,
+        currencies: item.currencies || item.allowedCurrencies || [],
+        isActive: item.isActive !== undefined ? item.isActive : (item.status === "active" || item.status === true)
+      }));
+      
+      setBanksWallets(normalizedWallets);
       setAccounts(accountsData);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -137,30 +176,50 @@ export default function BanksWallets() {
     setExpandedRows(newExpanded);
   };
 
-  // Get bank accounts from chart of accounts
-  const allBankAccounts = accounts.filter(account => 
-    account.subtype === 'bank' && 
-    !account.isGroup && 
-    account.entityId === currentEntity.id
-  );
+  // Get bank/wallet/exchange accounts from chart of accounts filtered by type
+  const getAccountsByType = (type: string) => {
+    let subtypeFilter: string[] = [];
+    
+    if (type === 'bank') {
+      subtypeFilter = ['bank'];
+    } else if (type === 'wallet') {
+      subtypeFilter = ['wallet'];
+    } else if (type === 'exchange') {
+      subtypeFilter = ['exchange'];
+    } else {
+      // Default: show all types
+      subtypeFilter = ['bank', 'wallet', 'exchange'];
+    }
+    
+    return accounts.filter(account => 
+      subtypeFilter.includes(account.subtype || '') && 
+      !account.isGroup && 
+      account.entityId === currentEntity.id
+    );
+  };
 
-  // Filter available accounts (exclude already linked accounts)
-  const getAvailableBankAccounts = (excludeItemId?: string) => {
+  // Filter available accounts (exclude already linked accounts) based on type
+  const getAvailableBankAccounts = (type?: string, excludeItemId?: string) => {
+    const typeToFilter = type || newItem.type;
+    const accountsByType = getAccountsByType(typeToFilter);
+    
     const linkedAccountIds = banksWallets
       .filter(item => item.id !== excludeItemId && item.chartAccountId) // استثناء الحساب الحالي عند التعديل
       .map(item => item.chartAccountId);
-    return allBankAccounts.filter(account => !linkedAccountIds.includes(account.id));
+    
+    return accountsByType.filter(account => !linkedAccountIds.includes(account.id));
   };
 
   // Filter items
+  // Data is already filtered by backend, but we still filter in frontend for safety
   const visibleItems = banksWallets.filter(item => {
     // الشركة القابضة ليس لها حسابات
-    if (currentEntity.type === 'holding') return false;
+    if (currentEntity?.type === 'holding') return false;
     
     // فقط عرض حسابات الوحدة الحالية
-    if (item.entityId !== currentEntity.id) return false;
+    if (item.entityId !== currentEntity?.id) return false;
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         item.accountNumber.includes(searchTerm);
+                         (item.accountNumber || '').includes(searchTerm);
     const matchesTypeFilter = filterType === "all" || item.type === filterType;
     return matchesSearch && matchesTypeFilter;
   });
@@ -170,30 +229,28 @@ export default function BanksWallets() {
       toast.error("يرجى إدخال الاسم");
       return;
     }
-    if (newItem.allowedCurrencies.length === 0) {
+    if (newItem.currencies.length === 0) {
       toast.error("يرجى اختيار عملة واحدة على الأقل");
       return;
     }
 
     try {
       const item = {
+        id: `BW-${Date.now()}`, // Generate ID
         entityId: currentEntity.id,
         name: newItem.name,
         type: newItem.type,
         accountType: newItem.accountType,
         accountNumber: newItem.accountNumber || null,
-        chartAccountId: newItem.chartAccountId || null,
-        allowedCurrencies: newItem.allowedCurrencies,
-        balances: newItem.allowedCurrencies.map(currency => ({
-          currency,
-          balance: 0.00
-        })),
-        status: "active",
-        lastTransaction: null
+        chartAccountId: newItem.chartAccountId && newItem.chartAccountId !== "none" ? newItem.chartAccountId : null,
+        currencies: newItem.currencies, // Changed from allowedCurrencies
+        balance: 0.00, // Single balance field in schema
+        isActive: true // Changed from status
       };
 
+      console.log('Creating bank/wallet with data:', item);
       await banksWalletsApi.create(item);
-      toast.success(`تم الإضافة بنجاح (${newItem.allowedCurrencies.length} عملة)`);
+      toast.success(`تم الإضافة بنجاح (${newItem.currencies.length} عملة)`);
       await loadData();
       setIsNewItemOpen(false);
       setNewItem({ 
@@ -202,7 +259,7 @@ export default function BanksWallets() {
         accountType: "current", 
         accountNumber: "",
         chartAccountId: "",
-        allowedCurrencies: ["YER", "SAR", "USD"]
+        currencies: ["YER", "SAR", "USD"]
       });
     } catch (error: any) {
       console.error('Failed to add bank/wallet:', error);
@@ -215,20 +272,28 @@ export default function BanksWallets() {
       toast.error("يرجى إدخال الاسم");
       return;
     }
-    if (editingItem.allowedCurrencies.length === 0) {
+    const currencies = editingItem.currencies || editingItem.allowedCurrencies || [];
+    if (currencies.length === 0) {
       toast.error("يرجى اختيار عملة واحدة على الأقل");
       return;
     }
 
     try {
-      // Update balances based on allowed currencies
-      const updatedBalances = editingItem.allowedCurrencies.map(currency => {
-        const existing = editingItem.balances.find(b => b.currency === currency);
-        return existing || { currency, balance: 0.00 };
-      });
-
-      const updated = { ...editingItem, balances: updatedBalances };
-
+      // Map fields to match schema
+      const updated = {
+        ...editingItem,
+        chartAccountId: editingItem.chartAccountId && editingItem.chartAccountId !== "none" ? editingItem.chartAccountId : null,
+        currencies: currencies, // Use currencies or fallback to allowedCurrencies
+        isActive: editingItem.isActive !== undefined ? editingItem.isActive : true // Changed from status
+      };
+      
+      // Remove fields that don't exist in schema
+      delete updated.balances;
+      delete updated.status;
+      delete updated.lastTransaction;
+      delete updated.allowedCurrencies;
+      
+      console.log('Updating bank/wallet with data:', updated);
       await banksWalletsApi.update(updated.id, updated);
       toast.success("تم التحديث بنجاح");
       await loadData();
@@ -242,8 +307,8 @@ export default function BanksWallets() {
 
   const handleDeleteItem = async (id: string) => {
     const item = banksWallets.find(b => b.id === id);
-    if (item && item.balances.some(b => b.balance !== 0)) {
-      toast.error("لا يمكن الحذف. يحتوي على رصيد. يرجى تصفير جميع الأرصدة أولاً.");
+    if (item && item.balance && parseFloat(item.balance.toString()) !== 0) {
+      toast.error("لا يمكن الحذف. يحتوي على رصيد. يرجى تصفير الرصيد أولاً.");
       return;
     }
 
@@ -260,25 +325,37 @@ export default function BanksWallets() {
   };
 
   const openEditDialog = (item: BankWalletAccount) => {
-    setEditingItem({ ...item });
+    // Convert old format to new format
+    const itemToEdit = {
+      ...item,
+      currencies: item.currencies || item.allowedCurrencies || [],
+      isActive: item.isActive !== undefined ? item.isActive : (item.status === "active" || item.status === true)
+    };
+    // Remove old fields
+    delete itemToEdit.allowedCurrencies;
+    delete itemToEdit.status;
+    delete itemToEdit.lastTransaction;
+    delete itemToEdit.balances;
+    setEditingItem(itemToEdit);
     setIsEditItemOpen(true);
   };
 
   const toggleCurrency = (currency: string, isNew: boolean = false) => {
     if (isNew) {
       setNewItem(prev => {
-        const currencies = prev.allowedCurrencies.includes(currency)
-          ? prev.allowedCurrencies.filter(c => c !== currency)
-          : [...prev.allowedCurrencies, currency];
-        return { ...prev, allowedCurrencies: currencies };
+        const currencies = prev.currencies.includes(currency)
+          ? prev.currencies.filter(c => c !== currency)
+          : [...prev.currencies, currency];
+        return { ...prev, currencies: currencies };
       });
     } else if (editingItem) {
       setEditingItem(prev => {
         if (!prev) return null;
-        const currencies = prev.allowedCurrencies.includes(currency)
-          ? prev.allowedCurrencies.filter(c => c !== currency)
-          : [...prev.allowedCurrencies, currency];
-        return { ...prev, allowedCurrencies: currencies };
+        const currentCurrencies = prev.currencies || prev.allowedCurrencies || [];
+        const currencies = currentCurrencies.includes(currency)
+          ? currentCurrencies.filter(c => c !== currency)
+          : [...currentCurrencies, currency];
+        return { ...prev, currencies: currencies, allowedCurrencies: undefined };
       });
     }
   };
@@ -426,19 +503,28 @@ export default function BanksWallets() {
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="chartAccountId" className="text-right">حساب من الدليل</Label>
                   <Select 
-                    value={newItem.chartAccountId} 
-                    onValueChange={(v) => setNewItem({...newItem, chartAccountId: v})}
+                    value={newItem.chartAccountId || "none"} 
+                    onValueChange={(v) => setNewItem({...newItem, chartAccountId: v === "none" ? "" : v})}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر الحساب المربوط" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">لا يوجد حساب</SelectItem>
-                      {getAvailableBankAccounts().map(account => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.id} - {account.name}
+                      {getAvailableBankAccounts(newItem.type).length === 0 ? (
+                        <SelectItem value="no-accounts" disabled>
+                          لا توجد حسابات من نوع {newItem.type === 'bank' ? 'بنك' : newItem.type === 'wallet' ? 'محفظة' : 'صرافة'} في الدليل
                         </SelectItem>
-                      ))}
+                      ) : (
+                        getAvailableBankAccounts(newItem.type).map(account => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.id} - {account.name}
+                            {account.currencies && account.currencies.length > 0 && (
+                              <span className="text-xs text-muted-foreground"> ({account.currencies.join(", ")})</span>
+                            )}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -448,7 +534,7 @@ export default function BanksWallets() {
                     <div className="flex items-center space-x-2 space-x-reverse">
                       <Checkbox 
                         id="new-yer" 
-                        checked={newItem.allowedCurrencies.includes("YER")}
+                        checked={newItem.currencies.includes("YER")}
                         onCheckedChange={() => toggleCurrency("YER", true)}
                       />
                       <label htmlFor="new-yer" className="text-sm font-medium cursor-pointer">
@@ -458,7 +544,7 @@ export default function BanksWallets() {
                     <div className="flex items-center space-x-2 space-x-reverse">
                       <Checkbox 
                         id="new-sar" 
-                        checked={newItem.allowedCurrencies.includes("SAR")}
+                        checked={newItem.currencies.includes("SAR")}
                         onCheckedChange={() => toggleCurrency("SAR", true)}
                       />
                       <label htmlFor="new-sar" className="text-sm font-medium cursor-pointer">
@@ -468,7 +554,7 @@ export default function BanksWallets() {
                     <div className="flex items-center space-x-2 space-x-reverse">
                       <Checkbox 
                         id="new-usd" 
-                        checked={newItem.allowedCurrencies.includes("USD")}
+                        checked={newItem.currencies.includes("USD")}
                         onCheckedChange={() => toggleCurrency("USD", true)}
                       />
                       <label htmlFor="new-usd" className="text-sm font-medium cursor-pointer">
@@ -621,7 +707,7 @@ export default function BanksWallets() {
                       <TableCell className="font-mono text-sm">{item.accountNumber || '-'}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
-                          {item.allowedCurrencies.map(currency => (
+                          {(item.currencies || item.allowedCurrencies || []).map((currency: string) => (
                             <Badge key={currency} className={getCurrencyBadgeColor(currency)}>
                               {currency}
                             </Badge>
@@ -629,8 +715,8 @@ export default function BanksWallets() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                          نشط
+                        <Badge className={item.isActive !== false ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-gray-500/10 text-gray-600 border-gray-500/20"}>
+                          {item.isActive !== false ? "نشط" : "غير نشط"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -667,18 +753,18 @@ export default function BanksWallets() {
                       <TableRow key={`${item.id}-details`} className="bg-muted/30">
                         <TableCell colSpan={8}>
                           <div className="p-4 space-y-2">
-                            <h4 className="font-semibold text-sm mb-3">الأرصدة بالعملات المختلفة:</h4>
+                            <h4 className="font-semibold text-sm mb-3">العملات المسموح بها:</h4>
                             <div className="grid grid-cols-3 gap-4">
-                              {item.balances.map(balance => (
-                                <Card key={balance.currency} className="border-0 shadow-sm">
+                              {(item.currencies || item.allowedCurrencies || []).map((currency: string) => (
+                                <Card key={currency} className="border-0 shadow-sm">
                                   <CardContent className="pt-4">
                                     <div className="flex items-center justify-between">
                                       <div>
-                                        <p className="text-xs text-muted-foreground mb-1">{balance.currency}</p>
-                                        <p className="text-2xl font-bold">{balance.balance.toFixed(2)}</p>
+                                        <p className="text-xs text-muted-foreground mb-1">{currency}</p>
+                                        <p className="text-2xl font-bold">{item.balance || 0}</p>
                                       </div>
-                                      <Badge className={getCurrencyBadgeColor(balance.currency)}>
-                                        {balance.currency}
+                                      <Badge className={getCurrencyBadgeColor(currency)}>
+                                        {currency}
                                       </Badge>
                                     </div>
                                   </CardContent>
@@ -729,18 +815,37 @@ export default function BanksWallets() {
               <Label htmlFor="edit-chartAccountId" className="text-right">حساب من الدليل</Label>
               <Select 
                 value={editingItem?.chartAccountId || "none"} 
-                onValueChange={(v) => setEditingItem((prev) => prev ? {...prev, chartAccountId: v} : null)}
+                onValueChange={(v) => {
+                  const selectedAccount = accounts.find(acc => acc.id === v);
+                  setEditingItem((prev: any) => {
+                    if (!prev) return null;
+                    const updated = {...prev, chartAccountId: v === "none" ? null : v};
+                    if (selectedAccount && selectedAccount.currencies) {
+                      updated.currencies = selectedAccount.currencies;
+                    }
+                    return updated;
+                  });
+                }}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="اختر الحساب المربوط" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">لا يوجد حساب</SelectItem>
-                  {getAvailableBankAccounts(editingItem?.id).map(account => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.id} - {account.name}
+                  {getAvailableBankAccounts(editingItem?.type, editingItem?.id).length === 0 ? (
+                    <SelectItem value="no-accounts" disabled>
+                      لا توجد حسابات من نوع {editingItem?.type === 'bank' ? 'بنك' : editingItem?.type === 'wallet' ? 'محفظة' : 'صرافة'} في الدليل
                     </SelectItem>
-                  ))}
+                  ) : (
+                    getAvailableBankAccounts(editingItem?.type, editingItem?.id).map(account => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.id} - {account.name}
+                        {account.currencies && account.currencies.length > 0 && (
+                          <span className="text-xs text-muted-foreground"> ({account.currencies.join(", ")})</span>
+                        )}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -750,7 +855,7 @@ export default function BanksWallets() {
                 <div className="flex items-center space-x-2 space-x-reverse">
                   <Checkbox 
                     id="edit-yer" 
-                    checked={editingItem?.allowedCurrencies.includes("YER")}
+                    checked={(editingItem?.currencies || editingItem?.allowedCurrencies || []).includes("YER")}
                     onCheckedChange={() => toggleCurrency("YER", false)}
                   />
                   <label htmlFor="edit-yer" className="text-sm font-medium cursor-pointer">
@@ -760,7 +865,7 @@ export default function BanksWallets() {
                 <div className="flex items-center space-x-2 space-x-reverse">
                   <Checkbox 
                     id="edit-sar" 
-                    checked={editingItem?.allowedCurrencies.includes("SAR")}
+                    checked={(editingItem?.currencies || editingItem?.allowedCurrencies || []).includes("SAR")}
                     onCheckedChange={() => toggleCurrency("SAR", false)}
                   />
                   <label htmlFor="edit-sar" className="text-sm font-medium cursor-pointer">
@@ -770,7 +875,7 @@ export default function BanksWallets() {
                 <div className="flex items-center space-x-2 space-x-reverse">
                   <Checkbox 
                     id="edit-usd" 
-                    checked={editingItem?.allowedCurrencies.includes("USD")}
+                    checked={(editingItem?.currencies || editingItem?.allowedCurrencies || []).includes("USD")}
                     onCheckedChange={() => toggleCurrency("USD", false)}
                   />
                   <label htmlFor="edit-usd" className="text-sm font-medium cursor-pointer">

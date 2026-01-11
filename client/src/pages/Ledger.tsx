@@ -13,20 +13,86 @@ import {
   Filter, 
   Download, 
   Calendar,
-  BookOpen
+  BookOpen,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { journalEntriesApi } from "@/lib/api";
+import { useEntity } from "@/contexts/EntityContext";
+import { toast } from "sonner";
 
-const ledgerEntries = [
-  { id: "JE-2025-001", date: "2025-01-18", account: "المبيعات", description: "فاتورة مبيعات #INV-001", debit: 0, credit: 1200.00 },
-  { id: "JE-2025-001", date: "2025-01-18", account: "المدينون", description: "فاتورة مبيعات #INV-001", debit: 1200.00, credit: 0 },
-  { id: "JE-2025-002", date: "2025-01-17", account: "المخزون", description: "شراء بضاعة #PUR-001", debit: 15000.00, credit: 0 },
-  { id: "JE-2025-002", date: "2025-01-17", account: "البنك", description: "شراء بضاعة #PUR-001", debit: 0, credit: 15000.00 },
-  { id: "JE-2025-003", date: "2025-01-16", account: "مصروفات الكهرباء", description: "فاتورة كهرباء يناير", debit: 450.00, credit: 0 },
-  { id: "JE-2025-003", date: "2025-01-16", account: "الصندوق", description: "فاتورة كهرباء يناير", debit: 0, credit: 450.00 },
-];
+interface LedgerLine {
+  id: string;
+  date: string;
+  entryId: string;
+  account: string;
+  accountId: string;
+  description: string;
+  debit: number;
+  credit: number;
+}
 
 export default function Ledger() {
+  const { currentEntity } = useEntity();
+  const [ledgerLines, setLedgerLines] = useState<LedgerLine[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    loadLedgerData();
+  }, [currentEntity]);
+
+  const loadLedgerData = async () => {
+    try {
+      setLoading(true);
+      // Get journal entries with lines for current entity
+      const entries = currentEntity?.id 
+        ? await journalEntriesApi.getByEntity(currentEntity.id)
+        : await journalEntriesApi.getAll();
+      
+      // Flatten entries to ledger lines
+      const lines: LedgerLine[] = [];
+      entries.forEach((entry: any) => {
+        if (entry.lines && Array.isArray(entry.lines)) {
+          entry.lines.forEach((line: any) => {
+            lines.push({
+              id: line.id,
+              date: entry.date,
+              entryId: entry.id,
+              account: line.account?.name || 'غير معروف',
+              accountId: line.accountId,
+              description: line.description || entry.description || '',
+              debit: Number(line.debit || 0),
+              credit: Number(line.credit || 0),
+            });
+          });
+        }
+      });
+      
+      // Sort by date descending
+      lines.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setLedgerLines(lines);
+    } catch (error) {
+      console.error("Failed to load ledger data:", error);
+      toast.error("فشل تحميل بيانات دفتر الأستاذ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate totals
+  const totalDebit = ledgerLines.reduce((sum, line) => sum + line.debit, 0);
+  const totalCredit = ledgerLines.reduce((sum, line) => sum + line.credit, 0);
+  const entriesCount = new Set(ledgerLines.map(line => line.entryId)).size;
+
+  // Filter lines by search term
+  const filteredLines = ledgerLines.filter(line =>
+    line.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    line.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    line.entryId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -53,7 +119,7 @@ export default function Ledger() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">16,650.00 ر.س</div>
+            <div className="text-2xl font-bold">{totalDebit.toLocaleString()} ر.س</div>
           </CardContent>
         </Card>
         <Card>
@@ -62,7 +128,7 @@ export default function Ledger() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">16,650.00 ر.س</div>
+            <div className="text-2xl font-bold">{totalCredit.toLocaleString()} ر.س</div>
           </CardContent>
         </Card>
         <Card>
@@ -71,7 +137,7 @@ export default function Ledger() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{entriesCount}</div>
           </CardContent>
         </Card>
       </div>
@@ -79,7 +145,12 @@ export default function Ledger() {
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
         <div className="relative w-full sm:w-96">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="بحث في الوصف أو الحساب..." className="pr-9" />
+          <Input 
+            placeholder="بحث في الوصف أو الحساب..." 
+            className="pr-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
@@ -106,20 +177,38 @@ export default function Ledger() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {ledgerEntries.map((entry, index) => (
-              <TableRow key={index} className="hover:bg-muted/50 transition-colors">
-                <TableCell>{entry.date}</TableCell>
-                <TableCell className="font-medium text-xs text-muted-foreground">{entry.id}</TableCell>
-                <TableCell className="font-medium">{entry.account}</TableCell>
-                <TableCell>{entry.description}</TableCell>
-                <TableCell className="text-left font-mono">
-                  {entry.debit > 0 ? entry.debit.toLocaleString() : "-"}
-                </TableCell>
-                <TableCell className="text-left font-mono">
-                  {entry.credit > 0 ? entry.credit.toLocaleString() : "-"}
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : filteredLines.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  {ledgerLines.length === 0 
+                    ? "لا توجد حركات في دفتر الأستاذ" 
+                    : "لا توجد نتائج للبحث"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredLines.map((line) => (
+                <TableRow key={line.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell>{new Date(line.date).toLocaleDateString('ar-SA')}</TableCell>
+                  <TableCell className="font-medium text-xs text-muted-foreground">{line.entryId}</TableCell>
+                  <TableCell className="font-medium">{line.account}</TableCell>
+                  <TableCell>{line.description}</TableCell>
+                  <TableCell className="text-left font-mono">
+                    {line.debit > 0 ? line.debit.toLocaleString() : "-"}
+                  </TableCell>
+                  <TableCell className="text-left font-mono">
+                    {line.credit > 0 ? line.credit.toLocaleString() : "-"}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

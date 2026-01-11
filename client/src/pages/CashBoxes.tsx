@@ -49,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
@@ -109,7 +110,8 @@ export default function CashBoxes() {
 
   const [newBox, setNewBox] = useState({
     name: "",
-    currency: "SAR",
+    currencies: ["YER", "SAR", "USD"] as string[], // Multiple currencies support
+    defaultCurrency: "YER", // Default currency
     type: "cash_box", // cash_box or petty_cash
     accountId: "", // حساب من الدليل
     branchId: "", // الفرع المربوط
@@ -124,11 +126,20 @@ export default function CashBoxes() {
   const loadData = async () => {
     try {
       setLoading(true);
+      // Pass entityId to API to filter on backend instead of fetching all data
       const [boxesData, accountsData] = await Promise.all([
-        cashBoxesApi.getAll(),
+        currentEntity?.id ? cashBoxesApi.getByEntity(currentEntity.id) : cashBoxesApi.getAll(),
         accountsApi.getAll()
       ]);
-      setCashBoxes(boxesData);
+      
+      // Normalize old format to new format
+      const normalizedBoxes = boxesData.map((box: any) => ({
+        ...box,
+        currencies: box.currencies || (box.currency ? [box.currency] : ["YER", "SAR", "USD"]),
+        defaultCurrency: box.defaultCurrency || box.currency || "YER"
+      }));
+      
+      setCashBoxes(normalizedBoxes);
       setAccounts(accountsData);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -140,7 +151,7 @@ export default function CashBoxes() {
 
   // Get cash accounts from chart of accounts
   const allCashAccounts = accounts.filter(account => 
-    account.subtype === 'cash' && 
+    (account.subtype === 'cash_box' || account.subtype === 'cash') && 
     !account.isGroup && 
     account.entityId === currentEntity.id
   );
@@ -152,6 +163,20 @@ export default function CashBoxes() {
       .map(box => box.accountId);
     return allCashAccounts.filter(account => !linkedAccountIds.includes(account.id));
   };
+
+  // Load currencies from selected account
+  useEffect(() => {
+    if (newBox.accountId && newBox.accountId !== "none") {
+      const selectedAccount = accounts.find(acc => acc.id === newBox.accountId);
+      if (selectedAccount && selectedAccount.currencies) {
+        setNewBox(prev => ({
+          ...prev,
+          currencies: selectedAccount.currencies || ["YER", "SAR", "USD"],
+          defaultCurrency: selectedAccount.defaultCurrency || selectedAccount.currencies[0] || "YER"
+        }));
+      }
+    }
+  }, [newBox.accountId, accounts]);
 
   // Filter cash boxes based on current entity
   // In a real app, this would be a backend query. Here we filter by an 'entityId' property we'll add.
@@ -170,26 +195,40 @@ export default function CashBoxes() {
       toast.error("يرجى إدخال اسم الصندوق");
       return;
     }
+    if (newBox.currencies.length === 0) {
+      toast.error("يرجى اختيار عملة واحدة على الأقل");
+      return;
+    }
 
     try {
       const box = {
+        id: `CB-${Date.now()}`, // Generate ID
         entityId: currentEntity.id,
         name: newBox.name,
         balance: 0.00,
-        currency: newBox.currency,
+        currencies: newBox.currencies, // Multiple currencies
+        defaultCurrency: newBox.defaultCurrency, // Default currency
         type: newBox.type,
-        accountId: newBox.accountId || null,
-        branchId: newBox.branchId || null,
-        responsiblePerson: newBox.responsiblePerson || null,
-        status: "active",
-        lastTransaction: null
+        accountId: newBox.accountId && newBox.accountId !== "none" ? newBox.accountId : null,
+        branchId: newBox.branchId && newBox.branchId !== "main" ? newBox.branchId : null,
+        responsible: newBox.responsiblePerson || null,
+        isActive: true
       };
 
+      console.log('Creating cash box with data:', box);
       await cashBoxesApi.create(box);
-      toast.success("تم إضافة الصندوق بنجاح");
+      toast.success(`تم إضافة الصندوق بنجاح (${newBox.currencies.length} عملة)`);
       await loadData();
       setIsNewBoxOpen(false);
-      setNewBox({ name: "", currency: "SAR", type: "cash_box", accountId: "", branchId: "", responsiblePerson: "" });
+      setNewBox({ 
+        name: "", 
+        currencies: ["YER", "SAR", "USD"], 
+        defaultCurrency: "YER",
+        type: "cash_box", 
+        accountId: "", 
+        branchId: "", 
+        responsiblePerson: "" 
+      });
     } catch (error: any) {
       console.error('Failed to add cash box:', error);
       toast.error(error.message || 'فشل إضافة الصندوق');
@@ -201,10 +240,34 @@ export default function CashBoxes() {
       toast.error("يرجى إدخال اسم الصندوق");
       return;
     }
+    
+    const currencies = editingBox.currencies || (editingBox.currency ? [editingBox.currency] : ["YER", "SAR", "USD"]);
+    if (currencies.length === 0) {
+      toast.error("يرجى اختيار عملة واحدة على الأقل");
+      return;
+    }
 
     try {
-      await cashBoxesApi.update(editingBox.id, editingBox);
-      toast.success("تم تحديث بيانات الصندوق بنجاح");
+      // Map fields to match schema
+      const boxData = {
+        ...editingBox,
+        currencies: currencies,
+        defaultCurrency: editingBox.defaultCurrency || currencies[0],
+        accountId: editingBox.accountId && editingBox.accountId !== "none" ? editingBox.accountId : null,
+        branchId: editingBox.branchId && editingBox.branchId !== "main" ? editingBox.branchId : null,
+        responsible: editingBox.responsiblePerson || editingBox.responsible || null,
+        isActive: editingBox.status === "active" ? true : (editingBox.isActive !== undefined ? editingBox.isActive : true)
+      };
+      
+      // Remove fields that don't exist in schema
+      delete boxData.status;
+      delete boxData.lastTransaction;
+      delete boxData.responsiblePerson;
+      delete boxData.currency;
+      
+      console.log('Updating cash box with data:', boxData);
+      await cashBoxesApi.update(editingBox.id, boxData);
+      toast.success(`تم تحديث بيانات الصندوق بنجاح (${currencies.length} عملة)`);
       await loadData();
       setIsEditBoxOpen(false);
       setEditingBox(null);
@@ -234,7 +297,13 @@ export default function CashBoxes() {
   };
 
   const openEditDialog = (box: any) => {
-    setEditingBox({ ...box });
+    // Normalize old format to new format
+    const normalizedBox = {
+      ...box,
+      currencies: box.currencies || (box.currency ? [box.currency] : ["YER", "SAR", "USD"]),
+      defaultCurrency: box.defaultCurrency || box.currency || "YER"
+    };
+    setEditingBox(normalizedBox);
     setIsEditBoxOpen(true);
   };
 
@@ -294,26 +363,10 @@ export default function CashBoxes() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="currency" className="text-right">العملة</Label>
-                  <Select 
-                    value={newBox.currency} 
-                    onValueChange={(v) => setNewBox({...newBox, currency: v})}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر العملة" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
-                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
-                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="accountId" className="text-right">حساب من الدليل</Label>
                   <Select 
-                    value={newBox.accountId} 
-                    onValueChange={(v) => setNewBox({...newBox, accountId: v})}
+                    value={newBox.accountId || "none"} 
+                    onValueChange={(v) => setNewBox({...newBox, accountId: v === "none" ? "" : v})}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر الحساب المربوط" />
@@ -327,6 +380,91 @@ export default function CashBoxes() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="accountId" className="text-right">حساب من الدليل</Label>
+                  <Select 
+                    value={newBox.accountId || "none"} 
+                    onValueChange={(v) => setNewBox({...newBox, accountId: v === "none" ? "" : v})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الحساب المربوط" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">لا يوجد حساب</SelectItem>
+                      {getAvailableCashAccounts().map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.id} - {account.name}
+                          {account.currencies && account.currencies.length > 0 && (
+                            <span className="text-xs text-muted-foreground"> ({account.currencies.join(", ")})</span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right mt-2">العملات المسموح بها</Label>
+                  <div className="col-span-3 space-y-2">
+                    {(["YER", "SAR", "USD"] as const).map((currency) => {
+                      const currencyLabels = {
+                        YER: "ريال يمني (YER)",
+                        SAR: "ريال سعودي (SAR)",
+                        USD: "دولار أمريكي (USD)"
+                      };
+                      return (
+                        <div key={currency} className="flex items-center space-x-2 space-x-reverse">
+                          <Checkbox 
+                            id={`new-${currency.toLowerCase()}`}
+                            checked={newBox.currencies.includes(currency)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setNewBox(prev => ({ 
+                                  ...prev, 
+                                  currencies: [...prev.currencies, currency],
+                                  defaultCurrency: prev.currencies.length === 0 ? currency : prev.defaultCurrency
+                                }));
+                              } else {
+                                setNewBox(prev => {
+                                  const newCurrencies = prev.currencies.filter(c => c !== currency);
+                                  return { 
+                                    ...prev, 
+                                    currencies: newCurrencies,
+                                    defaultCurrency: prev.defaultCurrency === currency && newCurrencies.length > 0 
+                                      ? newCurrencies[0] 
+                                      : (prev.defaultCurrency === currency && newCurrencies.length === 0 ? "" : prev.defaultCurrency)
+                                  };
+                                });
+                              }
+                            }}
+                          />
+                          <label htmlFor={`new-${currency.toLowerCase()}`} className="text-sm font-medium cursor-pointer">
+                            {currencyLabels[currency]}
+                          </label>
+                        </div>
+                      );
+                    })}
+                    {newBox.currencies.length > 0 && (
+                      <div className="mt-2">
+                        <Label className="text-sm text-muted-foreground">العملة الافتراضية:</Label>
+                        <Select 
+                          value={newBox.defaultCurrency} 
+                          onValueChange={(v) => setNewBox({...newBox, defaultCurrency: v})}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {newBox.currencies.map(currency => (
+                              <SelectItem key={currency} value={currency}>
+                                {currency === "YER" ? "ريال يمني" : currency === "SAR" ? "ريال سعودي" : "دولار أمريكي"} ({currency})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="branchId" className="text-right">الفرع المربوط</Label>
@@ -384,26 +522,21 @@ export default function CashBoxes() {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-currency" className="text-right">العملة</Label>
-                  <Select 
-                    value={editingBox?.currency || "SAR"} 
-                    onValueChange={(v) => setEditingBox((prev: any) => prev ? {...prev, currency: v} : null)}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر العملة" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="YER">ريال يمني (YER)</SelectItem>
-                      <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
-                      <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-accountId" className="text-right">حساب من الدليل</Label>
                   <Select 
                     value={editingBox?.accountId || "none"} 
-                    onValueChange={(v) => setEditingBox((prev: any) => prev ? {...prev, accountId: v} : null)}
+                    onValueChange={(v) => {
+                      const selectedAccount = accounts.find(acc => acc.id === v);
+                      setEditingBox((prev: any) => {
+                        if (!prev) return null;
+                        const updated = {...prev, accountId: v === "none" ? null : v};
+                        if (selectedAccount && selectedAccount.currencies) {
+                          updated.currencies = selectedAccount.currencies;
+                          updated.defaultCurrency = selectedAccount.defaultCurrency || selectedAccount.currencies[0] || "YER";
+                        }
+                        return updated;
+                      });
+                    }}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر الحساب المربوط" />
@@ -413,10 +546,83 @@ export default function CashBoxes() {
                       {getAvailableCashAccounts(editingBox?.id).map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.id} - {account.name}
+                          {account.currencies && account.currencies.length > 0 && (
+                            <span className="text-xs text-muted-foreground"> ({account.currencies.join(", ")})</span>
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right mt-2">العملات المسموح بها</Label>
+                  <div className="col-span-3 space-y-2">
+                    {(["YER", "SAR", "USD"] as const).map((currency) => {
+                      const currencyLabels = {
+                        YER: "ريال يمني (YER)",
+                        SAR: "ريال سعودي (SAR)",
+                        USD: "دولار أمريكي (USD)"
+                      };
+                      const currentCurrencies = editingBox?.currencies || (editingBox?.currency ? [editingBox.currency] : ["YER", "SAR", "USD"]);
+                      return (
+                        <div key={currency} className="flex items-center space-x-2 space-x-reverse">
+                          <Checkbox 
+                            id={`edit-${currency.toLowerCase()}`}
+                            checked={currentCurrencies.includes(currency)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setEditingBox((prev: any) => {
+                                  if (!prev) return null;
+                                  const newCurrencies = [...(prev.currencies || (prev.currency ? [prev.currency] : ["YER", "SAR", "USD"])), currency];
+                                  return {
+                                    ...prev,
+                                    currencies: newCurrencies,
+                                    defaultCurrency: (prev.currencies || []).length === 0 ? currency : prev.defaultCurrency || prev.currency || "YER"
+                                  };
+                                });
+                              } else {
+                                setEditingBox((prev: any) => {
+                                  if (!prev) return null;
+                                  const currentCurrencies = prev.currencies || (prev.currency ? [prev.currency] : ["YER", "SAR", "USD"]);
+                                  const newCurrencies = currentCurrencies.filter((c: string) => c !== currency);
+                                  return {
+                                    ...prev,
+                                    currencies: newCurrencies,
+                                    defaultCurrency: (prev.defaultCurrency || prev.currency || "YER") === currency && newCurrencies.length > 0
+                                      ? newCurrencies[0]
+                                      : (prev.defaultCurrency || prev.currency || "YER")
+                                  };
+                                });
+                              }
+                            }}
+                          />
+                          <label htmlFor={`edit-${currency.toLowerCase()}`} className="text-sm font-medium cursor-pointer">
+                            {currencyLabels[currency]}
+                          </label>
+                        </div>
+                      );
+                    })}
+                    {editingBox && (editingBox.currencies || editingBox.currency) && (
+                      <div className="mt-2">
+                        <Label className="text-sm text-muted-foreground">العملة الافتراضية:</Label>
+                        <Select 
+                          value={editingBox.defaultCurrency || editingBox.currency || "YER"} 
+                          onValueChange={(v) => setEditingBox((prev: any) => prev ? {...prev, defaultCurrency: v} : null)}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(editingBox.currencies || (editingBox.currency ? [editingBox.currency] : ["YER", "SAR", "USD"])).map((currency: string) => (
+                              <SelectItem key={currency} value={currency}>
+                                {currency === "YER" ? "ريال يمني" : currency === "SAR" ? "ريال سعودي" : "دولار أمريكي"} ({currency})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -488,6 +694,7 @@ export default function CashBoxes() {
             <TableRow>
               <TableHead className="w-[250px]">اسم الصندوق</TableHead>
               <TableHead>النوع</TableHead>
+              <TableHead>العملات</TableHead>
               <TableHead>الرصيد الحالي</TableHead>
               <TableHead>آخر حركة</TableHead>
               <TableHead>الحالة</TableHead>
@@ -497,12 +704,19 @@ export default function CashBoxes() {
           <TableBody>
             {visibleCashBoxes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   لا توجد صناديق مسجلة لـ {currentEntity.name}. قم بإضافة صندوق جديد.
                 </TableCell>
               </TableRow>
             ) : (
-              visibleCashBoxes.map((box) => (
+              visibleCashBoxes.map((box) => {
+                const currencies = box.currencies || (box.currency ? [box.currency] : ["YER", "SAR", "USD"]);
+                const currencyLabels: { [key: string]: string } = {
+                  YER: "ريال يمني",
+                  SAR: "ريال سعودي",
+                  USD: "دولار"
+                };
+                return (
                 <TableRow key={box.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -516,14 +730,23 @@ export default function CashBoxes() {
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    <div className="flex gap-1 flex-wrap">
+                      {currencies.map((currency: string) => (
+                        <Badge key={currency} variant={currency === (box.defaultCurrency || box.currency || "YER") ? "default" : "outline"} className="text-xs">
+                          {currency}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>
                     <span className="font-bold text-emerald-600">
-                      {box.balance.toLocaleString()} {box.currency}
+                      {typeof box.balance === 'number' ? box.balance.toLocaleString() : parseFloat(box.balance || '0').toLocaleString()} {(box.defaultCurrency || box.currency || "YER")}
                     </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <History className="w-3 h-3" />
-                      {box.lastTransaction}
+                      {box.lastTransaction || "-"}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -559,7 +782,8 @@ export default function CashBoxes() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

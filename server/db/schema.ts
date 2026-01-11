@@ -45,7 +45,8 @@ export const cashBoxes = pgTable('cash_boxes', {
   accountId: text('account_id').references(() => accounts.id),
   branchId: text('branch_id').references(() => entities.id),
   type: text('type').notNull(), // 'cash_box' | 'employee_custody'
-  currency: text('currency').default('YER').notNull(),
+  currencies: json('currencies').$type<string[]>().default(['YER', 'SAR', 'USD']), // Multiple currencies support
+  defaultCurrency: text('default_currency').default('YER'), // Default currency for backward compatibility
   balance: decimal('balance', { precision: 15, scale: 2 }).default('0').notNull(),
   responsible: text('responsible'),
   isActive: boolean('is_active').default(true).notNull(),

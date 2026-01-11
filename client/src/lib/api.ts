@@ -57,7 +57,7 @@ export const accountsApi = {
 export const cashBoxesApi = {
   getAll: () => apiCall<any[]>('/cash-boxes'),
   getById: (id: string) => apiCall<any>(`/cash-boxes/${id}`),
-  getByEntity: (entityId: string) => apiCall<any[]>(`/cash-boxes/entity/${entityId}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/cash-boxes?entityId=${entityId}`),
   create: (data: any) => apiCall<any>('/cash-boxes', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -75,7 +75,7 @@ export const cashBoxesApi = {
 export const banksWalletsApi = {
   getAll: () => apiCall<any[]>('/banks-wallets'),
   getById: (id: string) => apiCall<any>(`/banks-wallets/${id}`),
-  getByEntity: (entityId: string) => apiCall<any[]>(`/banks-wallets/entity/${entityId}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/banks-wallets?entityId=${entityId}`),
   create: (data: any) => apiCall<any>('/banks-wallets', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -93,7 +93,7 @@ export const banksWalletsApi = {
 export const journalEntriesApi = {
   getAll: () => apiCall<any[]>('/journal-entries'),
   getById: (id: string) => apiCall<any>(`/journal-entries/${id}`),
-  getByEntity: (entityId: string) => apiCall<any[]>(`/journal-entries/entity/${entityId}`),
+  getByEntity: (entityId: string) => apiCall<any[]>(`/journal-entries?entityId=${entityId}`),
   create: (data: any) => apiCall<any>('/journal-entries', {
     method: 'POST',
     body: JSON.stringify(data),

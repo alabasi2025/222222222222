@@ -6,24 +6,118 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
-// Get all journal entries
+// Get all journal entries (optionally filtered by entityId)
 router.get('/', async (req, res) => {
   try {
-    const entries = await db.query.journalEntries.findMany({
-      orderBy: [desc(journalEntries.date)],
-      with: {
-        lines: {
-          with: {
-            account: true
-          }
-        },
-        entity: true
-      }
-    });
-    res.json(entries);
-  } catch (error) {
+    const { entityId } = req.query;
+    
+    // Build base query
+    let query = db.select().from(journalEntries);
+    
+    // Filter by entityId if provided
+    if (entityId) {
+      query = query.where(eq(journalEntries.entityId, entityId as string));
+    }
+    
+    // Get entries
+    const entries = await query.orderBy(desc(journalEntries.date));
+    
+    // Get lines and accounts for each entry
+    const entriesWithLines = await Promise.all(
+      entries.map(async (entry: any) => {
+        // Get lines for this entry
+        const lines = await db.select()
+          .from(journalEntryLines)
+          .where(eq(journalEntryLines.entryId, entry.id));
+        
+        // Get account details for each line
+        const linesWithAccounts = await Promise.all(
+          lines.map(async (line: any) => {
+            const account = await db.select()
+              .from(accounts)
+              .where(eq(accounts.id, line.accountId))
+              .limit(1);
+            
+            return {
+              ...line,
+              account: account[0] || null
+            };
+          })
+        );
+        
+        // Get entity details
+        const entity = await db.select()
+          .from(entities)
+          .where(eq(entities.id, entry.entityId))
+          .limit(1);
+        
+        return {
+          ...entry,
+          lines: linesWithAccounts,
+          entity: entity[0] || null
+        };
+      })
+    );
+    
+    res.json(entriesWithLines);
+  } catch (error: any) {
     console.error('Error fetching journal entries:', error);
-    res.status(500).json({ error: 'Failed to fetch journal entries' });
+    console.error('Error details:', error.message, error.stack);
+    res.status(500).json({ error: 'Failed to fetch journal entries', details: error.message });
+  }
+});
+
+// Get journal entries by entity ID
+router.get('/entity/:entityId', async (req, res) => {
+  try {
+    // Get entries for this entity
+    const entries = await db.select()
+      .from(journalEntries)
+      .where(eq(journalEntries.entityId, req.params.entityId))
+      .orderBy(desc(journalEntries.date));
+    
+    // Get lines and accounts for each entry
+    const entriesWithLines = await Promise.all(
+      entries.map(async (entry: any) => {
+        // Get lines for this entry
+        const lines = await db.select()
+          .from(journalEntryLines)
+          .where(eq(journalEntryLines.entryId, entry.id));
+        
+        // Get account details for each line
+        const linesWithAccounts = await Promise.all(
+          lines.map(async (line: any) => {
+            const account = await db.select()
+              .from(accounts)
+              .where(eq(accounts.id, line.accountId))
+              .limit(1);
+            
+            return {
+              ...line,
+              account: account[0] || null
+            };
+          })
+        );
+        
+        // Get entity details
+        const entity = await db.select()
+          .from(entities)
+          .where(eq(entities.id, entry.entityId))
+          .limit(1);
+        
+        return {
+          ...entry,
+          lines: linesWithAccounts,
+          entity: entity[0] || null
+        };
+      })
+    );
+    
+    res.json(entriesWithLines);
+  } catch (error: any) {
+    console.error('Error fetching journal entries by entity:', error);
+    console.error('Error details:', error.message, error.stack);
+    res.status(500).json({ error: 'Failed to fetch journal entries', details: error.message });
   }
 });
 
