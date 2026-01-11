@@ -31,7 +31,7 @@
 
 ### المتطلبات
 - Node.js 22+
-- PostgreSQL 14+
+- PostgreSQL 18
 - pnpm
 
 ### خطوات التثبيت
