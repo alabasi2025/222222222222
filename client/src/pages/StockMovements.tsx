@@ -22,7 +22,8 @@ import {
   Package,
   TrendingUp,
   TrendingDown,
-  Calendar
+  Calendar,
+  Receipt
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,8 +54,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 import { useEntity } from "@/contexts/EntityContext";
-import { stockMovementsApi, inventoryApi, warehousesApi, accountsApi } from "@/lib/api";
+import { stockMovementsApi, inventoryApi, warehousesApi, accountsApi, itemStockApi } from "@/lib/api";
 
 interface Movement {
   id: string;
@@ -104,14 +106,19 @@ const typeMap: Record<string, { label: string, color: string, icon: any }> = {
 
 export default function StockMovements() {
   const { currentEntity, getThemeColor } = useEntity();
+  const [, setLocation] = useLocation();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewOpen, setIsNewOpen] = useState(false);
+  const [isOutOpen, setIsOutOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [availableQuantity, setAvailableQuantity] = useState<number>(0);
+  const [availablePrice, setAvailablePrice] = useState<number>(0);
+  const [checkingStock, setCheckingStock] = useState(false);
 
   const [newMovement, setNewMovement] = useState({
     itemId: "",
@@ -127,29 +134,139 @@ export default function StockMovements() {
   });
 
   useEffect(() => {
-    loadData();
+    if (currentEntity?.id) {
+      loadData();
+    }
   }, [currentEntity]);
 
   const loadData = async () => {
+    if (!currentEntity?.id) {
+      return;
+    }
     try {
       setLoading(true);
       const [movementsData, itemsData, warehousesData, accountsData] = await Promise.all([
-        stockMovementsApi.getByEntity(currentEntity.id),
-        inventoryApi.getByEntity(currentEntity.id),
-        warehousesApi.getByEntity(currentEntity.id),
-        accountsApi.getByEntity(currentEntity.id),
+        stockMovementsApi.getByEntity(currentEntity.id).catch(err => {
+          console.error('Error loading movements:', err);
+          return [];
+        }),
+        inventoryApi.getByEntity(currentEntity.id).catch(err => {
+          console.error('Error loading items:', err);
+          return [];
+        }),
+        warehousesApi.getByEntity(currentEntity.id).catch(err => {
+          console.error('Error loading warehouses:', err);
+          toast.error('فشل تحميل المستودعات');
+          return [];
+        }),
+        accountsApi.getByEntity(currentEntity.id).catch(err => {
+          console.error('Error loading accounts:', err);
+          return [];
+        }),
       ]);
-      setMovements(movementsData);
-      setItems(itemsData);
-      setWarehouses(warehousesData);
-      setAccounts(accountsData);
-    } catch (error) {
+      
+      // Ensure arrays are not undefined
+      const safeMovementsData = Array.isArray(movementsData) ? movementsData : [];
+      const safeItemsData = Array.isArray(itemsData) ? itemsData : [];
+      const safeWarehousesData = Array.isArray(warehousesData) ? warehousesData : [];
+      const safeAccountsData = Array.isArray(accountsData) ? accountsData : [];
+      
+      // Enrich movements with item and warehouse names
+      const enrichedMovements = safeMovementsData.map((mov: any) => {
+        const item = safeItemsData.find((i: any) => i.id === mov.itemId);
+        const warehouse = safeWarehousesData.find((w: any) => w.id === mov.warehouseId);
+        const toWarehouse = mov.toWarehouseId ? safeWarehousesData.find((w: any) => w.id === mov.toWarehouseId) : null;
+        
+        return {
+          ...mov,
+          itemName: item?.name || mov.itemName || mov.itemId,
+          itemCode: item?.code || mov.itemCode || '',
+          warehouseName: warehouse?.name || mov.warehouseName || mov.warehouseId,
+          toWarehouseName: toWarehouse?.name || mov.toWarehouseName || '',
+        };
+      });
+      
+      setMovements(enrichedMovements);
+      setItems(safeItemsData);
+      setWarehouses(safeWarehousesData);
+      setAccounts(safeAccountsData);
+      
+      // Debug: Log warehouses data
+      console.log('Loaded warehouses:', safeWarehousesData);
+      console.log('Warehouses count:', safeWarehousesData.length);
+    } catch (error: any) {
       console.error('Failed to load data:', error);
-      toast.error("فشل تحميل حركات المخزون");
+      const errorMessage = error?.message || 'فشل تحميل حركات المخزون';
+      toast.error(errorMessage);
+      // Set empty arrays on error to prevent undefined state
+      setMovements([]);
+      setItems([]);
+      setWarehouses([]);
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Check stock availability when item and warehouse are selected for stock out
+  const checkStockAvailability = async (itemId: string, warehouseId: string) => {
+    if (!itemId || !warehouseId || newMovement.type !== 'out') {
+      setAvailableQuantity(0);
+      setAvailablePrice(0);
+      return;
+    }
+
+    setCheckingStock(true);
+    try {
+      const stockData = await itemStockApi.getByItemAndWarehouse(itemId, warehouseId);
+      if (stockData && stockData.quantity !== undefined) {
+        const qty = stockData.quantity || 0;
+        const price = stockData.avgCost || stockData.lastPurchasePrice || 0;
+        setAvailableQuantity(qty);
+        setAvailablePrice(price);
+        
+        // Auto-fill unit cost from stock price
+        if (price > 0) {
+          setNewMovement(prev => ({
+            ...prev,
+            unitCost: price
+          }));
+        }
+
+        // Show warning if no stock available
+        if (qty <= 0) {
+          toast.error("لا توجد كمية متوفرة لهذا الصنف في المستودع المحدد");
+          setNewMovement(prev => ({ ...prev, itemId: "", warehouseId: "" }));
+        } else {
+          toast.success(`الكمية المتوفرة: ${qty}`);
+        }
+      } else {
+        setAvailableQuantity(0);
+        setAvailablePrice(0);
+        toast.error("لا توجد كمية متوفرة لهذا الصنف في المستودع المحدد");
+        setNewMovement(prev => ({ ...prev, itemId: "", warehouseId: "" }));
+      }
+    } catch (error: any) {
+      console.error('Error checking stock:', error);
+      setAvailableQuantity(0);
+      setAvailablePrice(0);
+      // If stock record doesn't exist, it means no stock
+      toast.error("لا توجد كمية متوفرة لهذا الصنف في المستودع المحدد");
+      setNewMovement(prev => ({ ...prev, itemId: "", warehouseId: "" }));
+    } finally {
+      setCheckingStock(false);
+    }
+  };
+
+  // useEffect to check stock when item and warehouse are selected
+  useEffect(() => {
+    if (newMovement.type === 'out' && newMovement.itemId && newMovement.warehouseId) {
+      checkStockAvailability(newMovement.itemId, newMovement.warehouseId);
+    } else {
+      setAvailableQuantity(0);
+      setAvailablePrice(0);
+    }
+  }, [newMovement.itemId, newMovement.warehouseId, newMovement.type]);
 
   const handleAdd = async () => {
     if (!newMovement.itemId || !newMovement.warehouseId || newMovement.quantity <= 0) {
@@ -162,9 +279,17 @@ export default function StockMovements() {
       return;
     }
 
-    if (newMovement.type === 'out' && !newMovement.toAccountId) {
-      toast.error("يرجى اختيار حساب الصرف");
-      return;
+    if (newMovement.type === 'out') {
+      if (!newMovement.toAccountId) {
+        toast.error("يرجى اختيار حساب الصرف");
+        return;
+      }
+      
+      // Check if quantity exceeds available stock
+      if (newMovement.quantity > availableQuantity) {
+        toast.error(`الكمية المحددة (${newMovement.quantity}) أكبر من الكمية المتوفرة (${availableQuantity})`);
+        return;
+      }
     }
 
     try {
@@ -185,7 +310,7 @@ export default function StockMovements() {
       
       await stockMovementsApi.create(data);
       toast.success("تم تسجيل الحركة بنجاح");
-      setIsNewOpen(false);
+      setIsOutOpen(false);
       setNewMovement({
         itemId: "",
         warehouseId: "",
@@ -198,6 +323,8 @@ export default function StockMovements() {
         notes: "",
         date: new Date().toISOString().split('T')[0],
       });
+      setAvailableQuantity(0);
+      setAvailablePrice(0);
       loadData();
     } catch (error) {
       toast.error("فشل في تسجيل الحركة");
@@ -228,6 +355,238 @@ export default function StockMovements() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Dialog open={isOutOpen} onOpenChange={(open) => {
+            setIsOutOpen(open);
+            if (open && (!warehouses || warehouses.length === 0)) {
+              // Reload data if warehouses are not loaded
+              loadData();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setNewMovement({ ...newMovement, type: "out", toAccountId: "" });
+                  // Ensure data is loaded when opening dialog
+                  if (!warehouses || warehouses.length === 0) {
+                    loadData();
+                  }
+                }}
+              >
+                <Receipt className="w-4 h-4 ml-2" />
+                صرف مخزني
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>صرف مخزني</DialogTitle>
+                <DialogDescription>
+                  سجل حركة صرف (صادر) للمخزون
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>الصنف *</Label>
+                    <Select
+                      value={newMovement.itemId}
+                      onValueChange={(value) => setNewMovement({ ...newMovement, itemId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الصنف" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {items
+                          .sort((a, b) => a.code.localeCompare(b.code))
+                          .map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.code} - {item.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>المستودع *</Label>
+                    <Select
+                      value={newMovement.warehouseId}
+                      onValueChange={(value) => {
+                        setNewMovement({ ...newMovement, warehouseId: value });
+                        // Stock will be checked automatically via useEffect
+                      }}
+                      disabled={!newMovement.itemId || checkingStock}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر المستودع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {warehouses && warehouses.length > 0 ? (
+                          [...warehouses]
+                            .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+                            .map((warehouse) => (
+                              <SelectItem key={warehouse.id} value={warehouse.id}>
+                                {warehouse.code} - {warehouse.name}
+                              </SelectItem>
+                            ))
+                        ) : (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            {loading ? 'جاري التحميل...' : 'لا توجد مستودعات متاحة'}
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>الكمية *</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={newMovement.type === 'out' ? availableQuantity : undefined}
+                      value={newMovement.quantity}
+                      onChange={(e) => {
+                        const qty = parseFloat(e.target.value) || 0;
+                        if (newMovement.type === 'out' && qty > availableQuantity) {
+                          toast.error(`الكمية المحددة (${qty}) أكبر من الكمية المتوفرة (${availableQuantity})`);
+                          return;
+                        }
+                        setNewMovement({ ...newMovement, quantity: qty });
+                      }}
+                      placeholder="الكمية"
+                    />
+                    {newMovement.type === 'out' && availableQuantity > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        المتوفر: {availableQuantity} وحدة
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>سعر الوحدة *</Label>
+                    <Input
+                      type="number"
+                      value={newMovement.unitCost}
+                      onChange={(e) => setNewMovement({ ...newMovement, unitCost: parseFloat(e.target.value) || 0 })}
+                      placeholder="سعر الوحدة"
+                      readOnly={newMovement.type === 'out' && availablePrice > 0}
+                      className={newMovement.type === 'out' && availablePrice > 0 ? "bg-muted" : ""}
+                    />
+                    {newMovement.type === 'out' && availablePrice > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        السعر من المخزون: {availablePrice.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>حساب الصرف *</Label>
+                  <Select
+                    value={newMovement.toAccountId}
+                    onValueChange={(value) => setNewMovement({ ...newMovement, toAccountId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر حساب الصرف" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {(() => {
+                        // Filter accounts for current entity, excluding cashbox and warehouse subtypes
+                        // Get all accounts to build hierarchy (including groups for navigation)
+                        const allEntityAccounts = (accounts as any[]).filter(acc => 
+                          (!acc.entityId || acc.entityId === currentEntity.id) &&
+                          (acc.type === 'expense' || acc.type === 'asset')
+                        );
+                        
+                        // Build flat list with hierarchy indication
+                        const buildAccountList = (parentId: string | null = null, level: number = 0): any[] => {
+                          const children = allEntityAccounts
+                            .filter(acc => acc.parentId === parentId)
+                            .sort((a, b) => a.id.localeCompare(b.id));
+                            
+                          const result: any[] = [];
+                          
+                          for (const acc of children) {
+                            // Only include non-group accounts (leaf nodes) that are not cashbox or warehouse
+                            if (!acc.isGroup && 
+                                acc.subtype !== 'cash_box' &&
+                                acc.subtype !== 'cash' &&
+                                acc.subtype !== 'warehouse' &&
+                                acc.subtype !== 'inventory') {
+                              const indent = '  '.repeat(level);
+                              result.push(
+                                <SelectItem key={acc.id} value={acc.id}>
+                                  {indent}{acc.id} - {acc.name}
+                                </SelectItem>
+                              );
+                            }
+                            
+                            // Recursively add children
+                            const childItems = buildAccountList(acc.id, level + 1);
+                            result.push(...childItems);
+                          }
+                          
+                          return result;
+                        };
+                        
+                        const accountList = buildAccountList();
+                        
+                        if (accountList.length === 0) {
+                          return (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                              لا توجد حسابات متاحة. يرجى إضافة حسابات من شجرة الحسابات
+                            </div>
+                          );
+                        }
+                        
+                        return accountList;
+                      })()}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>المرجع</Label>
+                  <Input
+                    value={newMovement.reference}
+                    onChange={(e) => setNewMovement({ ...newMovement, reference: e.target.value })}
+                    placeholder="رقم الفاتورة أو أمر الصرف"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>ملاحظات</Label>
+                  <Textarea
+                    value={newMovement.notes}
+                    onChange={(e) => setNewMovement({ ...newMovement, notes: e.target.value })}
+                    placeholder="ملاحظات إضافية"
+                    rows={2}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={async () => {
+                  if (!newMovement.itemId || !newMovement.warehouseId || newMovement.quantity <= 0) {
+                    toast.error("يرجى إدخال جميع البيانات المطلوبة");
+                    return;
+                  }
+                  if (!newMovement.toAccountId) {
+                    toast.error("يرجى اختيار حساب الصرف");
+                    return;
+                  }
+                  // Ensure type is 'out' for stock out movement
+                  const movementToSave = { ...newMovement, type: "out" };
+                  setNewMovement(movementToSave);
+                  
+                  // Wait for state update then call handleAdd
+                  setTimeout(async () => {
+                    await handleAdd();
+                    setIsOutOpen(false);
+                  }, 0);
+                }} style={{ backgroundColor: getThemeColor() }}>
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Button variant="outline" size="sm">
             <Download className="w-4 h-4 ml-2" />
             تصدير
@@ -470,7 +829,7 @@ export default function StockMovements() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">إجمالي الوارد</p>
-              <h3 className="text-2xl font-bold mt-1 text-emerald-600">{totalIn.toLocaleString()} ر.س</h3>
+              <h3 className="text-2xl font-bold mt-1 text-emerald-600">{totalIn.toLocaleString()} ر.ي</h3>
               <p className="text-xs text-muted-foreground">قيمة المشتريات</p>
             </div>
             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
@@ -482,7 +841,7 @@ export default function StockMovements() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">إجمالي الصادر</p>
-              <h3 className="text-2xl font-bold mt-1 text-rose-600">{totalOut.toLocaleString()} ر.س</h3>
+              <h3 className="text-2xl font-bold mt-1 text-rose-600">{totalOut.toLocaleString()} ر.ي</h3>
               <p className="text-xs text-muted-foreground">قيمة المبيعات</p>
             </div>
             <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center text-rose-600">
@@ -495,7 +854,7 @@ export default function StockMovements() {
             <div>
               <p className="text-sm font-medium text-muted-foreground">صافي الحركة</p>
               <h3 className={`text-2xl font-bold mt-1 ${totalIn - totalOut >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {(totalIn - totalOut).toLocaleString()} ر.س
+                {(totalIn - totalOut).toLocaleString()} ر.ي
               </h3>
               <p className="text-xs text-muted-foreground">الفرق</p>
             </div>
@@ -605,9 +964,9 @@ export default function StockMovements() {
                       <TableCell className={`font-medium ${mov.type === 'out' ? 'text-rose-600' : mov.type === 'in' || mov.type === 'return' ? 'text-emerald-600' : ''}`}>
                         {mov.type === 'out' ? '-' : mov.type === 'in' || mov.type === 'return' ? '+' : ''}{Math.abs(mov.quantity)}
                       </TableCell>
-                      <TableCell>{mov.unitCost.toLocaleString()} ر.س</TableCell>
+                      <TableCell>{mov.unitCost.toLocaleString()} ر.ي</TableCell>
                       <TableCell className={`font-medium ${mov.totalCost < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {mov.totalCost.toLocaleString()} ر.س
+                        {mov.totalCost.toLocaleString()} ر.ي
                       </TableCell>
                       <TableCell>
                         {mov.reference || '-'}

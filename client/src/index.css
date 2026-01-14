@@ -194,3 +194,31 @@
     }
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  [class*="print-content"],
+  [class*="print-content"] * {
+    visibility: visible;
+  }
+  
+  [class*="print\\:hidden"],
+  .no-print {
+    display: none !important;
+  }
+  
+  [class*="print-content"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+}

@@ -354,7 +354,7 @@ export default function Customers() {
                   </TableCell>
                   <TableCell>
                     <span className={`font-bold ${customer.balance > 0 ? 'text-emerald-600' : customer.balance < 0 ? 'text-rose-600' : ''}`}>
-                      {customer.balance.toLocaleString()} ر.س
+                      {customer.balance.toLocaleString()} ر.ي
                     </span>
                   </TableCell>
                   <TableCell>

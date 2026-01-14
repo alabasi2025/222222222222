@@ -210,6 +210,13 @@ export const stockMovementsApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  update: (id: string, data: any) => apiCall<any>(`/stock-movements/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => apiCall<void>(`/stock-movements/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 // Item Stock API (stock levels per warehouse)

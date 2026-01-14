@@ -102,6 +102,85 @@ router.post('/', async (req, res) => {
           lastPurchasePrice: unitCost,
         });
       }
+
+      // Create accounting entry for purchase invoices (referenceType === 'purchase')
+      if (req.body.referenceType === 'purchase') {
+        const calculatedTotalCost = totalCost || (quantity * (unitCost || 0));
+        if (calculatedTotalCost > 0) {
+          // Get item to find its stock account
+          const item = await db.select().from(items).where(eq(items.id, itemId)).limit(1);
+          if (item.length > 0 && item[0].accountId) {
+            const stockAccountId = item[0].accountId; // حساب المخزون
+            
+            // Extract supplier account ID from notes
+            // Format: "supplierId:SUP-xxx" or "supplierAccountId:ACC-xxx"
+            let supplierAccountId: string | null = null;
+            if (req.body.notes) {
+              const supplierAccountMatch = req.body.notes.match(/supplierAccountId:([A-Z0-9-]+)/);
+              if (supplierAccountMatch) {
+                supplierAccountId = supplierAccountMatch[1];
+              } else {
+                // Try to get supplier ID and find its account from chart of accounts
+                const supplierIdMatch = req.body.notes.match(/supplierId:([A-Z0-9-]+)/);
+                if (supplierIdMatch) {
+                  const supplierId = supplierIdMatch[1];
+                  // Look for account with subtype 'supplier' (we'll use a default supplier account if exists)
+                  // For now, we'll skip if supplierAccountId is not in notes
+                  // In a full implementation, suppliers should be in DB with chartAccountId
+                }
+              }
+            }
+
+            // If supplier account is found, create journal entry
+            if (stockAccountId && supplierAccountId) {
+              // Verify supplier account exists
+              const supplierAccount = await db.select().from(accounts).where(eq(accounts.id, supplierAccountId)).limit(1);
+              
+              if (supplierAccount.length > 0) {
+                const journalId = `JE-PURCHASE-${Date.now()}`;
+                
+                // Create journal entry
+                await db.insert(journalEntries).values({
+                  id: journalId,
+                  entityId: req.body.entityId,
+                  date: new Date(req.body.date),
+                  description: `فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
+                  reference: req.body.reference || newMovement[0].id,
+                  type: 'auto',
+                  status: 'posted',
+                });
+
+                // Debit: Stock account (حساب المخزون)
+                await db.insert(journalEntryLines).values({
+                  id: `JVL-${Date.now()}-1`,
+                  entryId: journalId,
+                  accountId: stockAccountId,
+                  debit: calculatedTotalCost.toString(),
+                  credit: '0',
+                  currency: req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER',
+                  description: `شراء - ${item[0].name || itemId}`,
+                });
+
+                // Credit: Supplier account (حساب المورد)
+                await db.insert(journalEntryLines).values({
+                  id: `JVL-${Date.now()}-2`,
+                  entryId: journalId,
+                  accountId: supplierAccountId,
+                  debit: '0',
+                  credit: calculatedTotalCost.toString(),
+                  currency: req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER',
+                  description: `فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
+                });
+
+                // Update stock movement with journal entry ID
+                await db.update(stockMovements)
+                  .set({ journalEntryId: journalId })
+                  .where(eq(stockMovements.id, newMovement[0].id));
+              }
+            }
+          }
+        }
+      }
     } else if (type === 'out') {
       // Decrease stock
       if (existingStock.length > 0) {
@@ -222,6 +301,143 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Error creating stock movement:', error);
     res.status(500).json({ error: 'Failed to create stock movement' });
+  }
+});
+
+// Update stock movement
+router.put('/:id', async (req, res) => {
+  try {
+    const movementId = req.params.id;
+    
+    // Get existing movement
+    const existingMovements = await db.select().from(stockMovements).where(eq(stockMovements.id, movementId));
+    if (existingMovements.length === 0) {
+      return res.status(404).json({ error: 'Movement not found' });
+    }
+    
+    const existingMovement = existingMovements[0];
+    
+    // Update the movement
+    const updatedData = {
+      ...req.body,
+      date: req.body.date ? new Date(req.body.date) : existingMovement.date,
+    };
+    
+    await db.update(stockMovements)
+      .set(updatedData)
+      .where(eq(stockMovements.id, movementId));
+    
+    res.json({ ...existingMovement, ...updatedData });
+  } catch (error) {
+    console.error('Error updating stock movement:', error);
+    res.status(500).json({ error: 'Failed to update stock movement' });
+  }
+});
+
+// Delete stock movement and reverse stock levels
+router.delete('/:id', async (req, res) => {
+  try {
+    const movementId = req.params.id;
+    
+    // Get existing movement
+    const existingMovements = await db.select().from(stockMovements).where(eq(stockMovements.id, movementId));
+    if (existingMovements.length === 0) {
+      return res.status(404).json({ error: 'Movement not found' });
+    }
+    
+    const movement = existingMovements[0];
+    const { itemId, warehouseId, toWarehouseId, type, quantity, unitCost } = movement;
+    
+    // Reverse stock levels based on movement type
+    if (type === 'in' || type === 'return') {
+      // Decrease stock (reverse the increase)
+      const existingStock = await db.select().from(itemStock)
+        .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      
+      if (existingStock.length > 0 && existingStock[0].quantity >= quantity!) {
+        await db.update(itemStock)
+          .set({ 
+            quantity: sql`${itemStock.quantity} - ${quantity}`,
+            updatedAt: new Date()
+          })
+          .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      }
+    } else if (type === 'out') {
+      // Increase stock (reverse the decrease)
+      const existingStock = await db.select().from(itemStock)
+        .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      
+      if (existingStock.length > 0) {
+        await db.update(itemStock)
+          .set({ 
+            quantity: sql`${itemStock.quantity} + ${quantity}`,
+            updatedAt: new Date()
+          })
+          .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      } else {
+        await db.insert(itemStock).values({
+          id: `STK-${Date.now()}`,
+          itemId: itemId!,
+          warehouseId: warehouseId!,
+          quantity: quantity!,
+          avgCost: unitCost || 0,
+        });
+      }
+    } else if (type === 'transfer' && toWarehouseId) {
+      // Reverse transfer: decrease from destination, increase in source
+      const destStock = await db.select().from(itemStock)
+        .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, toWarehouseId)));
+      
+      if (destStock.length > 0 && destStock[0].quantity >= quantity!) {
+        await db.update(itemStock)
+          .set({ 
+            quantity: sql`${itemStock.quantity} - ${quantity}`,
+            updatedAt: new Date()
+          })
+          .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, toWarehouseId)));
+      }
+      
+      const sourceStock = await db.select().from(itemStock)
+        .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      
+      if (sourceStock.length > 0) {
+        await db.update(itemStock)
+          .set({ 
+            quantity: sql`${itemStock.quantity} + ${quantity}`,
+            updatedAt: new Date()
+          })
+          .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      } else {
+        await db.insert(itemStock).values({
+          id: `STK-${Date.now()}`,
+          itemId: itemId!,
+          warehouseId: warehouseId!,
+          quantity: quantity!,
+          avgCost: unitCost || 0,
+        });
+      }
+    } else if (type === 'adjustment') {
+      // Reverse adjustment
+      const existingStock = await db.select().from(itemStock)
+        .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      
+      if (existingStock.length > 0) {
+        await db.update(itemStock)
+          .set({ 
+            quantity: sql`${itemStock.quantity} - ${quantity}`,
+            updatedAt: new Date()
+          })
+          .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
+      }
+    }
+    
+    // Delete the movement
+    await db.delete(stockMovements).where(eq(stockMovements.id, movementId));
+    
+    res.json({ message: 'Stock movement deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting stock movement:', error);
+    res.status(500).json({ error: 'Failed to delete stock movement' });
   }
 });
 

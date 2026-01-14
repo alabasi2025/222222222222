@@ -104,20 +104,8 @@ interface Account {
   branchId?: string;
 }
 
-// Account Subtypes
-const accountSubtypes = [
-  { value: "general", label: "عام" },
-  { value: "cash_box", label: "صندوق" },
-  { value: "bank", label: "بنك" },
-  { value: "wallet", label: "محفظة" },
-  { value: "exchange", label: "صراف" },
-  { value: "supplier", label: "مورد" },
-  { value: "customer", label: "عميل" },
-  { value: "employee", label: "موظف" },
-  { value: "warehouse", label: "مخزن" },
-];
-
 import { getAccountTypes, getTypeMap, type AccountType } from "@/lib/accountTypes";
+import { getAccountSubtypes } from "@/lib/accountSubtypes";
 
 export default function ChartOfAccounts() {
   const { currentEntity, isEntityVisible, entities } = useEntity();
@@ -612,9 +600,15 @@ export default function ChartOfAccounts() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">لا يوجد (حساب رئيسي)</SelectItem>
-                      {filteredAccounts.filter(acc => acc.isGroup).map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-                      ))}
+                      {filteredAccounts
+                        .filter(acc => 
+                          acc.isGroup && 
+                          acc.type === newAccount.type &&
+                          (!editingAccountId || acc.id !== editingAccountId) // استثناء الحساب الحالي عند التعديل
+                        )
+                        .map(acc => (
+                          <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -642,7 +636,7 @@ export default function ChartOfAccounts() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {accountSubtypes.map(st => (
+                      {getAccountSubtypes(currentEntity?.id).map(st => (
                         <SelectItem key={st.value} value={st.value}>{st.label}</SelectItem>
                       ))}
                     </SelectContent>

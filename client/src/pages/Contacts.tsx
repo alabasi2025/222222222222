@@ -422,7 +422,7 @@ export default function Contacts() {
                       </TableCell>
                       <TableCell>
                         <span className={`font-bold ${customer.balance > 0 ? 'text-emerald-600' : customer.balance < 0 ? 'text-rose-600' : ''}`}>
-                          {customer.balance.toLocaleString()} ر.س
+                          {customer.balance.toLocaleString()} ر.ي
                         </span>
                       </TableCell>
                       <TableCell>
@@ -519,7 +519,7 @@ export default function Contacts() {
                       </TableCell>
                       <TableCell>
                         <span className={`font-bold ${supplier.balance > 0 ? 'text-rose-600' : supplier.balance < 0 ? 'text-emerald-600' : ''}`}>
-                          {supplier.balance.toLocaleString()} ر.س
+                          {supplier.balance.toLocaleString()} ر.ي
                         </span>
                       </TableCell>
                       <TableCell>
