@@ -94,6 +94,10 @@ interface Account {
   id: string;
   name: string;
   type: string;
+  entityId?: string;
+  parentId?: string | null;
+  isGroup?: boolean;
+  [key: string]: any; // Allow additional properties
 }
 
 const typeMap: Record<string, { label: string, color: string, icon: any }> = {
@@ -106,6 +110,15 @@ const typeMap: Record<string, { label: string, color: string, icon: any }> = {
 
 export default function StockMovements() {
   const { currentEntity, getThemeColor } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+  
   const [, setLocation] = useLocation();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -340,8 +353,8 @@ export default function StockMovements() {
   });
 
   // Statistics
-  const totalIn = movements.filter(m => m.type === 'in' || m.type === 'return').reduce((sum, m) => sum + m.totalCost, 0);
-  const totalOut = movements.filter(m => m.type === 'out').reduce((sum, m) => sum + Math.abs(m.totalCost), 0);
+  const totalIn = movements.filter(m => m.type === 'in' || m.type === 'return').reduce((sum, m) => sum + (parseFloat(m.totalCost?.toString() || '0') || 0), 0);
+  const totalOut = movements.filter(m => m.type === 'out').reduce((sum, m) => sum + Math.abs(parseFloat(m.totalCost?.toString() || '0') || 0), 0);
   const totalMovements = movements.length;
 
   return (
@@ -474,7 +487,7 @@ export default function StockMovements() {
                     />
                     {newMovement.type === 'out' && availablePrice > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        السعر من المخزون: {availablePrice.toLocaleString()}
+                        السعر من المخزون: {(availablePrice || 0).toLocaleString()}
                       </p>
                     )}
                   </div>
@@ -964,9 +977,9 @@ export default function StockMovements() {
                       <TableCell className={`font-medium ${mov.type === 'out' ? 'text-rose-600' : mov.type === 'in' || mov.type === 'return' ? 'text-emerald-600' : ''}`}>
                         {mov.type === 'out' ? '-' : mov.type === 'in' || mov.type === 'return' ? '+' : ''}{Math.abs(mov.quantity)}
                       </TableCell>
-                      <TableCell>{mov.unitCost.toLocaleString()} ر.ي</TableCell>
-                      <TableCell className={`font-medium ${mov.totalCost < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {mov.totalCost.toLocaleString()} ر.ي
+                      <TableCell>{(mov.unitCost || 0).toLocaleString()} ر.ي</TableCell>
+                      <TableCell className={`font-medium ${(mov.totalCost || 0) < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {(mov.totalCost || 0).toLocaleString()} ر.ي
                       </TableCell>
                       <TableCell>
                         {mov.reference || '-'}

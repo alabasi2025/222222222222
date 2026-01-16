@@ -77,6 +77,15 @@ const typeMap: Record<string, { label: string, color: string }> = {
 
 export default function Warehouses() {
   const { currentEntity, getThemeColor } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+  
   const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewOpen, setIsNewOpen] = useState(false);

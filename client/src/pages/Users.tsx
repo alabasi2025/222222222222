@@ -65,6 +65,14 @@ const initialUsers: any[] = [
 export default function Users() {
   const { currentEntity, getThemeColor } = useEntity();
   
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+  
   const loadFromStorage = () => {
     try {
       const savedUsers = localStorage.getItem('users');

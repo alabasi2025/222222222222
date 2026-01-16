@@ -107,6 +107,15 @@ const typeMap: Record<string, { label: string, color: string }> = {
 
 export default function Inventory() {
   const { currentEntity, getThemeColor } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+  
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);

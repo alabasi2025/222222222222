@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index';
-import { stockMovements, itemStock, items, journalEntries, journalEntryLines, accounts } from '../db/schema';
+import { stockMovements, itemStock, items, journalEntries, journalEntryLines, accounts, paymentVouchers, paymentVoucherOperations, banksWallets } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
 const router = Router();
@@ -107,77 +107,181 @@ router.post('/', async (req, res) => {
       if (req.body.referenceType === 'purchase') {
         const calculatedTotalCost = totalCost || (quantity * (unitCost || 0));
         if (calculatedTotalCost > 0) {
-          // Get item to find its stock account
-          const item = await db.select().from(items).where(eq(items.id, itemId)).limit(1);
-          if (item.length > 0 && item[0].accountId) {
-            const stockAccountId = item[0].accountId; // حساب المخزون
-            
-            // Extract supplier account ID from notes
-            // Format: "supplierId:SUP-xxx" or "supplierAccountId:ACC-xxx"
-            let supplierAccountId: string | null = null;
-            if (req.body.notes) {
-              const supplierAccountMatch = req.body.notes.match(/supplierAccountId:([A-Z0-9-]+)/);
-              if (supplierAccountMatch) {
-                supplierAccountId = supplierAccountMatch[1];
-              } else {
-                // Try to get supplier ID and find its account from chart of accounts
-                const supplierIdMatch = req.body.notes.match(/supplierId:([A-Z0-9-]+)/);
-                if (supplierIdMatch) {
-                  const supplierId = supplierIdMatch[1];
-                  // Look for account with subtype 'supplier' (we'll use a default supplier account if exists)
-                  // For now, we'll skip if supplierAccountId is not in notes
-                  // In a full implementation, suppliers should be in DB with chartAccountId
+          // Extract supplier account ID from notes (needed for both journal entry and payment voucher)
+          // Format: "supplierId:SUP-xxx" or "supplierAccountId:ACC-xxx"
+          let supplierAccountId: string | null = null;
+          if (req.body.notes) {
+            const supplierAccountMatch = req.body.notes.match(/supplierAccountId:([A-Z0-9-]+)/);
+            if (supplierAccountMatch) {
+              supplierAccountId = supplierAccountMatch[1];
+            } else {
+              // Try to get supplier ID and find its account from chart of accounts
+              const supplierIdMatch = req.body.notes.match(/supplierId:([A-Z0-9-]+)/);
+              if (supplierIdMatch) {
+                const supplierId = supplierIdMatch[1];
+                // Try to find a supplier account in chart of accounts for this entity
+                // This is a fallback if supplierAccountId is not provided in notes
+                const supplierAccounts = await db.select()
+                  .from(accounts)
+                  .where(and(
+                    eq(accounts.subtype, 'supplier'),
+                    eq(accounts.entityId, req.body.entityId),
+                    eq(accounts.isGroup, false)
+                  ))
+                  .limit(1);
+                
+                if (supplierAccounts.length > 0) {
+                  supplierAccountId = supplierAccounts[0].id;
+                  console.log(`[Purchase] Using fallback supplier account ${supplierAccountId} for supplier ${supplierId}`);
+                } else {
+                  console.warn(`[Purchase] No supplier account found for supplier ${supplierId}`);
                 }
               }
             }
+          }
 
-            // If supplier account is found, create journal entry
-            if (stockAccountId && supplierAccountId) {
-              // Verify supplier account exists
-              const supplierAccount = await db.select().from(accounts).where(eq(accounts.id, supplierAccountId)).limit(1);
+          // Create journal entry if item has accountId (optional)
+          const item = await db.select().from(items).where(eq(items.id, itemId)).limit(1);
+          if (item.length > 0 && item[0].accountId && supplierAccountId) {
+            const stockAccountId = item[0].accountId; // حساب المخزون
+            
+            // Verify supplier account exists
+            const supplierAccount = await db.select().from(accounts).where(eq(accounts.id, supplierAccountId)).limit(1);
+            
+            if (supplierAccount.length > 0) {
+              const journalId = `JE-PURCHASE-${Date.now()}`;
               
-              if (supplierAccount.length > 0) {
-                const journalId = `JE-PURCHASE-${Date.now()}`;
-                
-                // Create journal entry
-                await db.insert(journalEntries).values({
-                  id: journalId,
-                  entityId: req.body.entityId,
-                  date: new Date(req.body.date),
-                  description: `فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
-                  reference: req.body.reference || newMovement[0].id,
-                  type: 'auto',
-                  status: 'posted',
-                });
+              // Create journal entry
+              await db.insert(journalEntries).values({
+                id: journalId,
+                entityId: req.body.entityId,
+                date: new Date(req.body.date),
+                description: `فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
+                reference: req.body.reference || newMovement[0].id,
+                type: 'auto',
+                status: 'posted',
+              });
 
-                // Debit: Stock account (حساب المخزون)
-                await db.insert(journalEntryLines).values({
-                  id: `JVL-${Date.now()}-1`,
-                  entryId: journalId,
-                  accountId: stockAccountId,
-                  debit: calculatedTotalCost.toString(),
-                  credit: '0',
-                  currency: req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER',
-                  description: `شراء - ${item[0].name || itemId}`,
-                });
+              // Debit: Stock account (حساب المخزون)
+              await db.insert(journalEntryLines).values({
+                id: `JVL-${Date.now()}-1`,
+                entryId: journalId,
+                accountId: stockAccountId,
+                debit: calculatedTotalCost.toString(),
+                credit: '0',
+                currency: req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER',
+                description: `شراء - ${item[0].name || itemId}`,
+              });
 
-                // Credit: Supplier account (حساب المورد)
-                await db.insert(journalEntryLines).values({
-                  id: `JVL-${Date.now()}-2`,
-                  entryId: journalId,
-                  accountId: supplierAccountId,
-                  debit: '0',
-                  credit: calculatedTotalCost.toString(),
-                  currency: req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER',
-                  description: `فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
-                });
+              // Credit: Supplier account (حساب المورد)
+              await db.insert(journalEntryLines).values({
+                id: `JVL-${Date.now()}-2`,
+                entryId: journalId,
+                accountId: supplierAccountId,
+                debit: '0',
+                credit: calculatedTotalCost.toString(),
+                currency: req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER',
+                description: `فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
+              });
 
-                // Update stock movement with journal entry ID
-                await db.update(stockMovements)
-                  .set({ journalEntryId: journalId })
-                  .where(eq(stockMovements.id, newMovement[0].id));
-              }
+              // Update stock movement with journal entry ID
+              await db.update(stockMovements)
+                .set({ journalEntryId: journalId })
+                .where(eq(stockMovements.id, newMovement[0].id));
             }
+          }
+
+          // Create payment voucher automatically for cash purchases from exchange (independent of journal entry)
+          // Extract payment info from notes
+          const invoiceTypeMatch = req.body.notes?.match(/invoiceType:([a-z]+)/);
+          const paymentMethodMatch = req.body.notes?.match(/paymentMethod:([a-z]+)/);
+          const paymentAccountIdMatch = req.body.notes?.match(/paymentAccountId:([A-Z0-9-]+)/);
+          
+          const invoiceType = invoiceTypeMatch ? invoiceTypeMatch[1] : null;
+          const paymentMethod = paymentMethodMatch ? paymentMethodMatch[1] : null;
+          const paymentAccountId = paymentAccountIdMatch ? paymentAccountIdMatch[1] : null;
+
+          console.log('[Auto Payment Voucher] Debug info:', {
+            invoiceType,
+            paymentMethod,
+            paymentAccountId,
+            supplierAccountId,
+            notes: req.body.notes
+          });
+
+          // If cash purchase from exchange, create payment voucher
+          if (invoiceType === 'cash' && paymentMethod === 'exchange' && paymentAccountId && supplierAccountId) {
+            try {
+              // Verify the exchange account exists
+              const exchangeAccount = await db.select()
+                .from(banksWallets)
+                .where(eq(banksWallets.id, paymentAccountId))
+                .limit(1);
+              
+              if (exchangeAccount.length > 0 && exchangeAccount[0].type === 'exchange') {
+                // Verify supplier account exists
+                const supplierAccount = await db.select().from(accounts).where(eq(accounts.id, supplierAccountId)).limit(1);
+                
+                if (supplierAccount.length > 0) {
+                  const voucherId = `PAY-OUT-${Date.now()}`;
+                  const currency = req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER';
+                  const exchangeRate = '1'; // Default, can be extracted from notes if needed
+
+                  // Create payment voucher
+                  await db.insert(paymentVouchers).values({
+                    id: voucherId,
+                    entityId: req.body.entityId,
+                    type: 'out',
+                    bankWalletId: paymentAccountId,
+                    date: new Date(req.body.date),
+                    currency: currency,
+                    exchangeRate: exchangeRate,
+                    totalAmount: calculatedTotalCost.toString(),
+                    reference: req.body.reference || newMovement[0].id,
+                    createdBy: req.body.createdBy || null,
+                  });
+
+                  // Create payment voucher operation (supplier payment)
+                  await db.insert(paymentVoucherOperations).values({
+                    id: `PVO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    voucherId: voucherId,
+                    accountType: 'liability',
+                    accountSubtype: 'supplier',
+                    chartAccountId: supplierAccountId,
+                    analyticalAccountId: null,
+                    amount: calculatedTotalCost.toString(),
+                    description: `دفع قيمة فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
+                  });
+
+                  // Update exchange balance (decrease for payment)
+                  const currentBalance = parseFloat(exchangeAccount[0].balance || '0');
+                  const newBalance = currentBalance - calculatedTotalCost;
+                  
+                  await db.update(banksWallets)
+                    .set({
+                      balance: newBalance.toString(),
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(banksWallets.id, paymentAccountId));
+
+                  console.log(`Payment voucher ${voucherId} created automatically for purchase ${req.body.reference || newMovement[0].id}`);
+                } else {
+                  console.warn(`[Auto Payment Voucher] Supplier account ${supplierAccountId} not found in chart of accounts`);
+                }
+              } else {
+                console.warn(`[Auto Payment Voucher] Exchange account ${paymentAccountId} not found or not of type 'exchange'`);
+              }
+            } catch (error: any) {
+              // Log error but don't fail the purchase - payment voucher creation is secondary
+              console.error('Error creating automatic payment voucher:', error);
+            }
+          } else {
+            console.log('[Auto Payment Voucher] Conditions not met:', {
+              invoiceType,
+              paymentMethod,
+              hasPaymentAccountId: !!paymentAccountId,
+              hasSupplierAccountId: !!supplierAccountId
+            });
           }
         }
       }

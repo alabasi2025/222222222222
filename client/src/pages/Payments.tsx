@@ -79,6 +79,14 @@ const currencies = [
 
 export default function Payments() {
   const { currentEntity } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
   const [payments, setPayments] = useState(initialPayments);
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [isPayOpen, setIsPayOpen] = useState(false);
@@ -188,22 +196,43 @@ export default function Payments() {
       const paymentsData = await paymentsApi.getByEntity(currentEntity.id);
       
       // Transform API data to frontend format
-      const transformedPayments = paymentsData.map((voucher: any) => ({
-        id: voucher.id,
-        type: voucher.type,
-        party: voucher.operations?.[0]?.description || '-',
-        account: voucher.cashBox?.name || '-',
-        cashBox: voucher.cashBox?.name || '-',
-        cashBoxId: voucher.cashBoxId,
-        date: new Date(voucher.date).toISOString().split('T')[0],
-        method: 'cash',
-        currency: voucher.currency,
-        exchangeRate: parseFloat(voucher.exchangeRate || '1'),
-        amount: parseFloat(voucher.totalAmount),
-        totalAmount: parseFloat(voucher.totalAmount),
-        operations: voucher.operations || [],
-        reference: voucher.reference,
-      }));
+      const transformedPayments = paymentsData.map((voucher: any) => {
+        // Determine method and account name based on cashBox or bankWallet
+        let method = 'cash';
+        let accountName = '-';
+        
+        if (voucher.cashBox) {
+          method = 'cash';
+          accountName = voucher.cashBox.name || '-';
+        } else if (voucher.bankWallet) {
+          if (voucher.bankWallet.type === 'exchange') {
+            method = 'exchange';
+          } else if (voucher.bankWallet.type === 'wallet') {
+            method = 'wallet';
+          } else if (voucher.bankWallet.type === 'bank') {
+            method = 'bank';
+          }
+          accountName = voucher.bankWallet.name || '-';
+        }
+        
+        return {
+          id: voucher.id,
+          type: voucher.type,
+          party: voucher.operations?.[0]?.description || '-',
+          account: accountName,
+          cashBox: voucher.cashBox?.name || voucher.bankWallet?.name || '-',
+          cashBoxId: voucher.cashBoxId,
+          bankWalletId: voucher.bankWalletId,
+          date: new Date(voucher.date).toISOString().split('T')[0],
+          method: method,
+          currency: voucher.currency,
+          exchangeRate: parseFloat(voucher.exchangeRate || '1'),
+          amount: parseFloat(voucher.totalAmount),
+          totalAmount: parseFloat(voucher.totalAmount),
+          operations: voucher.operations || [],
+          reference: voucher.reference,
+        };
+      });
       
       setPayments(transformedPayments);
     } catch (error) {
@@ -1253,11 +1282,15 @@ export default function Payments() {
                       
                       // Reset form
                       setPaymentFormData({
+                        paymentType: "cash",
                         cashBox: "",
+                        bankWallet: "",
                         date: new Date().toISOString().split('T')[0],
                         currency: "YER",
                         exchangeRate: "1",
-                        reference: ""
+                        reference: "",
+                        chequeNumber: "",
+                        transferReference: ""
                       });
                       setPaymentOperations([]);
                       setCurrentOperation({

@@ -102,9 +102,9 @@ export default function InterUnitTransfers() {
   const loadData = async () => {
     try {
       const [transfersRes, entitiesRes, accountsRes] = await Promise.all([
-        api.get("/inter-unit-transfers"),
-        api.get("/entities"),
-        api.get("/accounts"),
+        api.get<Transfer[]>("/inter-unit-transfers"),
+        api.get<Entity[]>("/entities"),
+        api.get<Account[]>("/accounts"),
       ]);
       setTransfers(transfersRes);
       setEntities(entitiesRes.filter((e: Entity) => e.type === "unit"));

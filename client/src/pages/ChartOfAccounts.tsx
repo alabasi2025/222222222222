@@ -100,7 +100,7 @@ interface Account {
   isGroup: boolean;
   subtype: string;
   allowedCurrencies: string[];
-  entityId?: string;
+  entityId?: string | null;
   branchId?: string;
 }
 
@@ -109,6 +109,14 @@ import { getAccountSubtypes } from "@/lib/accountSubtypes";
 
 export default function ChartOfAccounts() {
   const { currentEntity, isEntityVisible, entities } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
   const [location, setLocation] = useLocation();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -543,7 +551,7 @@ export default function ChartOfAccounts() {
                       entityId: ""
                     });
                   }}
-                  disabled={currentEntity?.type === 'holding'}
+                  disabled={currentEntity?.type === 'holding' || false}
                 >
                   <Plus className="h-4 w-4 ml-2" />
                   حساب جديد
@@ -871,7 +879,7 @@ export default function ChartOfAccounts() {
                               }
                               handleDeleteAccount(account.id);
                             }}
-                            disabled={currentEntity?.type === 'holding'}
+                            disabled={currentEntity?.type === 'holding' || false}
                             className="text-red-600"
                           >
                             <Trash2 className="h-4 w-4 ml-2" />

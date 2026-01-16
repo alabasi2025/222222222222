@@ -101,6 +101,14 @@ const recentTransactions: any[] = [];
 
 export default function CashBoxes() {
   const { currentEntity } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
   const [cashBoxes, setCashBoxes] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

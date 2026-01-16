@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index';
-import { paymentVouchers, paymentVoucherOperations, cashBoxes, accounts, entities } from '../db/schema';
+import { paymentVouchers, paymentVoucherOperations, cashBoxes, banksWallets, accounts, entities } from '../db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 
 const router = Router();
@@ -39,6 +39,12 @@ router.get('/', async (req, res) => {
           .where(eq(cashBoxes.id, voucher.cashBoxId))
           .limit(1) : null;
         
+        // Get bank/wallet/exchange details
+        const bankWallet = voucher.bankWalletId ? await db.select()
+          .from(banksWallets)
+          .where(eq(banksWallets.id, voucher.bankWalletId))
+          .limit(1) : null;
+        
         // Get account details for operations
         const operationsWithAccounts = await Promise.all(
           operations.map(async (op: any) => {
@@ -64,6 +70,7 @@ router.get('/', async (req, res) => {
           ...voucher,
           operations: operationsWithAccounts,
           cashBox: cashBox?.[0] || null,
+          bankWallet: bankWallet?.[0] || null,
         };
       })
     );
@@ -98,6 +105,12 @@ router.get('/:id', async (req, res) => {
       .where(eq(cashBoxes.id, voucher[0].cashBoxId))
       .limit(1) : null;
     
+    // Get bank/wallet/exchange details
+    const bankWallet = voucher[0].bankWalletId ? await db.select()
+      .from(banksWallets)
+      .where(eq(banksWallets.id, voucher[0].bankWalletId))
+      .limit(1) : null;
+    
     // Get account details
     const operationsWithAccounts = await Promise.all(
       operations.map(async (op: any) => {
@@ -123,6 +136,7 @@ router.get('/:id', async (req, res) => {
       ...voucher[0],
       operations: operationsWithAccounts,
       cashBox: cashBox?.[0] || null,
+      bankWallet: bankWallet?.[0] || null,
     });
   } catch (error: any) {
     console.error('Error fetching payment voucher:', error);
@@ -137,6 +151,7 @@ router.post('/', async (req, res) => {
       entityId,
       type,
       cashBoxId,
+      bankWalletId,
       date,
       currency,
       exchangeRate,
@@ -159,6 +174,7 @@ router.post('/', async (req, res) => {
         entityId,
         type,
         cashBoxId: cashBoxId || null,
+        bankWalletId: bankWalletId || null,
         date: new Date(date),
         currency: currency || 'YER',
         exchangeRate: exchangeRate || '1',
@@ -201,6 +217,29 @@ router.post('/', async (req, res) => {
               updatedAt: new Date(),
             })
             .where(eq(cashBoxes.id, cashBoxId));
+        }
+      }
+
+      // Update bank/wallet/exchange balance
+      if (bankWalletId) {
+        const bankWallet = await tx.select()
+          .from(banksWallets)
+          .where(eq(banksWallets.id, bankWalletId))
+          .limit(1);
+        
+        if (bankWallet.length > 0) {
+          const currentBalance = parseFloat(bankWallet[0].balance || '0');
+          const amount = parseFloat(totalAmount);
+          const newBalance = type === 'in' 
+            ? currentBalance + amount 
+            : currentBalance - amount;
+          
+          await tx.update(banksWallets)
+            .set({
+              balance: newBalance.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(banksWallets.id, bankWalletId));
         }
       }
     });
@@ -359,6 +398,29 @@ router.delete('/:id', async (req, res) => {
               updatedAt: new Date(),
             })
             .where(eq(cashBoxes.id, voucher[0].cashBoxId));
+        }
+      }
+
+      // Update bank/wallet/exchange balance (reverse)
+      if (voucher[0].bankWalletId) {
+        const bankWallet = await tx.select()
+          .from(banksWallets)
+          .where(eq(banksWallets.id, voucher[0].bankWalletId))
+          .limit(1);
+        
+        if (bankWallet.length > 0) {
+          const currentBalance = parseFloat(bankWallet[0].balance || '0');
+          const amount = parseFloat(voucher[0].totalAmount);
+          const newBalance = voucher[0].type === 'in'
+            ? currentBalance - amount
+            : currentBalance + amount;
+          
+          await tx.update(banksWallets)
+            .set({
+              balance: newBalance.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(banksWallets.id, voucher[0].bankWalletId));
         }
       }
       

@@ -57,6 +57,14 @@ const initialSuppliers: any[] = [];
 export default function Suppliers() {
   const { currentEntity, getThemeColor } = useEntity();
   
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+  
   const loadSuppliersFromStorage = () => {
     try {
       const savedSuppliers = localStorage.getItem('suppliers');
@@ -76,11 +84,6 @@ export default function Suppliers() {
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    setSuppliers(loadSuppliersFromStorage());
-    loadAccounts();
-  }, [currentEntity]);
-
   const loadAccounts = async () => {
     try {
       const accountsData = await accountsApi.getAll();
@@ -89,6 +92,14 @@ export default function Suppliers() {
       console.error('Failed to load accounts:', error);
     }
   };
+
+  useEffect(() => {
+    const loadData = () => {
+      setSuppliers(loadSuppliersFromStorage());
+      loadAccounts();
+    };
+    loadData();
+  }, [currentEntity]);
 
   // Get supplier accounts from chart of accounts
   const getSupplierAccounts = () => {

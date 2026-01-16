@@ -110,9 +110,9 @@ export default function InterUnitAccounts() {
     setLoading(true);
     try {
       const [entitiesRes, accountsRes, interAccountsRes] = await Promise.all([
-        api.get("/entities"),
-        api.get("/accounts"),
-        api.get("/inter-unit-transfers/inter-unit-accounts"),
+        api.get<Entity[]>("/entities"),
+        api.get<Account[]>("/accounts"),
+        api.get<InterUnitAccount[]>("/inter-unit-transfers/inter-unit-accounts"),
       ]);
       setEntities(entitiesRes.filter((e: Entity) => e.type === "unit"));
       setAccounts(accountsRes);

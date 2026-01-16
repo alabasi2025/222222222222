@@ -72,10 +72,27 @@ interface BankWalletAccount {
   type: string;
   accountType: string;
   accountNumber: string;
-  chartAccountId: string; // ربط بحساب في دليل الحسابات
+  chartAccountId: string | null; // ربط بحساب في دليل الحسابات
   currencies: string[]; // العملات المسموح بها (changed from allowedCurrencies)
   balances?: CurrencyBalance[]; // الأرصدة بالعملات المختلفة (optional)
   isActive: boolean; // Changed from status
+  balance?: string | number; // الرصيد من قاعدة البيانات (optional for backward compatibility)
+  // Legacy fields for backward compatibility
+  allowedCurrencies?: string[];
+  status?: string;
+  lastTransaction?: string;
+}
+
+// Account interface for chart of accounts
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+  subtype?: string;
+  entityId?: string;
+  parentId?: string | null;
+  isGroup?: boolean;
+  [key: string]: any; // Allow additional properties
 }
 
 // Initial data for Al-Abbasi Unit
@@ -84,6 +101,14 @@ const initialBanksWallets: BankWalletAccount[] = [];
 
 export default function BanksWallets() {
   const { currentEntity, getThemeColor } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
   const [banksWallets, setBanksWallets] = useState<BankWalletAccount[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

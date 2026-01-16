@@ -34,6 +34,15 @@ import { useEntity } from "@/contexts/EntityContext";
 
 export default function AccountTypes() {
   const { currentEntity } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+  
   const [types, setTypes] = useState<AccountType[]>([]);
   
   // Load types from storage on mount and when entity changes
@@ -276,7 +285,7 @@ export default function AccountTypes() {
                   }
                   handleOpenDialog();
                 }}
-                disabled={currentEntity?.type === 'holding'}
+                disabled={currentEntity.type === 'holding'}
               >
                 <Plus className="h-4 w-4 ml-2" />
                 نوع جديد

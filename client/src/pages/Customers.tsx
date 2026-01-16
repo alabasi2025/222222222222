@@ -56,6 +56,14 @@ const initialCustomers: any[] = [];
 export default function Customers() {
   const { currentEntity, getThemeColor } = useEntity();
   
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+  
   const loadFromStorage = () => {
     try {
       const savedCustomers = localStorage.getItem('customers');
@@ -85,10 +93,10 @@ export default function Customers() {
     phone: "",
   });
 
-  const visibleCustomers = customers.filter(c => {
+  const visibleCustomers = customers.filter((c: any) => {
     if (currentEntity.type === 'holding') return true;
     return c.entityId === currentEntity.id;
-  }).filter(c => 
+  }).filter((c: any) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.phone.includes(searchTerm) ||
     (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -131,8 +139,8 @@ export default function Customers() {
       return;
     }
 
-    const updatedCustomers = customers.map(c => 
-      c.id === editingCustomer.id ? editingCustomer : c
+      const updatedCustomers = customers.map((c: any) => 
+        c.id === editingCustomer.id ? editingCustomer : c
     );
     setCustomers(updatedCustomers);
     localStorage.setItem('customers', JSON.stringify(updatedCustomers));
@@ -144,7 +152,7 @@ export default function Customers() {
 
   const handleDeleteCustomer = (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذا العميل؟")) {
-      const updatedCustomers = customers.filter(c => c.id !== id);
+      const updatedCustomers = customers.filter((c: any) => c.id !== id);
       setCustomers(updatedCustomers);
       localStorage.setItem('customers', JSON.stringify(updatedCustomers));
       toast.success("تم حذف العميل بنجاح");
@@ -321,7 +329,7 @@ export default function Customers() {
                 </TableCell>
               </TableRow>
             ) : (
-              visibleCustomers.map((customer) => (
+                  visibleCustomers.map((customer: any) => (
                 <TableRow key={customer.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">

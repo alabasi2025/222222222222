@@ -32,6 +32,14 @@ import { Link } from "wouter";
 
 export default function Home() {
   const { currentEntity, getThemeColor } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
 
   // Helper to get entity type label
   const getEntityTypeLabel = () => {

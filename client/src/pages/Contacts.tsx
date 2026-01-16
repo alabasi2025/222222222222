@@ -51,7 +51,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
 
@@ -61,6 +61,14 @@ const initialSuppliers: any[] = [];
 
 export default function Contacts() {
   const { currentEntity } = useEntity();
+  
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
   
   // Load from localStorage on mount
   const loadFromStorage = () => {
@@ -97,10 +105,14 @@ export default function Contacts() {
   const [editingContact, setEditingContact] = useState<any>(null);
 
   // Reload contacts when entity changes
-  useEffect(() => {
+  const reloadContacts = useCallback(() => {
     setCustomers(loadFromStorage());
     setSuppliers(loadSuppliersFromStorage());
-  }, [currentEntity]);
+  }, []);
+
+  useEffect(() => {
+    reloadContacts();
+  }, [currentEntity, reloadContacts]);
 
   const [newContact, setNewContact] = useState({
     name: "",
@@ -111,12 +123,12 @@ export default function Contacts() {
   });
 
   // Filter contacts based on current entity
-  const visibleCustomers = customers.filter(c => {
+  const visibleCustomers = customers.filter((c: any) => {
     if (currentEntity.type === 'holding') return true;
     return c.entityId === currentEntity.id;
   });
 
-  const visibleSuppliers = suppliers.filter(s => {
+  const visibleSuppliers = suppliers.filter((s: any) => {
     if (currentEntity.type === 'holding') return true;
     return s.entityId === currentEntity.id;
   });
@@ -171,14 +183,14 @@ export default function Contacts() {
     }
 
     if (activeTab === "customers") {
-      const updatedCustomers = customers.map(c => 
+      const updatedCustomers = customers.map((c: any) => 
         c.id === editingContact.id ? editingContact : c
       );
       setCustomers(updatedCustomers);
       localStorage.setItem('customers', JSON.stringify(updatedCustomers));
       toast.success("تم تحديث بيانات العميل بنجاح");
     } else {
-      const updatedSuppliers = suppliers.map(s => 
+      const updatedSuppliers = suppliers.map((s: any) => 
         s.id === editingContact.id ? editingContact : s
       );
       setSuppliers(updatedSuppliers);
@@ -192,7 +204,7 @@ export default function Contacts() {
 
   const handleDeleteCustomer = (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذا العميل؟")) {
-      const updatedCustomers = customers.filter(c => c.id !== id);
+      const updatedCustomers = customers.filter((c: any) => c.id !== id);
       setCustomers(updatedCustomers);
       localStorage.setItem('customers', JSON.stringify(updatedCustomers));
       toast.success("تم حذف العميل بنجاح");
@@ -201,7 +213,7 @@ export default function Contacts() {
 
   const handleDeleteSupplier = (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذا المورد؟")) {
-      const updatedSuppliers = suppliers.filter(s => s.id !== id);
+      const updatedSuppliers = suppliers.filter((s: any) => s.id !== id);
       setSuppliers(updatedSuppliers);
       localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
       toast.success("تم حذف المورد بنجاح");
@@ -389,7 +401,7 @@ export default function Contacts() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  visibleCustomers.map((customer) => (
+                  visibleCustomers.map((customer: any) => (
                     <TableRow key={customer.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
@@ -486,7 +498,7 @@ export default function Contacts() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  visibleSuppliers.map((supplier) => (
+                  visibleSuppliers.map((supplier: any) => (
                     <TableRow key={supplier.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">

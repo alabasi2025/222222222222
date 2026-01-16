@@ -243,6 +243,7 @@ export const paymentVouchers = pgTable('payment_vouchers', {
   entityId: text('entity_id').notNull().references(() => entities.id),
   type: text('type').notNull(), // 'in' | 'out' (سند قبض | سند صرف)
   cashBoxId: text('cash_box_id').references(() => cashBoxes.id),
+  bankWalletId: text('bank_wallet_id').references(() => banksWallets.id), // للبنوك/الصرافين/المحافظ
   date: timestamp('date').notNull(),
   currency: text('currency').default('YER').notNull(),
   exchangeRate: decimal('exchange_rate', { precision: 15, scale: 4 }).default('1').notNull(),
