@@ -1,15 +1,25 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Filter, Download, MoreHorizontal, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  Download,
+  MoreHorizontal,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,10 +32,22 @@ import { Badge } from "@/components/ui/badge";
 import { journalEntriesApi } from "../lib/api";
 import { useEntity } from "@/contexts/EntityContext";
 
-const statusMap: Record<string, { label: string, color: string, icon: any }> = {
-  posted: { label: "مرحل", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
-  draft: { label: "مسودة", color: "bg-slate-100 text-slate-700 border-slate-200", icon: FileText },
-  cancelled: { label: "ملغى", color: "bg-rose-100 text-rose-700 border-rose-200", icon: AlertCircle },
+const statusMap: Record<string, { label: string; color: string; icon: any }> = {
+  posted: {
+    label: "مرحل",
+    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    icon: CheckCircle2,
+  },
+  draft: {
+    label: "مسودة",
+    color: "bg-slate-100 text-slate-700 border-slate-200",
+    icon: FileText,
+  },
+  cancelled: {
+    label: "ملغى",
+    color: "bg-rose-100 text-rose-700 border-rose-200",
+    icon: AlertCircle,
+  },
 };
 
 const typeMap: Record<string, string> = {
@@ -36,7 +58,7 @@ const typeMap: Record<string, string> = {
   expense: "مصروفات",
   manual: "قيد يدوي",
   auto: "آلي",
-  general: "عام"
+  general: "عام",
 };
 
 export default function JournalEntries() {
@@ -46,19 +68,21 @@ export default function JournalEntries() {
 
   useEffect(() => {
     loadJournals();
-   
   }, [currentEntity]);
 
   const loadJournals = async () => {
     try {
       setLoading(true);
       // Use getByEntity if entity is selected, otherwise getAll
-      const data = currentEntity?.id 
+      const response = currentEntity?.id
         ? await journalEntriesApi.getByEntity(currentEntity.id)
         : await journalEntriesApi.getAll();
+      // API returns {data: [], pagination: {}} or direct array
+      const data = Array.isArray(response) ? response : response?.data || [];
       setJournals(data);
     } catch (error) {
       console.error("Failed to load journal entries:", error);
+      setJournals([]);
     } finally {
       setLoading(false);
     }
@@ -69,7 +93,9 @@ export default function JournalEntries() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">قيود اليومية</h2>
-          <p className="text-muted-foreground mt-1">إدارة القيود المحاسبية والعمليات اليدوية</p>
+          <p className="text-muted-foreground mt-1">
+            إدارة القيود المحاسبية والعمليات اليدوية
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
@@ -124,30 +150,47 @@ export default function JournalEntries() {
                 </TableCell>
               </TableRow>
             ) : journals.length === 0 ? (
-               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   لا توجد قيود يومية
                 </TableCell>
               </TableRow>
             ) : (
-              journals.map((journal) => {
+              journals.map(journal => {
                 const status = statusMap[journal.status] || statusMap.draft;
                 const StatusIcon = status.icon;
-                const total = journal.lines?.reduce((sum: number, line: any) => sum + Number(line.debit), 0) || 0;
-                
+                const total =
+                  journal.lines?.reduce(
+                    (sum: number, line: any) => sum + Number(line.debit),
+                    0
+                  ) || 0;
+
                 return (
-                  <TableRow key={journal.id} className="hover:bg-muted/50 transition-colors">
+                  <TableRow
+                    key={journal.id}
+                    className="hover:bg-muted/50 transition-colors"
+                  >
                     <TableCell className="font-medium">{journal.id}</TableCell>
-                    <TableCell>{new Date(journal.date).toLocaleDateString('ar-SA')}</TableCell>
+                    <TableCell>
+                      {new Date(journal.date).toLocaleDateString("ar-SA")}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="font-normal">
                         {typeMap[journal.type] || journal.type}
                       </Badge>
                     </TableCell>
                     <TableCell>{journal.description}</TableCell>
-                    <TableCell className="font-bold">{Number(total).toLocaleString()} ر.س</TableCell>
+                    <TableCell className="font-bold">
+                      {Number(total).toLocaleString()} ر.س
+                    </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`${status.color} gap-1 pl-2 pr-2 py-0.5 font-normal`}>
+                      <Badge
+                        variant="outline"
+                        className={`${status.color} gap-1 pl-2 pr-2 py-0.5 font-normal`}
+                      >
                         <StatusIcon className="w-3 h-3" />
                         {status.label}
                       </Badge>
@@ -166,7 +209,9 @@ export default function JournalEntries() {
                           <DropdownMenuItem>تكرار القيد</DropdownMenuItem>
                           <DropdownMenuItem>عكس القيد</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">حذف</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">
+                            حذف
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

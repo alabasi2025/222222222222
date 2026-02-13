@@ -1,14 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Download, MoreHorizontal, Warehouse, MapPin, User, Pencil, Trash2, Eye, Save, Package, TrendingUp } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Download,
+  MoreHorizontal,
+  Warehouse,
+  MapPin,
+  User,
+  Pencil,
+  Trash2,
+  Eye,
+  Save,
+  Package,
+  TrendingUp,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import {Card, CardContent} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -48,26 +62,30 @@ interface WarehouseType {
   address?: string;
   manager?: string;
   phone?: string;
-  type: 'main' | 'sub' | 'transit';
+  type: "main" | "sub" | "transit";
   isActive: boolean;
   itemsCount: number;
   totalValue: number;
 }
 
-const typeMap: Record<string, { label: string, color: string }> = {
+const typeMap: Record<string, { label: string; color: string }> = {
   main: { label: "رئيسي", color: "bg-blue-100 text-blue-700 border-blue-200" },
   sub: { label: "فرعي", color: "bg-green-100 text-green-700 border-green-200" },
-  transit: { label: "عبور", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  transit: {
+    label: "عبور",
+    color: "bg-orange-100 text-orange-700 border-orange-200",
+  },
 };
 
 export default function Warehouses() {
   const { currentEntity, getThemeColor } = useEntity();
-  
+
   const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
+  const [editingWarehouse, setEditingWarehouse] =
+    useState<WarehouseType | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [newWarehouse, setNewWarehouse] = useState({
@@ -81,7 +99,6 @@ export default function Warehouses() {
 
   useEffect(() => {
     loadData();
-   
   }, [currentEntity]);
 
   if (!currentEntity) {
@@ -92,15 +109,21 @@ export default function Warehouses() {
     );
   }
 
-
   const loadData = async () => {
     try {
       setLoading(true);
       const data = await warehousesApi.getByEntity(currentEntity.id);
-      setWarehouses(data);
+      // Normalize data - ensure itemsCount and totalValue have default values
+      const normalized = (Array.isArray(data) ? data : []).map((wh: any) => ({
+        ...wh,
+        itemsCount: Number(wh.itemsCount) || 0,
+        totalValue: Number(wh.totalValue) || 0,
+      }));
+      setWarehouses(normalized);
     } catch (error) {
-      console.error('Failed to load warehouses:', error);
+      console.error("Failed to load warehouses:", error);
       toast.error("فشل تحميل بيانات المستودعات");
+      setWarehouses([]);
     } finally {
       setLoading(false);
     }
@@ -121,7 +144,7 @@ export default function Warehouses() {
         itemsCount: 0,
         totalValue: 0,
       };
-      
+
       await warehousesApi.create(data);
       toast.success("تم إضافة المستودع بنجاح");
       setIsNewOpen(false);
@@ -165,13 +188,19 @@ export default function Warehouses() {
     }
   };
 
-  const filteredWarehouses = warehouses.filter(wh =>
-    wh.name.includes(searchTerm) || wh.code.includes(searchTerm)
+  const filteredWarehouses = warehouses.filter(
+    wh => wh.name.includes(searchTerm) || wh.code.includes(searchTerm)
   );
 
   const totalWarehouses = warehouses.length;
-  const totalItems = warehouses.reduce((sum, wh) => sum + wh.itemsCount, 0);
-  const totalValue = warehouses.reduce((sum, wh) => sum + wh.totalValue, 0);
+  const totalItems = warehouses.reduce(
+    (sum, wh) => sum + (Number(wh.itemsCount) || 0),
+    0
+  );
+  const totalValue = warehouses.reduce(
+    (sum, wh) => sum + (Number(wh.totalValue) || 0),
+    0
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -180,7 +209,10 @@ export default function Warehouses() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">المستودعات</h2>
           <p className="text-muted-foreground mt-1">
-            إدارة المستودعات والمواقع لـ <span className="font-bold" style={{ color: getThemeColor() }}>{currentEntity.name}</span>
+            إدارة المستودعات والمواقع لـ{" "}
+            <span className="font-bold" style={{ color: getThemeColor() }}>
+              {currentEntity.name}
+            </span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -208,7 +240,12 @@ export default function Warehouses() {
                     <Label>رمز المستودع *</Label>
                     <Input
                       value={newWarehouse.code}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, code: e.target.value })}
+                      onChange={e =>
+                        setNewWarehouse({
+                          ...newWarehouse,
+                          code: e.target.value,
+                        })
+                      }
                       placeholder="WH-001"
                     />
                   </div>
@@ -216,7 +253,9 @@ export default function Warehouses() {
                     <Label>نوع المستودع</Label>
                     <Select
                       value={newWarehouse.type}
-                      onValueChange={(value) => setNewWarehouse({ ...newWarehouse, type: value })}
+                      onValueChange={value =>
+                        setNewWarehouse({ ...newWarehouse, type: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -233,7 +272,9 @@ export default function Warehouses() {
                   <Label>اسم المستودع *</Label>
                   <Input
                     value={newWarehouse.name}
-                    onChange={(e) => setNewWarehouse({ ...newWarehouse, name: e.target.value })}
+                    onChange={e =>
+                      setNewWarehouse({ ...newWarehouse, name: e.target.value })
+                    }
                     placeholder="المستودع الرئيسي"
                   />
                 </div>
@@ -241,7 +282,12 @@ export default function Warehouses() {
                   <Label>العنوان</Label>
                   <Input
                     value={newWarehouse.address}
-                    onChange={(e) => setNewWarehouse({ ...newWarehouse, address: e.target.value })}
+                    onChange={e =>
+                      setNewWarehouse({
+                        ...newWarehouse,
+                        address: e.target.value,
+                      })
+                    }
                     placeholder="العنوان الكامل"
                   />
                 </div>
@@ -250,7 +296,12 @@ export default function Warehouses() {
                     <Label>المسؤول</Label>
                     <Input
                       value={newWarehouse.manager}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, manager: e.target.value })}
+                      onChange={e =>
+                        setNewWarehouse({
+                          ...newWarehouse,
+                          manager: e.target.value,
+                        })
+                      }
                       placeholder="اسم المسؤول"
                     />
                   </div>
@@ -258,7 +309,12 @@ export default function Warehouses() {
                     <Label>الهاتف</Label>
                     <Input
                       value={newWarehouse.phone}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, phone: e.target.value })}
+                      onChange={e =>
+                        setNewWarehouse({
+                          ...newWarehouse,
+                          phone: e.target.value,
+                        })
+                      }
                       placeholder="05xxxxxxxx"
                       dir="ltr"
                     />
@@ -266,7 +322,10 @@ export default function Warehouses() {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAdd} style={{ backgroundColor: getThemeColor() }}>
+                <Button
+                  onClick={handleAdd}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
                   <Save className="w-4 h-4 ml-2" />
                   حفظ
                 </Button>
@@ -281,7 +340,9 @@ export default function Warehouses() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">عدد المستودعات</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                عدد المستودعات
+              </p>
               <h3 className="text-2xl font-bold mt-1">{totalWarehouses}</h3>
               <p className="text-xs text-muted-foreground">مستودع نشط</p>
             </div>
@@ -293,7 +354,9 @@ export default function Warehouses() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">إجمالي الأصناف</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                إجمالي الأصناف
+              </p>
               <h3 className="text-2xl font-bold mt-1">{totalItems}</h3>
               <p className="text-xs text-muted-foreground">صنف في المستودعات</p>
             </div>
@@ -305,8 +368,12 @@ export default function Warehouses() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">إجمالي القيمة</p>
-              <h3 className="text-2xl font-bold mt-1 text-emerald-600">{totalValue.toLocaleString()} ر.س</h3>
+              <p className="text-sm font-medium text-muted-foreground">
+                إجمالي القيمة
+              </p>
+              <h3 className="text-2xl font-bold mt-1 text-emerald-600">
+                {totalValue.toLocaleString()} ر.س
+              </h3>
               <p className="text-xs text-muted-foreground">قيمة المخزون</p>
             </div>
             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
@@ -321,11 +388,11 @@ export default function Warehouses() {
         <CardContent className="p-4">
           <div className="relative w-full sm:w-96">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="بحث باسم أو رمز المستودع..." 
+            <Input
+              placeholder="بحث باسم أو رمز المستودع..."
               className="pr-9"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
         </CardContent>
@@ -358,19 +425,30 @@ export default function Warehouses() {
                 </TableRow>
               ) : filteredWarehouses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={8}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     لا توجد مستودعات مسجلة. قم بإضافة مستودع جديد.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredWarehouses.map((wh) => {
+                filteredWarehouses.map(wh => {
                   const type = typeMap[wh.type];
                   return (
-                    <TableRow key={wh.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-mono text-sm">{wh.code}</TableCell>
+                    <TableRow
+                      key={wh.id}
+                      className="hover:bg-muted/50 transition-colors"
+                    >
+                      <TableCell className="font-mono text-sm">
+                        {wh.code}
+                      </TableCell>
                       <TableCell className="font-semibold">{wh.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`${type.color} font-normal`}>
+                        <Badge
+                          variant="outline"
+                          className={`${type.color} font-normal`}
+                        >
                           {type.label}
                         </Badge>
                       </TableCell>
@@ -380,7 +458,9 @@ export default function Warehouses() {
                             <MapPin className="w-3 h-3 text-muted-foreground" />
                             {wh.address}
                           </div>
-                        ) : '-'}
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                       <TableCell>
                         {wh.manager ? (
@@ -388,10 +468,15 @@ export default function Warehouses() {
                             <User className="w-3 h-3 text-muted-foreground" />
                             {wh.manager}
                           </div>
-                        ) : '-'}
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                       <TableCell>{wh.itemsCount}</TableCell>
-                      <TableCell className="font-medium">{wh.totalValue ? wh.totalValue.toLocaleString() : '-'} ر.س</TableCell>
+                      <TableCell className="font-medium">
+                        {wh.totalValue ? wh.totalValue.toLocaleString() : "-"}{" "}
+                        ر.س
+                      </TableCell>
                       <TableCell className="text-left">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -401,10 +486,12 @@ export default function Warehouses() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => {
-                              setEditingWarehouse(wh);
-                              setIsEditOpen(true);
-                            }}>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingWarehouse(wh);
+                                setIsEditOpen(true);
+                              }}
+                            >
                               <Pencil className="w-4 h-4 ml-2" />
                               تعديل
                             </DropdownMenuItem>
@@ -413,7 +500,7 @@ export default function Warehouses() {
                               عرض المخزون
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleDelete(wh.id)}
                             >
@@ -445,14 +532,21 @@ export default function Warehouses() {
                   <Label>رمز المستودع</Label>
                   <Input
                     value={editingWarehouse.code}
-                    onChange={(e) => setEditingWarehouse({ ...editingWarehouse, code: e.target.value })}
+                    onChange={e =>
+                      setEditingWarehouse({
+                        ...editingWarehouse,
+                        code: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>نوع المستودع</Label>
                   <Select
                     value={editingWarehouse.type}
-                    onValueChange={(value: any) => setEditingWarehouse({ ...editingWarehouse, type: value })}
+                    onValueChange={(value: any) =>
+                      setEditingWarehouse({ ...editingWarehouse, type: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -469,14 +563,24 @@ export default function Warehouses() {
                 <Label>اسم المستودع</Label>
                 <Input
                   value={editingWarehouse.name}
-                  onChange={(e) => setEditingWarehouse({ ...editingWarehouse, name: e.target.value })}
+                  onChange={e =>
+                    setEditingWarehouse({
+                      ...editingWarehouse,
+                      name: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label>العنوان</Label>
                 <Input
                   value={editingWarehouse.address || ""}
-                  onChange={(e) => setEditingWarehouse({ ...editingWarehouse, address: e.target.value })}
+                  onChange={e =>
+                    setEditingWarehouse({
+                      ...editingWarehouse,
+                      address: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -484,14 +588,24 @@ export default function Warehouses() {
                   <Label>المسؤول</Label>
                   <Input
                     value={editingWarehouse.manager || ""}
-                    onChange={(e) => setEditingWarehouse({ ...editingWarehouse, manager: e.target.value })}
+                    onChange={e =>
+                      setEditingWarehouse({
+                        ...editingWarehouse,
+                        manager: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>الهاتف</Label>
                   <Input
                     value={editingWarehouse.phone || ""}
-                    onChange={(e) => setEditingWarehouse({ ...editingWarehouse, phone: e.target.value })}
+                    onChange={e =>
+                      setEditingWarehouse({
+                        ...editingWarehouse,
+                        phone: e.target.value,
+                      })
+                    }
                     dir="ltr"
                   />
                 </div>
@@ -499,7 +613,10 @@ export default function Warehouses() {
             </div>
           )}
           <DialogFooter>
-            <Button onClick={handleEdit} style={{ backgroundColor: getThemeColor() }}>
+            <Button
+              onClick={handleEdit}
+              style={{ backgroundColor: getThemeColor() }}
+            >
               <Save className="w-4 h-4 ml-2" />
               حفظ التعديلات
             </Button>
