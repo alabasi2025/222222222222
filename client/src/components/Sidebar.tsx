@@ -155,9 +155,6 @@ export function Sidebar() {
   const { entities, currentEntity, setCurrentEntity, getThemeColor } = useEntity();
   
   // Don't render sidebar if no entity is selected
-  if (!currentEntity) {
-    return null;
-  }
   const { theme, toggleTheme } = useTheme();
   const [isSalesOpen, setIsSalesOpen] = useState(false);
   const [isPurchasingOpen, setIsPurchasingOpen] = useState(false);
@@ -215,6 +212,11 @@ export function Sidebar() {
       setOpenNestedSubMenus(prev => ({ ...prev, '/financial/settings/coa': true }));
     }
   }, [location]);
+
+  if (!currentEntity) {
+    return null;
+  }
+
 
   const toggleSubMenu = (href: string) => {
     setOpenSubMenus(prev => ({ ...prev, [href]: !prev[href] }));

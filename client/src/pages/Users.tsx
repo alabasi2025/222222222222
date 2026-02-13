@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {Avatar, AvatarFallback} from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
@@ -64,14 +64,6 @@ const initialUsers: any[] = [
 
 export default function Users() {
   const { currentEntity, getThemeColor } = useEntity();
-  
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
   
   const loadFromStorage = () => {
     try {
@@ -102,6 +94,15 @@ export default function Users() {
     password: "",
     role: "user",
   });
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const visibleUsers = users.filter((u: any) => {
     if (currentEntity.type === 'holding') return true;

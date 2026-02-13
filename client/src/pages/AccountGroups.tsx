@@ -216,7 +216,7 @@ export default function AccountGroups() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     <p className="text-muted-foreground">
-                      لا توجد مجموعات حسابات. انقر على "مجموعة جديدة" لإضافة
+                      لا توجد مجموعات حسابات. انقر على &quot;مجموعة جديدة&quot; لإضافة
                       مجموعة.
                     </p>
                   </TableCell>

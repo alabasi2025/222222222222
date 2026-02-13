@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {Card, CardContent} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -78,14 +78,6 @@ const typeMap: Record<string, { label: string, color: string }> = {
 export default function Warehouses() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewOpen, setIsNewOpen] = useState(false);
@@ -105,6 +97,15 @@ export default function Warehouses() {
   useEffect(() => {
     loadData();
   }, [currentEntity]);
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const loadData = async () => {
     try {

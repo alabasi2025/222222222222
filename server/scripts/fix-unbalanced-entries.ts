@@ -7,8 +7,8 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { eq, sql } from 'drizzle-orm';
-import { journalEntries, journalEntryLines, accounts } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { journalEntries, journalEntryLines } from '../db/schema';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {

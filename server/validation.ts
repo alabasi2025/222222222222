@@ -46,7 +46,7 @@ export function validate(schema: z.ZodSchema) {
       }
       req.body = result.data;
       next();
-    } catch (error) {
+    } catch {
       return res.status(400).json({ error: 'خطأ في التحقق من المدخلات' });
     }
   };

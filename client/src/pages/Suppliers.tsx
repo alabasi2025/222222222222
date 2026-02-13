@@ -57,14 +57,6 @@ const initialSuppliers: any[] = [];
 export default function Suppliers() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   const loadSuppliersFromStorage = () => {
     try {
       const savedSuppliers = localStorage.getItem('suppliers');
@@ -106,7 +98,7 @@ export default function Suppliers() {
     return accounts.filter(account => 
       account.subtype === 'supplier' && 
       !account.isGroup && 
-      account.entityId === currentEntity.id
+      account.entityId === currentEntity?.id
     );
   };
 
@@ -126,6 +118,15 @@ export default function Suppliers() {
     phone: "",
     chartAccountId: "",
   });
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const visibleSuppliers = suppliers.filter((s: any) => {
     if (currentEntity.type === 'holding') return true;

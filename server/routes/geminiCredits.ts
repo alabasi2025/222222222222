@@ -7,7 +7,6 @@ const router = Router();
 
 const AGENT_BASE_PATH = 'D:\\AntigravityAgent';
 const LOGS_PATH = path.join(AGENT_BASE_PATH, 'logs');
-const HISTORY_PATH = path.join(AGENT_BASE_PATH, 'history');
 
 // Helper to calculate time until next renewal (5 hours)
 function getNextRenewalTime(lastRenewal?: Date): { nextRenewal: Date; timeRemaining: string } {
@@ -70,7 +69,7 @@ router.get('/', async (req, res) => {
                     if (recentLog.timestamp) {
                         lastActivity = new Date(recentLog.timestamp);
                     }
-                } catch (e) {
+                } catch {
                     // Skip invalid logs
                 }
             }

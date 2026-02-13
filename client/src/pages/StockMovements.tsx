@@ -111,14 +111,6 @@ const typeMap: Record<string, { label: string, color: string, icon: any }> = {
 export default function StockMovements() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   const [, setLocation] = useLocation();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -280,6 +272,15 @@ export default function StockMovements() {
       setAvailablePrice(0);
     }
   }, [newMovement.itemId, newMovement.warehouseId, newMovement.type]);
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const handleAdd = async () => {
     if (!newMovement.itemId || !newMovement.warehouseId || newMovement.quantity <= 0) {

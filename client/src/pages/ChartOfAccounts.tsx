@@ -110,13 +110,6 @@ import { getAccountSubtypes } from "@/lib/accountSubtypes";
 export default function ChartOfAccounts() {
   const { currentEntity, isEntityVisible, entities } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
   const [location, setLocation] = useLocation();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,6 +221,15 @@ export default function ChartOfAccounts() {
     branchId: undefined as string | undefined,
     entityId: "" as string
   });
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const toggleExpand = (id: string) => {
     setAccounts(accounts.map(acc => 

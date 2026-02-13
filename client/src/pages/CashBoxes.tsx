@@ -102,13 +102,6 @@ const recentTransactions: any[] = [];
 export default function CashBoxes() {
   const { currentEntity } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
   const [cashBoxes, setCashBoxes] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +122,7 @@ export default function CashBoxes() {
   // Load data from API
   useEffect(() => {
     loadData();
-  }, [currentEntity.id]);
+  }, [currentEntity?.id]);
 
   const loadData = async () => {
     try {
@@ -161,7 +154,7 @@ export default function CashBoxes() {
   const allCashAccounts = accounts.filter(account => 
     (account.subtype === 'cash_box' || account.subtype === 'cash') && 
     !account.isGroup && 
-    account.entityId === currentEntity.id
+    account.entityId === currentEntity?.id
   );
 
   // Filter available accounts (exclude already linked accounts)
@@ -185,6 +178,15 @@ export default function CashBoxes() {
       }
     }
   }, [newBox.accountId, accounts]);
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   // Filter cash boxes based on current entity
   // In a real app, this would be a backend query. Here we filter by an 'entityId' property we'll add.

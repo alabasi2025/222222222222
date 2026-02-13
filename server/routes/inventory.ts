@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/index';
-import { items, itemStock, itemCategories } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { items } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { validate, sanitizeObject } from '../validation';
 import { z } from 'zod';
 

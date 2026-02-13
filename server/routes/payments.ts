@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index';
-import { paymentVouchers, paymentVoucherOperations, cashBoxes, banksWallets, accounts, entities } from '../db/schema';
+import { paymentVouchers, paymentVoucherOperations, cashBoxes, banksWallets, accounts } from '../db/schema';
 import { eq, desc, and, sql, inArray } from 'drizzle-orm';
 import { validate, paymentVoucherSchema } from '../validation';
 

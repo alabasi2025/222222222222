@@ -58,7 +58,6 @@ import { useEntity } from "@/contexts/EntityContext";
 import { cashBoxesApi, banksWalletsApi, accountsApi, paymentsApi } from "@/lib/api";
 import { getAccountTypes } from "@/lib/accountTypes";
 import { getAccountSubtypes } from "@/lib/accountSubtypes";
-import { Textarea } from "@/components/ui/textarea";
 import { OnyxStyleTable } from "@/components/OnyxStyleTable";
 
 const initialPayments: any[] = [];
@@ -80,13 +79,6 @@ const currencies = [
 export default function Payments() {
   const { currentEntity } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
   const [payments, setPayments] = useState(initialPayments);
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [isPayOpen, setIsPayOpen] = useState(false);
@@ -153,6 +145,15 @@ export default function Payments() {
     loadAccounts();
     loadPayments();
   }, [currentEntity?.id]);
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const loadAccounts = async () => {
     try {

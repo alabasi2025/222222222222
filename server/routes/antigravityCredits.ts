@@ -8,7 +8,6 @@ const router = Router();
 
 const AGENT_BASE_PATH = 'D:\\AntigravityAgent';
 const LOGS_PATH = path.join(AGENT_BASE_PATH, 'logs');
-const HISTORY_PATH = path.join(AGENT_BASE_PATH, 'history');
 const CONFIG_PATH = path.join(AGENT_BASE_PATH, 'config.json');
 
 // Helper to calculate time until next renewal (5 hours cycle)
@@ -48,8 +47,8 @@ router.get('/', async (req, res) => {
         if (fs.existsSync(CONFIG_PATH)) {
             try {
                 config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-            } catch (e) {
-                console.error('Error reading config:', e);
+            } catch {
+                console.error('Error reading config');
             }
         }
         
@@ -84,7 +83,7 @@ router.get('/', async (req, res) => {
                             details: logContent.details
                         });
                     }
-                } catch (e) {
+                } catch {
                     // Skip invalid logs
                 }
             });

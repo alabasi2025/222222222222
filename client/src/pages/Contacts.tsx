@@ -62,14 +62,6 @@ const initialSuppliers: any[] = [];
 export default function Contacts() {
   const { currentEntity } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   // Load from localStorage on mount
   const loadFromStorage = () => {
     try {
@@ -121,6 +113,15 @@ export default function Contacts() {
     phone: "",
     category: "customer" // customer or supplier
   });
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   // Filter contacts based on current entity
   const visibleCustomers = customers.filter((c: any) => {

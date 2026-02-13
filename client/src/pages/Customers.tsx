@@ -56,14 +56,6 @@ const initialCustomers: any[] = [];
 export default function Customers() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   const loadFromStorage = () => {
     try {
       const savedCustomers = localStorage.getItem('customers');
@@ -92,6 +84,15 @@ export default function Customers() {
     email: "",
     phone: "",
   });
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const visibleCustomers = customers.filter((c: any) => {
     if (currentEntity.type === 'holding') return true;

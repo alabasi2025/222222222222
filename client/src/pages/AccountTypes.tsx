@@ -34,16 +34,16 @@ import { useEntity } from "@/contexts/EntityContext";
 
 export default function AccountTypes() {
   const { currentEntity } = useEntity();
-  
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   const [types, setTypes] = useState<AccountType[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingType, setEditingType] = useState<AccountType | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    label: "",
+    color: "bg-blue-100 text-blue-700 border-blue-200",
+    description: ""
+  });
   
   // Load types from storage on mount and when entity changes
   useEffect(() => {
@@ -116,15 +116,14 @@ export default function AccountTypes() {
       }
     }
   }, [currentEntity]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingType, setEditingType] = useState<AccountType | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    label: "",
-    color: "bg-blue-100 text-blue-700 border-blue-200",
-    description: ""
-  });
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
 
   const colorOptions = [
     { value: "bg-blue-100 text-blue-700 border-blue-200", label: "أزرق", preview: "bg-blue-500" },

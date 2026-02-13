@@ -28,7 +28,6 @@ import {
   Sparkles
 } from "lucide-react";
 import { useEntity } from "@/contexts/EntityContext";
-import { Link } from "wouter";
 
 export default function Home() {
   const { currentEntity, getThemeColor } = useEntity();

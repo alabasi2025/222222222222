@@ -77,14 +77,6 @@ const statusMap: Record<string, { label: string, color: string }> = {
 export default function Budget() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   const [budgets, setBudgets] = useState<BudgetItem[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +96,15 @@ export default function Budget() {
   useEffect(() => {
     loadData();
   }, [currentEntity]);
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const loadData = async () => {
     try {

@@ -102,13 +102,6 @@ const initialBanksWallets: BankWalletAccount[] = [];
 export default function BanksWallets() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
   const [banksWallets, setBanksWallets] = useState<BankWalletAccount[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,7 +124,7 @@ export default function BanksWallets() {
   // Load data from API
   useEffect(() => {
     loadData();
-  }, [currentEntity.id]);
+  }, [currentEntity?.id]);
 
   // Load currencies from selected account when account is selected
   useEffect(() => {
@@ -163,6 +156,15 @@ export default function BanksWallets() {
       }
     }
   }, [newItem.type, accounts]);
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const loadData = async () => {
     try {

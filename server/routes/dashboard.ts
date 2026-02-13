@@ -11,7 +11,7 @@ const router = Router();
 // Get dashboard statistics
 router.get('/stats', async (req, res) => {
   try {
-    const { entityId } = req.query;
+    // TODO: filter by entityId from req.query
 
     // 1. Total Items
     const itemsCountResult = await db.select({ count: sql<number>`count(*)` }).from(items);

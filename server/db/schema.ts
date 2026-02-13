@@ -355,3 +355,45 @@ export const paymentVoucherOperationsRelations = relations(paymentVoucherOperati
   voucher: one(paymentVouchers, { fields: [paymentVoucherOperations.voucherId], references: [paymentVouchers.id] }),
   chartAccount: one(accounts, { fields: [paymentVoucherOperations.chartAccountId], references: [accounts.id] }),
 }));
+
+// ===== جدول المستخدمين =====
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(generateId),
+  username: text('username').notNull().unique(),
+  email: text('email').unique(),
+  passwordHash: text('password_hash').notNull(),
+  fullName: text('full_name').notNull(),
+  role: text('role').default('user').notNull(), // 'admin' | 'manager' | 'accountant' | 'user'
+  entityId: text('entity_id').references(() => entities.id),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  usernameIdx: index('idx_users_username').on(table.username),
+  emailIdx: index('idx_users_email').on(table.email),
+  entityIdx: index('idx_users_entity').on(table.entityId),
+}));
+
+export const usersRelations = relations(users, ({ one }) => ({
+  entity: one(entities, { fields: [users.entityId], references: [entities.id] }),
+}));
+
+// ===== جدول جلسات المصادقة =====
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey().$defaultFn(generateId),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('idx_sessions_user').on(table.userId),
+  tokenIdx: index('idx_sessions_token').on(table.token),
+  expiresIdx: index('idx_sessions_expires').on(table.expiresAt),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));

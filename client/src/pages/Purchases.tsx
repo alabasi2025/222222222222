@@ -69,14 +69,6 @@ const statusMap: Record<string, { label: string, color: string, icon: any }> = {
 export default function Purchases() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  if (!currentEntity) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
-      </div>
-    );
-  }
-  
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -109,6 +101,15 @@ export default function Purchases() {
     loadSuppliers();
     loadPurchases();
   }, [currentEntity]);
+
+  if (!currentEntity) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">الرجاء اختيار كيان أولاً</p>
+      </div>
+    );
+  }
+
 
   const loadSuppliers = () => {
     try {
