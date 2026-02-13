@@ -109,19 +109,19 @@ const seedEntities = [
 ];
 
 // بيانات الحسابات (Accounts)
-const seedAccounts = [];
+const seedAccounts: any[] = [];
 
 // بيانات الصناديق والعهد (Cash Boxes)
-const seedCashBoxes = [];
+const seedCashBoxes: any[] = [];
 
 // بيانات البنوك والمحافظ (Banks & Wallets)
-const seedBanksWallets = [];
+const seedBanksWallets: any[] = [];
 
 // بيانات القيود اليومية (Journal Entries)
-const seedJournalEntries = [];
+const seedJournalEntries: any[] = [];
 
 // بيانات تفاصيل القيود اليومية (Journal Entry Lines)
-const seedJournalEntryLines = [];
+const seedJournalEntryLines: any[] = [];
 
 // بيانات المستودعات (Warehouses)
 const seedWarehouses = [
@@ -329,10 +329,10 @@ const seedStockMovements = [
 ];
 
 // بيانات التحويلات بين الوحدات (Inter Unit Transfers)
-const seedInterUnitTransfers = [];
+const seedInterUnitTransfers: any[] = [];
 
 // بيانات حسابات الجاري بين الوحدات (Inter Unit Accounts)
-const seedInterUnitAccounts = [];
+const seedInterUnitAccounts: any[] = [];
 
 async function seed() {
   try {

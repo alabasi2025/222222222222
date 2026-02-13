@@ -81,7 +81,6 @@ router.post('/', async (req, res) => {
     // إنشاء رقم التحويل
     const transferNumber = `TR-${Date.now()}`;
     const transferDate = date ? new Date(date) : new Date();
-    const transferId = `transfer-${Date.now()}`;
 
     // Wrap in transaction
     const transfer = await db.transaction(async (tx) => {
@@ -106,9 +105,7 @@ router.post('/', async (req, res) => {
       let fromInterAccountId: string;
       if (fromInterAccount.length === 0) {
         // إنشاء حساب جاري جديد
-        const newAccountId = `ACC-INTER-${fromEntityId}-${toEntityId}`;
-        await tx.insert(accounts).values({
-          id: newAccountId,
+        const [newAccount] = await tx.insert(accounts).values({
           name: `جاري ${toEntity.name}`,
           type: 'asset',
           level: 3,
@@ -116,10 +113,10 @@ router.post('/', async (req, res) => {
           isGroup: false,
           subtype: 'intercompany',
           entityId: fromEntityId,
-        });
+        }).returning();
+        const newAccountId = newAccount.id;
 
         await tx.insert(interUnitAccounts).values({
-          id: `IUA-${fromEntityId}-${toEntityId}`,
           entityId: fromEntityId,
           relatedEntityId: toEntityId,
           accountId: newAccountId,
@@ -145,9 +142,7 @@ router.post('/', async (req, res) => {
       let toInterAccountId: string;
       if (toInterAccount.length === 0) {
         // إنشاء حساب جاري جديد
-        const newAccountId = `ACC-INTER-${toEntityId}-${fromEntityId}`;
-        await tx.insert(accounts).values({
-          id: newAccountId,
+        const [newAccount2] = await tx.insert(accounts).values({
           name: `جاري ${fromEntity.name}`,
           type: 'liability',
           level: 3,
@@ -155,10 +150,10 @@ router.post('/', async (req, res) => {
           isGroup: false,
           subtype: 'intercompany',
           entityId: toEntityId,
-        });
+        }).returning();
+        const newAccountId = newAccount2.id;
 
         await tx.insert(interUnitAccounts).values({
-          id: `IUA-${toEntityId}-${fromEntityId}`,
           entityId: toEntityId,
           relatedEntityId: fromEntityId,
           accountId: newAccountId,
@@ -171,22 +166,20 @@ router.post('/', async (req, res) => {
         toInterAccountId = toInterAccount[0].accountId;
       }
 
-      // إنشاء القيد في الوحدة المُحوِّلة
-      const fromJournalId = `JE-${fromEntityId}-${Date.now()}`;
-      await tx.insert(journalEntries).values({
-        id: fromJournalId,
+      // إنشاء القيد في الوحدة المُحوِلة - auto-generated ID via returning()
+      const [fromJournalEntry] = await tx.insert(journalEntries).values({
         entityId: fromEntityId,
         date: transferDate,
         description: `تحويل إلى ${toEntity.name} - ${description || transferNumber}`,
         reference: transferNumber,
         type: 'auto',
         status: 'posted',
-      });
+      }).returning();
+      const fromJournalId = fromJournalEntry.id;
 
-      // سطور القيد في الوحدة المُحوِّلة
+      // سطور القيد في الوحدة المُحوِلة
       // مدين: جاري الوحدة المستلمة
       await tx.insert(journalEntryLines).values({
-        id: `JEL-${fromJournalId}-1`,
         entryId: fromJournalId,
         accountId: fromInterAccountId,
         debit: amount.toString(),
@@ -197,7 +190,6 @@ router.post('/', async (req, res) => {
 
       // دائن: الحساب المحدد (صندوق/بنك)
       await tx.insert(journalEntryLines).values({
-        id: `JEL-${fromJournalId}-2`,
         entryId: fromJournalId,
         accountId: fromAccountId,
         debit: '0',
@@ -206,22 +198,20 @@ router.post('/', async (req, res) => {
         description: `تحويل إلى ${toEntity.name}`,
       });
 
-      // إنشاء القيد في الوحدة المستلمة
-      const toJournalId = `JE-${toEntityId}-${Date.now()}`;
-      await tx.insert(journalEntries).values({
-        id: toJournalId,
+      // إنشاء القيد في الوحدة المستلمة - auto-generated ID via returning()
+      const [toJournalEntry] = await tx.insert(journalEntries).values({
         entityId: toEntityId,
         date: transferDate,
         description: `استلام من ${fromEntity.name} - ${description || transferNumber}`,
         reference: transferNumber,
         type: 'auto',
         status: 'posted',
-      });
+      }).returning();
+      const toJournalId = toJournalEntry.id;
 
       // سطور القيد في الوحدة المستلمة
       // مدين: الحساب المحدد (صندوق/بنك)
       await tx.insert(journalEntryLines).values({
-        id: `JEL-${toJournalId}-1`,
         entryId: toJournalId,
         accountId: toAccountId,
         debit: amount.toString(),
@@ -230,9 +220,8 @@ router.post('/', async (req, res) => {
         description: `استلام من ${fromEntity.name}`,
       });
 
-      // دائن: جاري الوحدة المُحوِّلة
+      // دائن: جاري الوحدة المُحوِلة
       await tx.insert(journalEntryLines).values({
-        id: `JEL-${toJournalId}-2`,
         entryId: toJournalId,
         accountId: toInterAccountId,
         debit: '0',
@@ -241,9 +230,8 @@ router.post('/', async (req, res) => {
         description: `استلام من ${fromEntity.name}`,
       });
 
-      // إنشاء سجل التحويل
+      // إنشاء سجل التحويل - auto-generated ID
       const [newTransfer] = await tx.insert(interUnitTransfers).values({
-        id: transferId,
         transferNumber,
         fromEntityId,
         toEntityId,

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/index';
 import { accounts } from '../db/schema';
 import { eq, and, isNull, or } from 'drizzle-orm';
+import { validate, accountSchema } from '../validation';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.get('/', async (req, res) => {
       return res.json(accountsCache);
     }
     
-    let query = db.select().from(accounts);
+    let query: any = db.select().from(accounts);
     
     // Filter by entity and branch if provided
     if (entityId || branchId) {
@@ -75,7 +76,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new account
-router.post('/', async (req, res) => {
+router.post('/', validate(accountSchema), async (req, res) => {
   try {
     // Map allowedCurrencies to currencies if needed
     const accountData = { ...req.body };

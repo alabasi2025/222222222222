@@ -177,7 +177,7 @@ export default function BanksWallets() {
       const normalizedWallets = walletsData.map((item: any) => ({
         ...item,
         currencies: item.currencies || item.allowedCurrencies || [],
-        isActive: item.isActive !== undefined ? item.isActive : (item.status === "active" || item.status === true)
+        isActive: item.isActive !== undefined ? item.isActive : (item.status === "active" || String(item.status) === "true")
       }));
       
       setBanksWallets(normalizedWallets);
@@ -354,7 +354,7 @@ export default function BanksWallets() {
     const itemToEdit = {
       ...item,
       currencies: item.currencies || item.allowedCurrencies || [],
-      isActive: item.isActive !== undefined ? item.isActive : (item.status === "active" || item.status === true)
+      isActive: item.isActive !== undefined ? item.isActive : (item.status === "active" || String(item.status) === "true")
     };
     // Remove old fields
     delete itemToEdit.allowedCurrencies;

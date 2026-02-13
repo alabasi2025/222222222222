@@ -67,7 +67,6 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const movementData = {
-      id: req.body.id || `MOV-${Date.now()}`,
       ...req.body,
       date: new Date(req.body.date),
     };
@@ -94,7 +93,6 @@ router.post('/', async (req, res) => {
           .where(and(eq(itemStock.itemId, itemId), eq(itemStock.warehouseId, warehouseId)));
       } else {
         await db.insert(itemStock).values({
-          id: `STK-${Date.now()}`,
           itemId,
           warehouseId,
           quantity,
@@ -149,22 +147,19 @@ router.post('/', async (req, res) => {
             const supplierAccount = await db.select().from(accounts).where(eq(accounts.id, supplierAccountId)).limit(1);
             
             if (supplierAccount.length > 0) {
-              const journalId = `JE-PURCHASE-${Date.now()}`;
-              
-              // Create journal entry
-              await db.insert(journalEntries).values({
-                id: journalId,
+              // Create journal entry - get auto-generated ID via returning()
+              const [newJournal] = await db.insert(journalEntries).values({
                 entityId: req.body.entityId,
                 date: new Date(req.body.date),
                 description: `فاتورة مشتريات - ${req.body.reference || newMovement[0].id}`,
                 reference: req.body.reference || newMovement[0].id,
                 type: 'auto',
                 status: 'posted',
-              });
+              }).returning();
+              const journalId = newJournal.id;
 
               // Debit: Stock account (حساب المخزون)
               await db.insert(journalEntryLines).values({
-                id: `JVL-${Date.now()}-1`,
                 entryId: journalId,
                 accountId: stockAccountId,
                 debit: calculatedTotalCost.toString(),
@@ -175,7 +170,6 @@ router.post('/', async (req, res) => {
 
               // Credit: Supplier account (حساب المورد)
               await db.insert(journalEntryLines).values({
-                id: `JVL-${Date.now()}-2`,
                 entryId: journalId,
                 accountId: supplierAccountId,
                 debit: '0',
@@ -223,13 +217,11 @@ router.post('/', async (req, res) => {
                 const supplierAccount = await db.select().from(accounts).where(eq(accounts.id, supplierAccountId)).limit(1);
                 
                 if (supplierAccount.length > 0) {
-                  const voucherId = `PAY-OUT-${Date.now()}`;
                   const currency = req.body.notes?.match(/currency:([A-Z]+)/)?.[1] || 'YER';
-                  const exchangeRate = '1'; // Default, can be extracted from notes if needed
+                  const exchangeRate = '1';
 
-                  // Create payment voucher
-                  await db.insert(paymentVouchers).values({
-                    id: voucherId,
+                  // Create payment voucher - get auto-generated ID via returning()
+                  const [newVoucher] = await db.insert(paymentVouchers).values({
                     entityId: req.body.entityId,
                     type: 'out',
                     bankWalletId: paymentAccountId,
@@ -239,11 +231,11 @@ router.post('/', async (req, res) => {
                     totalAmount: calculatedTotalCost.toString(),
                     reference: req.body.reference || newMovement[0].id,
                     createdBy: req.body.createdBy || null,
-                  });
+                  }).returning();
+                  const voucherId = newVoucher.id;
 
                   // Create payment voucher operation (supplier payment)
                   await db.insert(paymentVoucherOperations).values({
-                    id: `PVO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     voucherId: voucherId,
                     accountType: 'liability',
                     accountSubtype: 'supplier',
@@ -308,22 +300,19 @@ router.post('/', async (req, res) => {
           const cogsAccountId = item[0].cogsAccountId || toAccountId; // حساب تكلفة البضاعة المباعة أو الحساب المحدد
 
           if (stockAccountId && cogsAccountId) {
-            const journalId = `JE-STOCK-${Date.now()}`;
-            
-            // Create journal entry
-            await db.insert(journalEntries).values({
-              id: journalId,
+            // Create journal entry - get auto-generated ID via returning()
+            const [newJournal2] = await db.insert(journalEntries).values({
               entityId: req.body.entityId,
               date: new Date(req.body.date),
               description: `صرف مخزون - ${req.body.reference || newMovement[0].id}`,
               reference: req.body.reference || newMovement[0].id,
               type: 'auto',
               status: 'posted',
-            });
+            }).returning();
+            const journalId = newJournal2.id;
 
             // Debit: COGS account (تكلفة البضاعة المباعة)
             await db.insert(journalEntryLines).values({
-              id: `JVL-${Date.now()}-1`,
               entryId: journalId,
               accountId: cogsAccountId,
               debit: calculatedTotalCost.toString(),
@@ -334,7 +323,6 @@ router.post('/', async (req, res) => {
 
             // Credit: Stock account (حساب المخزون)
             await db.insert(journalEntryLines).values({
-              id: `JVL-${Date.now()}-2`,
               entryId: journalId,
               accountId: stockAccountId,
               debit: '0',
@@ -374,7 +362,6 @@ router.post('/', async (req, res) => {
           .where(and(eq(itemStock.itemId, itemId), eq(itemStock.warehouseId, toWarehouseId)));
       } else {
         await db.insert(itemStock).values({
-          id: `STK-${Date.now()}-dest`,
           itemId,
           warehouseId: toWarehouseId,
           quantity,
@@ -392,7 +379,6 @@ router.post('/', async (req, res) => {
           .where(and(eq(itemStock.itemId, itemId), eq(itemStock.warehouseId, warehouseId)));
       } else if (quantity > 0) {
         await db.insert(itemStock).values({
-          id: `STK-${Date.now()}`,
           itemId,
           warehouseId,
           quantity,
@@ -480,11 +466,10 @@ router.delete('/:id', async (req, res) => {
           .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
       } else {
         await db.insert(itemStock).values({
-          id: `STK-${Date.now()}`,
           itemId: itemId!,
           warehouseId: warehouseId!,
           quantity: quantity!,
-          avgCost: unitCost || 0,
+          avgCost: String(unitCost || 0),
         });
       }
     } else if (type === 'transfer' && toWarehouseId) {
@@ -513,11 +498,10 @@ router.delete('/:id', async (req, res) => {
           .where(and(eq(itemStock.itemId, itemId!), eq(itemStock.warehouseId, warehouseId!)));
       } else {
         await db.insert(itemStock).values({
-          id: `STK-${Date.now()}`,
           itemId: itemId!,
           warehouseId: warehouseId!,
           quantity: quantity!,
-          avgCost: unitCost || 0,
+          avgCost: String(unitCost || 0),
         });
       }
     } else if (type === 'adjustment') {

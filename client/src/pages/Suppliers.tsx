@@ -114,8 +114,8 @@ export default function Suppliers() {
   const getAvailableSupplierAccounts = (excludeSupplierId?: string) => {
     const supplierAccounts = getSupplierAccounts();
     const linkedAccountIds = suppliers
-      .filter(supplier => supplier.id !== excludeSupplierId && supplier.chartAccountId) // استثناء المورد الحالي عند التعديل
-      .map(supplier => supplier.chartAccountId);
+      .filter((supplier: any) => supplier.id !== excludeSupplierId && supplier.chartAccountId) // استثناء المورد الحالي عند التعديل
+      .map((supplier: any) => supplier.chartAccountId);
     return supplierAccounts.filter(account => !linkedAccountIds.includes(account.id));
   };
 
@@ -127,10 +127,10 @@ export default function Suppliers() {
     chartAccountId: "",
   });
 
-  const visibleSuppliers = suppliers.filter(s => {
+  const visibleSuppliers = suppliers.filter((s: any) => {
     if (currentEntity.type === 'holding') return true;
     return s.entityId === currentEntity.id;
-  }).filter(s => 
+  }).filter((s: any) => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.phone.includes(searchTerm) ||
     (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -179,7 +179,7 @@ export default function Suppliers() {
 
     // Load all suppliers from localStorage to ensure we're working with complete data
     const allSuppliers = loadSuppliersFromStorage();
-    const updatedSuppliers = allSuppliers.map(s => 
+    const updatedSuppliers = allSuppliers.map((s: any) => 
       s.id === editingSupplier.id ? { ...editingSupplier } : { ...s }
     );
     setSuppliers(updatedSuppliers);
@@ -192,7 +192,7 @@ export default function Suppliers() {
 
   const handleDeleteSupplier = (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذا المورد؟")) {
-      const updatedSuppliers = suppliers.filter(s => s.id !== id);
+      const updatedSuppliers = suppliers.filter((s: any) => s.id !== id);
       setSuppliers(updatedSuppliers);
       localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
       toast.success("تم حذف المورد بنجاح");
@@ -427,7 +427,7 @@ export default function Suppliers() {
                 </TableCell>
               </TableRow>
             ) : (
-              visibleSuppliers.map((supplier) => (
+              visibleSuppliers.map((supplier: any) => (
                 <TableRow key={supplier.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">

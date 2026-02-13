@@ -152,7 +152,7 @@ export default function Payments() {
   useEffect(() => {
     loadAccounts();
     loadPayments();
-  }, [currentEntity.id]);
+  }, [currentEntity?.id]);
 
   const loadAccounts = async () => {
     try {
@@ -165,19 +165,19 @@ export default function Payments() {
       
       // Filter by current entity and normalize
       const filteredBoxes = boxesData.filter((box: any) => 
-        box.entityId === currentEntity.id && box.isActive !== false
+        box.entityId === currentEntity?.id && box.isActive !== false
       );
       
       const filteredWallets = walletsData.filter((wallet: any) => 
-        wallet.entityId === currentEntity.id && wallet.isActive !== false
+        wallet.entityId === currentEntity?.id && wallet.isActive !== false
       );
       
       // Filter chart accounts by entity
       const filteredAccounts = accountsData.filter((account: any) => {
-        if (currentEntity.type === 'holding') {
+        if (currentEntity?.type === 'holding') {
           return !account.entityId; // Global accounts only
         }
-        return account.entityId === currentEntity.id;
+        return account.entityId === currentEntity?.id;
       });
       
       setCashBoxes(filteredBoxes);
@@ -193,7 +193,7 @@ export default function Payments() {
 
   const loadPayments = async () => {
     try {
-      const paymentsData = await paymentsApi.getByEntity(currentEntity.id);
+      const paymentsData = await paymentsApi.getByEntity(currentEntity?.id);
       
       // Transform API data to frontend format
       const transformedPayments = paymentsData.map((voucher: any) => {
@@ -302,7 +302,7 @@ export default function Payments() {
     if (!type || !subtype) return [];
     return chartAccounts.filter(acc => {
       // Check entity visibility
-      if (currentEntity.type === 'holding') {
+      if (currentEntity?.type === 'holding') {
         // For holding company, show only global accounts
         return acc.type === type &&
                acc.subtype === subtype &&
@@ -313,7 +313,7 @@ export default function Payments() {
         return acc.type === type &&
                acc.subtype === subtype &&
                !acc.isGroup &&
-               acc.entityId === currentEntity.id;
+               acc.entityId === currentEntity?.id;
       }
     });
   };
@@ -330,10 +330,10 @@ export default function Payments() {
       if (acc.parentId !== accountId || acc.isGroup) return false;
       
       // Check entity visibility
-      if (currentEntity.type === 'holding') {
+      if (currentEntity?.type === 'holding') {
         return !acc.entityId; // Global accounts only
       } else {
-        return acc.entityId === currentEntity.id; // Entity-specific accounts
+        return acc.entityId === currentEntity?.id; // Entity-specific accounts
       }
     });
   };
@@ -471,7 +471,7 @@ export default function Payments() {
 
       // Create voucher via API
       const voucherData = {
-        entityId: currentEntity.id,
+        entityId: currentEntity?.id,
         type: type,
         cashBoxId: cashBoxId,
         date: formData.date,
@@ -912,12 +912,12 @@ export default function Payments() {
                     <OnyxStyleTable
                       operations={paymentOperations}
                       onOperationsChange={setPaymentOperations}
-                      accountTypes={getAccountTypes(currentEntity.id)}
-                      accountSubtypes={getAccountSubtypes(currentEntity.id)}
+                      accountTypes={getAccountTypes(currentEntity?.id)}
+                      accountSubtypes={getAccountSubtypes(currentEntity?.id)}
                       chartAccounts={chartAccounts}
                       currency={paymentFormData.currency}
                       getAccountSubtypes={getAccountSubtypes}
-                      currentEntityId={currentEntity.id}
+                      currentEntityId={currentEntity?.id}
                     />
 
                     {/* Old Form - Hidden for now */}
@@ -953,7 +953,7 @@ export default function Payments() {
                                 <SelectValue placeholder="النوع" />
                               </SelectTrigger>
                               <SelectContent>
-                                {getAccountTypes(currentEntity.id).map(type => (
+                                {getAccountTypes(currentEntity?.id).map(type => (
                                   <SelectItem key={type.id} value={type.id}>
                                     {type.label}
                                   </SelectItem>
@@ -981,7 +981,7 @@ export default function Payments() {
                                   <SelectValue placeholder="الفرعي" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {getAccountSubtypes(currentEntity.id).map(subtype => (
+                                  {getAccountSubtypes(currentEntity?.id).map(subtype => (
                                     <SelectItem key={subtype.id} value={subtype.value}>
                                       {subtype.label}
                                     </SelectItem>
@@ -1013,7 +1013,7 @@ export default function Payments() {
                                     acc.type === currentOperation.accountType &&
                                     acc.subtype === currentOperation.accountSubtype &&
                                     !acc.isGroup &&
-                                    (currentEntity.type === 'holding' ? !acc.entityId : acc.entityId === currentEntity.id)
+                                    (currentEntity?.type === 'holding' ? !acc.entityId : acc.entityId === currentEntity?.id)
                                   ).length === 0 ? (
                                     <SelectItem value="no-accounts" disabled>لا توجد حسابات</SelectItem>
                                   ) : (
@@ -1021,7 +1021,7 @@ export default function Payments() {
                                       acc.type === currentOperation.accountType &&
                                       acc.subtype === currentOperation.accountSubtype &&
                                       !acc.isGroup &&
-                                      (currentEntity.type === 'holding' ? !acc.entityId : acc.entityId === currentEntity.id)
+                                      (currentEntity?.type === 'holding' ? !acc.entityId : acc.entityId === currentEntity?.id)
                                     ).map(account => (
                                       <SelectItem key={account.id} value={account.id}>
                                         {account.id} - {account.name}
@@ -1054,7 +1054,7 @@ export default function Payments() {
                                   {chartAccounts.filter(acc => 
                                     acc.parentId === currentOperation.chartAccount &&
                                     !acc.isGroup &&
-                                    (currentEntity.type === 'holding' ? !acc.entityId : acc.entityId === currentEntity.id)
+                                    (currentEntity?.type === 'holding' ? !acc.entityId : acc.entityId === currentEntity?.id)
                                   ).map(account => (
                                     <SelectItem key={account.id} value={account.id}>
                                       {account.id} - {account.name}
@@ -1238,7 +1238,7 @@ export default function Payments() {
 
                       // Create voucher via API
                       const voucherData = {
-                        entityId: currentEntity.id,
+                        entityId: currentEntity?.id,
                         type: 'out',
                         paymentType: paymentFormData.paymentType,
                         cashBoxId: paymentFormData.paymentType === "cash" ? paymentFormData.cashBox : null,

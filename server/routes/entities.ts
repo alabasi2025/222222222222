@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/index';
 import { entities } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { validate, entitySchema } from '../validation';
 
 const router = Router();
 
@@ -31,13 +32,13 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new entity
-router.post('/', async (req, res) => {
+router.post('/', validate(entitySchema), async (req, res) => {
   try {
     const newEntity = await db.insert(entities).values(req.body).returning();
     res.status(201).json(newEntity[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating entity:', error);
-    res.status(500).json({ error: 'Failed to create entity' });
+    res.status(500).json({ error: error.message || 'Failed to create entity' });
   }
 });
 

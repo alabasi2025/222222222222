@@ -172,7 +172,7 @@ async function seed() {
     console.log('📊 Seeding accounts...');
     for (const account of initialAccounts) {
       await db.insert(accounts).values({
-        ...account,
+        ...account, balance: String(account.balance || 0),
         defaultCurrency: 'YER',
         accountGroup: null,
         branchId: account.branchId || null

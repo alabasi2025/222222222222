@@ -20,7 +20,6 @@ async function main() {
         name: 'مجموعة العباسي',
         type: 'holding',
         parentId: null,
-        themeColor: '#7c3aed'
       }).returning();
       holdingId = newHolding[0].id;
       console.log('Created:', newHolding[0]);

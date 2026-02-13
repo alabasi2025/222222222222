@@ -551,7 +551,7 @@ export default function ChartOfAccounts() {
                       entityId: ""
                     });
                   }}
-                  disabled={currentEntity?.type === 'holding' || false}
+                  disabled={(currentEntity?.type as string) === 'holding' || false}
                 >
                   <Plus className="h-4 w-4 ml-2" />
                   حساب جديد
@@ -657,7 +657,7 @@ export default function ChartOfAccounts() {
                   <Label>الوحدة</Label>
                   <Select 
                     value={newAccount.entityId || "none"} 
-                    onValueChange={(value) => setNewAccount({ ...newAccount, entityId: value === "none" ? null : value })}
+                    onValueChange={(value) => setNewAccount({ ...newAccount, entityId: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="اختر الوحدة" />
@@ -879,7 +879,7 @@ export default function ChartOfAccounts() {
                               }
                               handleDeleteAccount(account.id);
                             }}
-                            disabled={currentEntity?.type === 'holding' || false}
+                            disabled={(currentEntity?.type as string) === 'holding' || false}
                             className="text-red-600"
                           >
                             <Trash2 className="h-4 w-4 ml-2" />

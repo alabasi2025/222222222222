@@ -103,10 +103,10 @@ export default function Users() {
     role: "user",
   });
 
-  const visibleUsers = users.filter(u => {
+  const visibleUsers = users.filter((u: any) => {
     if (currentEntity.type === 'holding') return true;
     return u.entityId === currentEntity.id || !u.entityId;
-  }).filter(u => 
+  }).filter((u: any) => 
     u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -119,7 +119,7 @@ export default function Users() {
     }
 
     // Check if username already exists
-    if (users.find(u => u.username === newUser.username)) {
+    if (users.find((u: any) => u.username === newUser.username)) {
       toast.error("اسم المستخدم موجود بالفعل");
       return;
     }
@@ -157,7 +157,7 @@ export default function Users() {
       return;
     }
 
-    const updatedUsers = users.map(u => 
+    const updatedUsers = users.map((u: any) => 
       u.id === editingUser.id ? { ...editingUser } : u
     );
     setUsers(updatedUsers);
@@ -174,7 +174,7 @@ export default function Users() {
       return;
     }
 
-    const updatedUsers = users.filter(u => u.id !== userId);
+    const updatedUsers = users.filter((u: any) => u.id !== userId);
     setUsers(updatedUsers);
     localStorage.setItem('users', JSON.stringify(updatedUsers));
     toast.success("تم حذف المستخدم بنجاح");
@@ -186,12 +186,12 @@ export default function Users() {
       return;
     }
 
-    const updatedUsers = users.map(u => 
+    const updatedUsers = users.map((u: any) => 
       u.id === userId ? { ...u, isActive: !u.isActive } : u
     );
     setUsers(updatedUsers);
     localStorage.setItem('users', JSON.stringify(updatedUsers));
-    toast.success(`تم ${updatedUsers.find(u => u.id === userId)?.isActive ? 'تفعيل' : 'تعطيل'} المستخدم`);
+    toast.success(`تم ${updatedUsers.find((u: any) => u.id === userId)?.isActive ? 'تفعيل' : 'تعطيل'} المستخدم`);
   };
 
   const getRoleLabel = (role: string) => {
@@ -342,7 +342,7 @@ export default function Users() {
                 </TableCell>
               </TableRow>
             ) : (
-              visibleUsers.map((user) => (
+              visibleUsers.map(( user: any) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">

@@ -172,7 +172,7 @@ export default function InterUnitAccounts() {
     if (!selectedAccount || !editName.trim()) return;
 
     try {
-      await api.patch(`/accounts/${selectedAccount.id}`, {
+      await api.put(`/accounts/${selectedAccount.id}`, {
         name: editName,
       });
 
