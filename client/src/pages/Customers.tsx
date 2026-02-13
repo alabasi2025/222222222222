@@ -1,14 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Download, MoreHorizontal, Phone, Mail, Save, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Download,
+  MoreHorizontal,
+  Phone,
+  Mail,
+  Save,
+  Pencil,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,43 +47,51 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-
-const initialCustomers: any[] = [];
+import { customersApi } from "@/lib/api";
 
 export default function Customers() {
   const { currentEntity, getThemeColor } = useEntity();
-  
-  const loadFromStorage = () => {
-    try {
-      const savedCustomers = localStorage.getItem('customers');
-      if (savedCustomers) {
-        return JSON.parse(savedCustomers);
-      }
-      return initialCustomers;
-    } catch {
-      return initialCustomers;
-    }
-  };
 
-  const [customers, setCustomers] = useState(loadFromStorage);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    setCustomers(loadFromStorage());
-  }, [currentEntity]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [newCustomer, setNewCustomer] = useState({
     name: "",
-    type: "شركة",
+    type: "company",
     email: "",
     phone: "",
   });
+
+  const loadCustomers = useCallback(async () => {
+    if (!currentEntity) return;
+    setIsLoading(true);
+    try {
+      const response = await customersApi.getAll({
+        entityId: currentEntity.id,
+      });
+      const data = Array.isArray(response)
+        ? response
+        : (response as any)?.data || [];
+      setCustomers(data);
+    } catch (err: any) {
+      toast.error(err.message || "فشل في تحميل العملاء");
+      setCustomers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentEntity]);
+
+  useEffect(() => {
+    loadCustomers();
+  }, [loadCustomers]);
 
   if (!currentEntity) {
     return (
@@ -82,70 +101,72 @@ export default function Customers() {
     );
   }
 
-
-  const visibleCustomers = customers.filter((c: any) => {
-    if (currentEntity.type === 'holding') return true;
-    return c.entityId === currentEntity.id;
-  }).filter((c: any) => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm) ||
-    (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  const visibleCustomers = customers.filter(
+    (c: any) =>
+      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.phone?.includes(searchTerm) ||
+      (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleAddCustomer = () => {
+  const handleAddCustomer = async () => {
     if (!newCustomer.name || !newCustomer.phone) {
       toast.error("يرجى تعبئة الاسم ورقم الهاتف");
       return;
     }
 
-    const customer = {
-      id: `CUS-${String(customers.length + 1).padStart(3, '0')}`,
-      entityId: currentEntity.id,
-      name: newCustomer.name,
-      type: newCustomer.type,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      balance: 0.00,
-      status: "active"
-    };
+    setIsSaving(true);
+    try {
+      const customerData = {
+        entityId: currentEntity.id,
+        name: newCustomer.name,
+        customerType: newCustomer.type,
+        email: newCustomer.email || null,
+        phone: newCustomer.phone,
+        balance: "0",
+        status: "active",
+      };
 
-    const updatedCustomers = [...customers, customer];
-    setCustomers(updatedCustomers);
-    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-    toast.success("تم إضافة العميل بنجاح");
-
-    setIsNewCustomerOpen(false);
-    setNewCustomer({
-      name: "",
-      type: "شركة",
-      email: "",
-      phone: "",
-    });
+      await customersApi.create(customerData);
+      toast.success("تم إضافة العميل بنجاح");
+      setIsNewCustomerOpen(false);
+      setNewCustomer({ name: "", type: "company", email: "", phone: "" });
+      loadCustomers();
+    } catch (err: any) {
+      toast.error(err.message || "فشل في إضافة العميل");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleEditCustomer = () => {
+  const handleEditCustomer = async () => {
     if (!editingCustomer || !editingCustomer.name) {
       toast.error("يرجى إدخال الاسم");
       return;
     }
 
-      const updatedCustomers = customers.map((c: any) => 
-        c.id === editingCustomer.id ? editingCustomer : c
-    );
-    setCustomers(updatedCustomers);
-    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-    toast.success("تم تحديث بيانات العميل بنجاح");
-    
-    setIsEditCustomerOpen(false);
-    setEditingCustomer(null);
+    setIsSaving(true);
+    try {
+      await customersApi.update(editingCustomer.id, editingCustomer);
+      toast.success("تم تحديث بيانات العميل بنجاح");
+      setIsEditCustomerOpen(false);
+      setEditingCustomer(null);
+      loadCustomers();
+    } catch (err: any) {
+      toast.error(err.message || "فشل في تحديث بيانات العميل");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteCustomer = (id: string) => {
-    if (confirm("هل أنت متأكد من حذف هذا العميل؟")) {
-      const updatedCustomers = customers.filter((c: any) => c.id !== id);
-      setCustomers(updatedCustomers);
-      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+  const handleDeleteCustomer = async (id: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا العميل؟")) return;
+
+    try {
+      await customersApi.delete(id);
       toast.success("تم حذف العميل بنجاح");
+      loadCustomers();
+    } catch (err: any) {
+      toast.error(err.message || "فشل في حذف العميل");
     }
   };
 
@@ -160,7 +181,10 @@ export default function Customers() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">العملاء</h2>
           <p className="text-muted-foreground mt-1">
-            إدارة بيانات العملاء لـ <span className="font-bold" style={{ color: getThemeColor() }}>{currentEntity.name}</span>
+            إدارة بيانات العملاء لـ{" "}
+            <span className="font-bold" style={{ color: getThemeColor() }}>
+              {currentEntity.name}
+            </span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -168,7 +192,7 @@ export default function Customers() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          
+
           <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
             <DialogTrigger asChild>
               <Button size="sm" style={{ backgroundColor: getThemeColor() }}>
@@ -180,105 +204,157 @@ export default function Customers() {
               <DialogHeader>
                 <DialogTitle>إضافة عميل جديد</DialogTitle>
                 <DialogDescription>
-                  سيتم إضافة العميل إلى: <span className="font-bold">{currentEntity.name}</span>
+                  سيتم إضافة العميل إلى:{" "}
+                  <span className="font-bold">{currentEntity.name}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">الاسم *</Label>
-                  <Input 
-                    id="name" 
+                  <Label htmlFor="name" className="text-right">
+                    الاسم *
+                  </Label>
+                  <Input
+                    id="name"
                     value={newCustomer.name}
-                    onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setNewCustomer({ ...newCustomer, name: e.target.value })
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="type" className="text-right">النوع</Label>
-                  <Select 
-                    value={newCustomer.type} 
-                    onValueChange={(v) => setNewCustomer({...newCustomer, type: v})}
+                  <Label htmlFor="type" className="text-right">
+                    النوع
+                  </Label>
+                  <Select
+                    value={newCustomer.type}
+                    onValueChange={v =>
+                      setNewCustomer({ ...newCustomer, type: v })
+                    }
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر النوع" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="شركة">شركة</SelectItem>
-                      <SelectItem value="مؤسسة">مؤسسة</SelectItem>
-                      <SelectItem value="فرد">فرد</SelectItem>
+                      <SelectItem value="company">شركة</SelectItem>
+                      <SelectItem value="institution">مؤسسة</SelectItem>
+                      <SelectItem value="individual">فرد</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">الهاتف *</Label>
-                  <Input 
-                    id="phone" 
+                  <Label htmlFor="phone" className="text-right">
+                    الهاتف *
+                  </Label>
+                  <Input
+                    id="phone"
                     value={newCustomer.phone}
-                    onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setNewCustomer({ ...newCustomer, phone: e.target.value })
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">البريد الإلكتروني</Label>
-                  <Input 
-                    id="email" 
+                  <Label htmlFor="email" className="text-right">
+                    البريد الإلكتروني
+                  </Label>
+                  <Input
+                    id="email"
                     type="email"
                     value={newCustomer.email}
-                    onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setNewCustomer({ ...newCustomer, email: e.target.value })
+                    }
+                    className="col-span-3"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddCustomer} style={{ backgroundColor: getThemeColor() }}>
-                  <Save className="w-4 h-4 ml-2" />
+                <Button
+                  onClick={handleAddCustomer}
+                  disabled={isSaving}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 ml-2" />
+                  )}
                   حفظ البيانات
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isEditCustomerOpen} onOpenChange={setIsEditCustomerOpen}>
+          <Dialog
+            open={isEditCustomerOpen}
+            onOpenChange={setIsEditCustomerOpen}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>تعديل بيانات العميل</DialogTitle>
-                <DialogDescription>
-                  تعديل بيانات العميل.
-                </DialogDescription>
+                <DialogDescription>تعديل بيانات العميل.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-name" className="text-right">الاسم *</Label>
-                  <Input 
-                    id="edit-name" 
+                  <Label htmlFor="edit-name" className="text-right">
+                    الاسم *
+                  </Label>
+                  <Input
+                    id="edit-name"
                     value={editingCustomer?.name || ""}
-                    onChange={(e) => setEditingCustomer((prev: any) => prev ? {...prev, name: e.target.value} : null)}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setEditingCustomer((prev: any) =>
+                        prev ? { ...prev, name: e.target.value } : null
+                      )
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-phone" className="text-right">الهاتف *</Label>
-                  <Input 
-                    id="edit-phone" 
+                  <Label htmlFor="edit-phone" className="text-right">
+                    الهاتف *
+                  </Label>
+                  <Input
+                    id="edit-phone"
                     value={editingCustomer?.phone || ""}
-                    onChange={(e) => setEditingCustomer((prev: any) => prev ? {...prev, phone: e.target.value} : null)}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setEditingCustomer((prev: any) =>
+                        prev ? { ...prev, phone: e.target.value } : null
+                      )
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-email" className="text-right">البريد الإلكتروني</Label>
-                  <Input 
-                    id="edit-email" 
+                  <Label htmlFor="edit-email" className="text-right">
+                    البريد الإلكتروني
+                  </Label>
+                  <Input
+                    id="edit-email"
                     type="email"
                     value={editingCustomer?.email || ""}
-                    onChange={(e) => setEditingCustomer((prev: any) => prev ? {...prev, email: e.target.value} : null)}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setEditingCustomer((prev: any) =>
+                        prev ? { ...prev, email: e.target.value } : null
+                      )
+                    }
+                    className="col-span-3"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleEditCustomer} style={{ backgroundColor: getThemeColor() }}>
-                  <Save className="w-4 h-4 ml-2" />
+                <Button
+                  onClick={handleEditCustomer}
+                  disabled={isSaving}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 ml-2" />
+                  )}
                   حفظ التعديلات
                 </Button>
               </DialogFooter>
@@ -290,11 +366,11 @@ export default function Customers() {
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
         <div className="relative w-full sm:w-96">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="بحث بالاسم أو الهاتف أو البريد..." 
+          <Input
+            placeholder="بحث بالاسم أو الهاتف أو البريد..."
             className="pr-9"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -312,36 +388,65 @@ export default function Customers() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleCustomers.length === 0 ? (
+            {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  لا يوجد عملاء مسجلين لـ {currentEntity.name}. قم بإضافة عميل جديد.
+                <TableCell colSpan={6} className="text-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+                </TableCell>
+              </TableRow>
+            ) : visibleCustomers.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  لا يوجد عملاء مسجلين لـ {currentEntity.name}. قم بإضافة عميل
+                  جديد.
                 </TableCell>
               </TableRow>
             ) : (
-                  visibleCustomers.map((customer: any) => (
-                <TableRow key={customer.id} className="hover:bg-muted/50 transition-colors">
+              visibleCustomers.map((customer: any) => (
+                <TableRow
+                  key={customer.id}
+                  className="hover:bg-muted/50 transition-colors"
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${customer.name}`} />
-                        <AvatarFallback>{customer.name.substring(0, 2)}</AvatarFallback>
+                        <AvatarImage
+                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${customer.name}`}
+                        />
+                        <AvatarFallback>
+                          {customer.name?.substring(0, 2)}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span>{customer.name}</span>
-                        <span className="text-xs text-muted-foreground">{customer.id}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {customer.id}
+                        </span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{customer.type}</Badge>
+                    <Badge variant="outline">
+                      {customer.customerType === "company"
+                        ? "شركة"
+                        : customer.customerType === "institution"
+                          ? "مؤسسة"
+                          : customer.customerType === "individual"
+                            ? "فرد"
+                            : customer.type || customer.customerType}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3 h-3 text-muted-foreground" />
-                        {customer.phone}
-                      </div>
+                      {customer.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3 h-3 text-muted-foreground" />
+                          {customer.phone}
+                        </div>
+                      )}
                       {customer.email && (
                         <div className="flex items-center gap-2">
                           <Mail className="w-3 h-3 text-muted-foreground" />
@@ -351,20 +456,28 @@ export default function Customers() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className={`font-bold ${customer.balance > 0 ? 'text-emerald-600' : customer.balance < 0 ? 'text-rose-600' : ''}`}>
-                      {customer.balance.toLocaleString()} ر.ي
+                    <span
+                      className={`font-bold ${Number(customer.balance) > 0 ? "text-emerald-600" : Number(customer.balance) < 0 ? "text-rose-600" : ""}`}
+                    >
+                      {Number(customer.balance || 0).toLocaleString()} ر.ي
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                      {customer.status === 'active' ? 'نشط' : 'غير نشط'}
+                    <Badge
+                      variant="secondary"
+                      className={
+                        customer.status === "active"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-50 text-slate-700 border-slate-200"
+                      }
+                    >
+                      {customer.status === "active" ? "نشط" : "غير نشط"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-left">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -373,11 +486,13 @@ export default function Customers() {
                         <DropdownMenuItem>كشف حساب</DropdownMenuItem>
                         <DropdownMenuItem>إنشاء فاتورة</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => openEditDialog(customer)}>
+                        <DropdownMenuItem
+                          onClick={() => openEditDialog(customer)}
+                        >
                           <Pencil className="w-4 h-4 ml-2" />
                           تعديل البيانات
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => handleDeleteCustomer(customer.id)}
                         >
@@ -396,7 +511,3 @@ export default function Customers() {
     </div>
   );
 }
-
-
-
-

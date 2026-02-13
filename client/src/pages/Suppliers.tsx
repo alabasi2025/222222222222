@@ -1,14 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Download, MoreHorizontal, Phone, Mail, Save, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Download,
+  MoreHorizontal,
+  Phone,
+  Mail,
+  Save,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,58 +46,52 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-import { accountsApi } from "@/lib/api";
-
-const initialSuppliers: any[] = [];
+import { accountsApi, suppliersApi } from "@/lib/api";
 
 export default function Suppliers() {
   const { currentEntity, getThemeColor } = useEntity();
-  
-  const loadSuppliersFromStorage = () => {
-    try {
-      const savedSuppliers = localStorage.getItem('suppliers');
-      if (savedSuppliers) {
-        return JSON.parse(savedSuppliers);
-      }
-      return initialSuppliers;
-    } catch {
-      return initialSuppliers;
-    }
-  };
 
-  const [suppliers, setSuppliers] = useState(loadSuppliersFromStorage);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [_isLoading, setIsLoading] = useState(false);
   const [isNewSupplierOpen, setIsNewSupplierOpen] = useState(false);
   const [isEditSupplierOpen, setIsEditSupplierOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const loadAccounts = async () => {
+  const loadData = useCallback(async () => {
+    if (!currentEntity) return;
+    setIsLoading(true);
     try {
-      const accountsData = await accountsApi.getAll();
-      setAccounts(accountsData);
-    } catch (error) {
-      console.error('Failed to load accounts:', error);
+      const [suppData, accData] = await Promise.all([
+        suppliersApi.getAll({ entityId: currentEntity.id }).catch(() => []),
+        accountsApi.getAll().catch(() => []),
+      ]);
+      setSuppliers(
+        Array.isArray(suppData) ? suppData : (suppData as any)?.data || []
+      );
+      setAccounts(accData);
+    } catch {
+      setSuppliers([]);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [currentEntity]);
 
   useEffect(() => {
-    const loadData = () => {
-      setSuppliers(loadSuppliersFromStorage());
-      loadAccounts();
-    };
     loadData();
-  }, [currentEntity]);
+  }, [loadData]);
 
   // Get supplier accounts from chart of accounts
   const getSupplierAccounts = () => {
-    return accounts.filter(account => 
-      account.subtype === 'supplier' && 
-      !account.isGroup && 
-      account.entityId === currentEntity?.id
+    return accounts.filter(
+      account =>
+        account.subtype === "supplier" &&
+        !account.isGroup &&
+        account.entityId === currentEntity?.id
     );
   };
 
@@ -95,9 +99,14 @@ export default function Suppliers() {
   const getAvailableSupplierAccounts = (excludeSupplierId?: string) => {
     const supplierAccounts = getSupplierAccounts();
     const linkedAccountIds = suppliers
-      .filter((supplier: any) => supplier.id !== excludeSupplierId && supplier.chartAccountId) // استثناء المورد الحالي عند التعديل
+      .filter(
+        (supplier: any) =>
+          supplier.id !== excludeSupplierId && supplier.chartAccountId
+      ) // استثناء المورد الحالي عند التعديل
       .map((supplier: any) => supplier.chartAccountId);
-    return supplierAccounts.filter(account => !linkedAccountIds.includes(account.id));
+    return supplierAccounts.filter(
+      account => !linkedAccountIds.includes(account.id)
+    );
   };
 
   const [newSupplier, setNewSupplier] = useState({
@@ -116,40 +125,37 @@ export default function Suppliers() {
     );
   }
 
+  const visibleSuppliers = suppliers
+    .filter((s: any) => {
+      if (currentEntity.type === "holding") return true;
+      return s.entityId === currentEntity.id;
+    })
+    .filter(
+      (s: any) =>
+        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.phone.includes(searchTerm) ||
+        (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
-  const visibleSuppliers = suppliers.filter((s: any) => {
-    if (currentEntity.type === 'holding') return true;
-    return s.entityId === currentEntity.id;
-  }).filter((s: any) => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.phone.includes(searchTerm) ||
-    (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const handleAddSupplier = () => {
+  const handleAddSupplier = async () => {
     if (!newSupplier.name || !newSupplier.phone) {
       toast.error("يرجى تعبئة الاسم ورقم الهاتف");
       return;
     }
 
-    // Load all suppliers from localStorage to get correct count
-    const allSuppliers = loadSuppliersFromStorage();
-    const supplier = {
-      id: `SUP-${String(allSuppliers.length + 1).padStart(3, '0')}`,
-      entityId: currentEntity.id,
-      name: newSupplier.name,
-      type: newSupplier.type,
-      email: newSupplier.email,
-      phone: newSupplier.phone,
-      chartAccountId: newSupplier.chartAccountId || null,
-      balance: 0.00,
-      status: "active"
-    };
-
-    const updatedSuppliers = [...allSuppliers, supplier];
-    setSuppliers(updatedSuppliers);
-    localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
-    toast.success("تم إضافة المورد بنجاح");
+    try {
+      await suppliersApi.create({
+        entityId: currentEntity.id,
+        name: newSupplier.name,
+        phone: newSupplier.phone,
+        email: newSupplier.email || null,
+        status: "active",
+      });
+      toast.success("تم إضافة المورد بنجاح");
+      loadData();
+    } catch {
+      toast.error("فشل إضافة المورد");
+    }
 
     setIsNewSupplierOpen(false);
     setNewSupplier({
@@ -161,31 +167,34 @@ export default function Suppliers() {
     });
   };
 
-  const handleEditSupplier = () => {
+  const handleEditSupplier = async () => {
     if (!editingSupplier || !editingSupplier.name) {
       toast.error("يرجى إدخال الاسم");
       return;
     }
-
-    // Load all suppliers from localStorage to ensure we're working with complete data
-    const allSuppliers = loadSuppliersFromStorage();
-    const updatedSuppliers = allSuppliers.map((s: any) => 
-      s.id === editingSupplier.id ? { ...editingSupplier } : { ...s }
-    );
-    setSuppliers(updatedSuppliers);
-    localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
-    toast.success("تم تحديث بيانات المورد بنجاح");
-    
+    try {
+      await suppliersApi.update(editingSupplier.id, {
+        name: editingSupplier.name,
+        phone: editingSupplier.phone,
+        email: editingSupplier.email,
+      });
+      toast.success("تم تحديث بيانات المورد بنجاح");
+      loadData();
+    } catch {
+      toast.error("فشل تحديث المورد");
+    }
     setIsEditSupplierOpen(false);
     setEditingSupplier(null);
   };
 
-  const handleDeleteSupplier = (id: string) => {
-    if (confirm("هل أنت متأكد من حذف هذا المورد؟")) {
-      const updatedSuppliers = suppliers.filter((s: any) => s.id !== id);
-      setSuppliers(updatedSuppliers);
-      localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
+  const handleDeleteSupplier = async (id: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا المورد؟")) return;
+    try {
+      await suppliersApi.delete(id);
       toast.success("تم حذف المورد بنجاح");
+      loadData();
+    } catch {
+      toast.error("فشل حذف المورد");
     }
   };
 
@@ -200,7 +209,10 @@ export default function Suppliers() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">الموردين</h2>
           <p className="text-muted-foreground mt-1">
-            إدارة بيانات الموردين لـ <span className="font-bold" style={{ color: getThemeColor() }}>{currentEntity.name}</span>
+            إدارة بيانات الموردين لـ{" "}
+            <span className="font-bold" style={{ color: getThemeColor() }}>
+              {currentEntity.name}
+            </span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -208,7 +220,7 @@ export default function Suppliers() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          
+
           <Dialog open={isNewSupplierOpen} onOpenChange={setIsNewSupplierOpen}>
             <DialogTrigger asChild>
               <Button size="sm" style={{ backgroundColor: getThemeColor() }}>
@@ -220,24 +232,33 @@ export default function Suppliers() {
               <DialogHeader>
                 <DialogTitle>إضافة مورد جديد</DialogTitle>
                 <DialogDescription>
-                  سيتم إضافة المورد إلى: <span className="font-bold">{currentEntity.name}</span>
+                  سيتم إضافة المورد إلى:{" "}
+                  <span className="font-bold">{currentEntity.name}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">الاسم *</Label>
-                  <Input 
-                    id="name" 
+                  <Label htmlFor="name" className="text-right">
+                    الاسم *
+                  </Label>
+                  <Input
+                    id="name"
                     value={newSupplier.name}
-                    onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setNewSupplier({ ...newSupplier, name: e.target.value })
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="type" className="text-right">النوع</Label>
-                  <Select 
-                    value={newSupplier.type} 
-                    onValueChange={(v) => setNewSupplier({...newSupplier, type: v})}
+                  <Label htmlFor="type" className="text-right">
+                    النوع
+                  </Label>
+                  <Select
+                    value={newSupplier.type}
+                    onValueChange={v =>
+                      setNewSupplier({ ...newSupplier, type: v })
+                    }
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر النوع" />
@@ -250,29 +271,44 @@ export default function Suppliers() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">الهاتف *</Label>
-                  <Input 
-                    id="phone" 
+                  <Label htmlFor="phone" className="text-right">
+                    الهاتف *
+                  </Label>
+                  <Input
+                    id="phone"
                     value={newSupplier.phone}
-                    onChange={(e) => setNewSupplier({...newSupplier, phone: e.target.value})}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setNewSupplier({ ...newSupplier, phone: e.target.value })
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">البريد الإلكتروني</Label>
-                  <Input 
-                    id="email" 
+                  <Label htmlFor="email" className="text-right">
+                    البريد الإلكتروني
+                  </Label>
+                  <Input
+                    id="email"
                     type="email"
                     value={newSupplier.email}
-                    onChange={(e) => setNewSupplier({...newSupplier, email: e.target.value})}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setNewSupplier({ ...newSupplier, email: e.target.value })
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="chartAccountId" className="text-right">حساب من الدليل</Label>
-                  <Select 
-                    value={newSupplier.chartAccountId || "none"} 
-                    onValueChange={(v) => setNewSupplier({...newSupplier, chartAccountId: v === "none" ? "" : v})}
+                  <Label htmlFor="chartAccountId" className="text-right">
+                    حساب من الدليل
+                  </Label>
+                  <Select
+                    value={newSupplier.chartAccountId || "none"}
+                    onValueChange={v =>
+                      setNewSupplier({
+                        ...newSupplier,
+                        chartAccountId: v === "none" ? "" : v,
+                      })
+                    }
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر الحساب المربوط" />
@@ -282,9 +318,13 @@ export default function Suppliers() {
                       {getAvailableSupplierAccounts().map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.name}
-                          {account.currencies && account.currencies.length > 0 && (
-                            <span className="text-xs text-muted-foreground"> ({account.currencies.join(", ")})</span>
-                          )}
+                          {account.currencies &&
+                            account.currencies.length > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                {" "}
+                                ({account.currencies.join(", ")})
+                              </span>
+                            )}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -292,7 +332,10 @@ export default function Suppliers() {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddSupplier} style={{ backgroundColor: getThemeColor() }}>
+                <Button
+                  onClick={handleAddSupplier}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
                   <Save className="w-4 h-4 ml-2" />
                   حفظ البيانات
                 </Button>
@@ -300,80 +343,127 @@ export default function Suppliers() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isEditSupplierOpen} onOpenChange={setIsEditSupplierOpen}>
+          <Dialog
+            open={isEditSupplierOpen}
+            onOpenChange={setIsEditSupplierOpen}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>تعديل بيانات المورد</DialogTitle>
-                <DialogDescription>
-                  تعديل بيانات المورد.
-                </DialogDescription>
+                <DialogDescription>تعديل بيانات المورد.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-name" className="text-right">الاسم *</Label>
-                  <Input 
-                    id="edit-name" 
+                  <Label htmlFor="edit-name" className="text-right">
+                    الاسم *
+                  </Label>
+                  <Input
+                    id="edit-name"
                     value={editingSupplier?.name || ""}
-                    onChange={(e) => setEditingSupplier((prev: any) => prev ? {...prev, name: e.target.value} : null)}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setEditingSupplier((prev: any) =>
+                        prev ? { ...prev, name: e.target.value } : null
+                      )
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-phone" className="text-right">الهاتف *</Label>
-                  <Input 
-                    id="edit-phone" 
+                  <Label htmlFor="edit-phone" className="text-right">
+                    الهاتف *
+                  </Label>
+                  <Input
+                    id="edit-phone"
                     value={editingSupplier?.phone || ""}
-                    onChange={(e) => setEditingSupplier((prev: any) => prev ? {...prev, phone: e.target.value} : null)}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setEditingSupplier((prev: any) =>
+                        prev ? { ...prev, phone: e.target.value } : null
+                      )
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-email" className="text-right">البريد الإلكتروني</Label>
-                  <Input 
-                    id="edit-email" 
+                  <Label htmlFor="edit-email" className="text-right">
+                    البريد الإلكتروني
+                  </Label>
+                  <Input
+                    id="edit-email"
                     type="email"
                     value={editingSupplier?.email || ""}
-                    onChange={(e) => setEditingSupplier((prev: any) => prev ? {...prev, email: e.target.value} : null)}
-                    className="col-span-3" 
+                    onChange={e =>
+                      setEditingSupplier((prev: any) =>
+                        prev ? { ...prev, email: e.target.value } : null
+                      )
+                    }
+                    className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-chartAccountId" className="text-right">حساب من الدليل</Label>
-                  <Select 
-                    value={editingSupplier?.chartAccountId || "none"} 
-                    onValueChange={(v) => setEditingSupplier((prev: any) => prev ? {...prev, chartAccountId: v === "none" ? null : v} : null)}
+                  <Label htmlFor="edit-chartAccountId" className="text-right">
+                    حساب من الدليل
+                  </Label>
+                  <Select
+                    value={editingSupplier?.chartAccountId || "none"}
+                    onValueChange={v =>
+                      setEditingSupplier((prev: any) =>
+                        prev
+                          ? { ...prev, chartAccountId: v === "none" ? null : v }
+                          : null
+                      )
+                    }
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="اختر الحساب المربوط" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">لا يوجد</SelectItem>
-                      {getAvailableSupplierAccounts(editingSupplier?.id).map(account => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name}
-                          {account.currencies && account.currencies.length > 0 && (
-                            <span className="text-xs text-muted-foreground"> ({account.currencies.join(", ")})</span>
-                          )}
-                        </SelectItem>
-                      ))}
-                      {/* Show current linked account even if it's linked (for editing) */}
-                      {editingSupplier?.chartAccountId && !getAvailableSupplierAccounts(editingSupplier?.id).some(acc => acc.id === editingSupplier.chartAccountId) && (() => {
-                        const linkedAccount = accounts.find(acc => acc.id === editingSupplier.chartAccountId);
-                        return (
-                          <SelectItem value={editingSupplier.chartAccountId}>
-                            {linkedAccount?.name || editingSupplier.chartAccountId}
-                            {linkedAccount?.currencies && linkedAccount.currencies.length > 0 && (
-                              <span className="text-xs text-muted-foreground"> ({linkedAccount.currencies.join(", ")})</span>
-                            )}
+                      {getAvailableSupplierAccounts(editingSupplier?.id).map(
+                        account => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                            {account.currencies &&
+                              account.currencies.length > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  {" "}
+                                  ({account.currencies.join(", ")})
+                                </span>
+                              )}
                           </SelectItem>
-                        );
-                      })()}
+                        )
+                      )}
+                      {/* Show current linked account even if it's linked (for editing) */}
+                      {editingSupplier?.chartAccountId &&
+                        !getAvailableSupplierAccounts(editingSupplier?.id).some(
+                          acc => acc.id === editingSupplier.chartAccountId
+                        ) &&
+                        (() => {
+                          const linkedAccount = accounts.find(
+                            acc => acc.id === editingSupplier.chartAccountId
+                          );
+                          return (
+                            <SelectItem value={editingSupplier.chartAccountId}>
+                              {linkedAccount?.name ||
+                                editingSupplier.chartAccountId}
+                              {linkedAccount?.currencies &&
+                                linkedAccount.currencies.length > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {" "}
+                                    ({linkedAccount.currencies.join(", ")})
+                                  </span>
+                                )}
+                            </SelectItem>
+                          );
+                        })()}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleEditSupplier} style={{ backgroundColor: getThemeColor() }}>
+                <Button
+                  onClick={handleEditSupplier}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
                   <Save className="w-4 h-4 ml-2" />
                   حفظ التعديلات
                 </Button>
@@ -386,11 +476,11 @@ export default function Suppliers() {
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
         <div className="relative w-full sm:w-96">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="بحث بالاسم أو الهاتف أو البريد..." 
+          <Input
+            placeholder="بحث بالاسم أو الهاتف أو البريد..."
             className="pr-9"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -412,22 +502,35 @@ export default function Suppliers() {
           <TableBody>
             {visibleSuppliers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  لا يوجد موردين مسجلين لـ {currentEntity.name}. قم بإضافة مورد جديد.
+                <TableCell
+                  colSpan={8}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  لا يوجد موردين مسجلين لـ {currentEntity.name}. قم بإضافة مورد
+                  جديد.
                 </TableCell>
               </TableRow>
             ) : (
               visibleSuppliers.map((supplier: any) => (
-                <TableRow key={supplier.id} className="hover:bg-muted/50 transition-colors">
+                <TableRow
+                  key={supplier.id}
+                  className="hover:bg-muted/50 transition-colors"
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${supplier.name}`} />
-                        <AvatarFallback>{supplier.name.substring(0, 2)}</AvatarFallback>
+                        <AvatarImage
+                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${supplier.name}`}
+                        />
+                        <AvatarFallback>
+                          {supplier.name.substring(0, 2)}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span>{supplier.name}</span>
-                        <span className="text-xs text-muted-foreground">{supplier.id}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {supplier.id}
+                        </span>
                       </div>
                     </div>
                   </TableCell>
@@ -451,38 +554,58 @@ export default function Suppliers() {
                   <TableCell>
                     {supplier.chartAccountId ? (
                       <Badge variant="outline" className="font-mono text-xs">
-                        {accounts.find(acc => acc.id === supplier.chartAccountId)?.name || supplier.chartAccountId}
+                        {accounts.find(
+                          acc => acc.id === supplier.chartAccountId
+                        )?.name || supplier.chartAccountId}
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground text-sm">-</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    {supplier.chartAccountId ? (() => {
-                      const linkedAccount = accounts.find(acc => acc.id === supplier.chartAccountId);
-                      return linkedAccount?.currencies && linkedAccount.currencies.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {linkedAccount.currencies.map((currency: string) => (
-                            <Badge key={currency} variant="secondary" className="text-xs">
-                              {currency}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      );
-                    })() : (
+                    {supplier.chartAccountId ? (
+                      (() => {
+                        const linkedAccount = accounts.find(
+                          acc => acc.id === supplier.chartAccountId
+                        );
+                        return linkedAccount?.currencies &&
+                          linkedAccount.currencies.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {linkedAccount.currencies.map(
+                              (currency: string) => (
+                                <Badge
+                                  key={currency}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {currency}
+                                </Badge>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            -
+                          </span>
+                        );
+                      })()
+                    ) : (
                       <span className="text-muted-foreground text-sm">-</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    <span className={`font-bold ${supplier.balance > 0 ? 'text-rose-600' : supplier.balance < 0 ? 'text-emerald-600' : ''}`}>
+                    <span
+                      className={`font-bold ${supplier.balance > 0 ? "text-rose-600" : supplier.balance < 0 ? "text-emerald-600" : ""}`}
+                    >
                       {supplier.balance.toLocaleString()} ر.ي
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                      {supplier.status === 'active' ? 'نشط' : 'غير نشط'}
+                    <Badge
+                      variant="secondary"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                    >
+                      {supplier.status === "active" ? "نشط" : "غير نشط"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-left">
@@ -498,11 +621,13 @@ export default function Suppliers() {
                         <DropdownMenuItem>كشف حساب</DropdownMenuItem>
                         <DropdownMenuItem>إنشاء أمر شراء</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => openEditDialog(supplier)}>
+                        <DropdownMenuItem
+                          onClick={() => openEditDialog(supplier)}
+                        >
                           <Pencil className="w-4 h-4 ml-2" />
                           تعديل البيانات
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => handleDeleteSupplier(supplier.id)}
                         >
@@ -521,7 +646,3 @@ export default function Suppliers() {
     </div>
   );
 }
-
-
-
-

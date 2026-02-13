@@ -35,6 +35,13 @@ import paymentsRouter from "./routes/payments";
 import geminiCreditsRouter from "./routes/geminiCredits";
 import antigravityCreditsRouter from "./routes/antigravityCredits";
 import authRouter from "./routes/auth";
+import customersRouter from "./routes/customers";
+import suppliersRouter from "./routes/suppliers";
+import contactsRouter from "./routes/contacts";
+import currenciesRouter from "./routes/currencies";
+import costCentersRouter from "./routes/costCenters";
+import fixedAssetsRouter from "./routes/fixedAssets";
+import budgetsRouter from "./routes/budgets";
 import { authMiddleware } from "./auth";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,7 +66,11 @@ async function startServer() {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+          ],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "blob:"],
           connectSrc: ["'self'", "http://localhost:*", "https://*.alabasi.uk"],
@@ -95,12 +106,17 @@ async function startServer() {
     max: 20, // 20 محاولة فقط
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: "تم تجاوز الحد الأقصى لمحاولات تسجيل الدخول. يرجى المحاولة بعد 15 دقيقة." },
+    message: {
+      error:
+        "تم تجاوز الحد الأقصى لمحاولات تسجيل الدخول. يرجى المحاولة بعد 15 دقيقة.",
+    },
   });
   app.use("/api/auth/login", authLimiter);
 
   // 4. Morgan - تسجيل الطلبات مع تنسيق مخصص
-  app.use(morgan(":method :url :status :response-time ms - :res[content-length]"));
+  app.use(
+    morgan(":method :url :status :response-time ms - :res[content-length]")
+  );
 
   // 5. Compression - ضغط الاستجابات
   app.use(compression());
@@ -158,7 +174,10 @@ async function startServer() {
       stats: {
         totalRequests: requestCount,
         totalErrors: errorCount,
-        errorRate: requestCount > 0 ? `${((errorCount / requestCount) * 100).toFixed(2)}%` : "0%",
+        errorRate:
+          requestCount > 0
+            ? `${((errorCount / requestCount) * 100).toFixed(2)}%`
+            : "0%",
       },
       security: {
         cors: "enabled",
@@ -166,7 +185,8 @@ async function startServer() {
         rateLimiting: "enabled",
         xssProtection: "enabled",
         compression: "enabled",
-        authentication: process.env.AUTH_ENABLED === "true" ? "enabled" : "disabled",
+        authentication:
+          process.env.AUTH_ENABLED === "true" ? "enabled" : "disabled",
       },
       responseTime: `${Date.now() - healthStart}ms`,
     });
@@ -209,24 +229,38 @@ async function startServer() {
   app.use("/api/payments", paymentsRouter);
   app.use("/api/gemini-credits", geminiCreditsRouter);
   app.use("/api/antigravity-credits", antigravityCreditsRouter);
+  app.use("/api/customers", customersRouter);
+  app.use("/api/suppliers", suppliersRouter);
+  app.use("/api/contacts", contactsRouter);
+  app.use("/api/currencies", currenciesRouter);
+  app.use("/api/cost-centers", costCentersRouter);
+  app.use("/api/fixed-assets", fixedAssetsRouter);
+  app.use("/api/budgets", budgetsRouter);
 
   // ===== Global Error Handling Middleware =====
-  app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    errorCount++;
-    const statusCode = err.statusCode || 500;
+  app.use(
+    (
+      err: any,
+      req: express.Request,
+      res: express.Response,
+      _next: express.NextFunction
+    ) => {
+      errorCount++;
+      const statusCode = err.statusCode || 500;
 
-    log.error(`${req.method} ${req.url} - ${statusCode}`, {
-      error: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"],
-    });
+      log.error(`${req.method} ${req.url} - ${statusCode}`, {
+        error: err.message,
+        stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
 
-    res.status(statusCode).json({
-      error: err.message || "حدث خطأ داخلي في الخادم",
-      ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    });
-  });
+      res.status(statusCode).json({
+        error: err.message || "حدث خطأ داخلي في الخادم",
+        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+      });
+    }
+  );
 
   // Serve static files from dist/public in production
   const staticPath =
@@ -254,8 +288,12 @@ async function startServer() {
     console.log(`  📡 الخادم: http://localhost:${port}/`);
     console.log(`  🔌 API: http://localhost:${port}/api`);
     console.log(`  🏥 Health: http://localhost:${port}/api/health`);
-    console.log(`  🔐 Auth: ${process.env.AUTH_ENABLED === "true" ? "مفعّل" : "معطّل (AUTH_ENABLED=true لتفعيله)"}`);
-    console.log(`  🔒 CORS ✓ | Helmet ✓ | Rate Limit ✓ | XSS ✓ | Compression ✓`);
+    console.log(
+      `  🔐 Auth: ${process.env.AUTH_ENABLED === "true" ? "مفعّل" : "معطّل (AUTH_ENABLED=true لتفعيله)"}`
+    );
+    console.log(
+      `  🔒 CORS ✓ | Helmet ✓ | Rate Limit ✓ | XSS ✓ | Compression ✓`
+    );
     console.log(`${"=".repeat(60)}\n`);
   });
 
@@ -280,12 +318,15 @@ async function startServer() {
   process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
   // معالجة الأخطاء غير المتوقعة
-  process.on("uncaughtException", (error) => {
-    log.error("Uncaught Exception", { error: error.message, stack: error.stack });
+  process.on("uncaughtException", error => {
+    log.error("Uncaught Exception", {
+      error: error.message,
+      stack: error.stack,
+    });
     process.exit(1);
   });
 
-  process.on("unhandledRejection", (reason) => {
+  process.on("unhandledRejection", reason => {
     log.error("Unhandled Rejection", { reason: String(reason) });
   });
 }
@@ -314,7 +355,7 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
-startServer().catch((error) => {
+startServer().catch(error => {
   log.error("Failed to start server", { error: error.message });
   process.exit(1);
 });

@@ -1,14 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Download, MoreHorizontal, Phone, Mail, Save, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Download,
+  MoreHorizontal,
+  Phone,
+  Mail,
+  Save,
+  Pencil,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,65 +50,61 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-
-// Initial clean data
-const initialCustomers: any[] = [];
-const initialSuppliers: any[] = [];
+import { customersApi, suppliersApi, contactsApi } from "@/lib/api";
 
 export default function Contacts() {
-  const { currentEntity } = useEntity();
-  
-  // Load from localStorage on mount
-  const loadFromStorage = () => {
-    try {
-      const savedCustomers = localStorage.getItem('customers');
-      const _savedSuppliers = localStorage.getItem('suppliers');
-      if (savedCustomers) {
-        return JSON.parse(savedCustomers);
-      }
-      return initialCustomers;
-    } catch {
-      return initialCustomers;
-    }
-  };
-
-  const loadSuppliersFromStorage = () => {
-    try {
-      const savedSuppliers = localStorage.getItem('suppliers');
-      if (savedSuppliers) {
-        return JSON.parse(savedSuppliers);
-      }
-      return initialSuppliers;
-    } catch {
-      return initialSuppliers;
-    }
-  };
-
-  const [customers, setCustomers] = useState(loadFromStorage);
-  const [suppliers, setSuppliers] = useState(loadSuppliersFromStorage);
+  const { currentEntity, getThemeColor } = useEntity();
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("customers");
-  
-  const [isNewContactOpen, setIsNewContactOpen] = useState(false);
-  const [isEditContactOpen, setIsEditContactOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Reload contacts when entity changes
-  const reloadContacts = useCallback(() => {
-    setCustomers(loadFromStorage());
-    setSuppliers(loadSuppliersFromStorage());
-  }, []);
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    contactType: "customer",
+    taxNumber: "",
+    status: "active",
+  });
+
+  const loadData = useCallback(async () => {
+    if (!currentEntity) return;
+    setIsLoading(true);
+    try {
+      const [custRes, suppRes, contRes] = await Promise.all([
+        customersApi.getAll({ entityId: currentEntity.id }).catch(() => []),
+        suppliersApi.getAll({ entityId: currentEntity.id }).catch(() => []),
+        contactsApi.getAll({ entityId: currentEntity.id }).catch(() => []),
+      ]);
+      setCustomers(
+        Array.isArray(custRes) ? custRes : (custRes as any)?.data || []
+      );
+      setSuppliers(
+        Array.isArray(suppRes) ? suppRes : (suppRes as any)?.data || []
+      );
+      setContacts(
+        Array.isArray(contRes) ? contRes : (contRes as any)?.data || []
+      );
+    } catch {
+      setCustomers([]);
+      setSuppliers([]);
+      setContacts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentEntity]);
 
   useEffect(() => {
-    reloadContacts();
-  }, [currentEntity, reloadContacts]);
-
-  const [newContact, setNewContact] = useState({
-    name: "",
-    type: "شركة",
-    email: "",
-    phone: "",
-    category: "customer" // customer or supplier
-  });
+    loadData();
+  }, [loadData]);
 
   if (!currentEntity) {
     return (
@@ -108,117 +114,284 @@ export default function Contacts() {
     );
   }
 
-
-  // Filter contacts based on current entity
-  const visibleCustomers = customers.filter((c: any) => {
-    if (currentEntity.type === 'holding') return true;
-    return c.entityId === currentEntity.id;
-  });
-
-  const visibleSuppliers = suppliers.filter((s: any) => {
-    if (currentEntity.type === 'holding') return true;
-    return s.entityId === currentEntity.id;
-  });
-
-  const handleAddContact = () => {
-    if (!newContact.name || !newContact.phone) {
-      toast.error("يرجى تعبئة الاسم ورقم الهاتف");
-      return;
-    }
-
-    const contact = {
-      id: newContact.category === "customer" 
-        ? `CUS-${String(customers.length + 1).padStart(3, '0')}`
-        : `SUP-${String(suppliers.length + 1).padStart(3, '0')}`,
-      entityId: currentEntity.id, // Associate with current entity
-      name: newContact.name,
-      type: newContact.type,
-      email: newContact.email,
-      phone: newContact.phone,
-      balance: 0.00,
-      status: "active"
-    };
-
-    if (newContact.category === "customer") {
-      const updatedCustomers = [...customers, contact];
-      setCustomers(updatedCustomers);
-      // Save to localStorage
-      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-      toast.success("تم إضافة العميل بنجاح");
-    } else {
-      const updatedSuppliers = [...suppliers, contact];
-      setSuppliers(updatedSuppliers);
-      // Save to localStorage
-      localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
-      toast.success("تم إضافة المورد بنجاح");
-    }
-
-    setIsNewContactOpen(false);
-    setNewContact({
+  const resetForm = () => {
+    setFormData({
       name: "",
-      type: "شركة",
-      email: "",
       phone: "",
-      category: activeTab === "customers" ? "customer" : "supplier"
+      email: "",
+      address: "",
+      contactType: "customer",
+      taxNumber: "",
+      status: "active",
     });
   };
 
-  const handleEditContact = () => {
-    if (!editingContact || !editingContact.name) {
+  const handleAdd = async () => {
+    if (!formData.name) {
       toast.error("يرجى إدخال الاسم");
       return;
     }
-
-    if (activeTab === "customers") {
-      const updatedCustomers = customers.map((c: any) => 
-        c.id === editingContact.id ? editingContact : c
-      );
-      setCustomers(updatedCustomers);
-      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-      toast.success("تم تحديث بيانات العميل بنجاح");
-    } else {
-      const updatedSuppliers = suppliers.map((s: any) => 
-        s.id === editingContact.id ? editingContact : s
-      );
-      setSuppliers(updatedSuppliers);
-      localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
-      toast.success("تم تحديث بيانات المورد بنجاح");
-    }
-    
-    setIsEditContactOpen(false);
-    setEditingContact(null);
-  };
-
-  const handleDeleteCustomer = (id: string) => {
-    if (confirm("هل أنت متأكد من حذف هذا العميل؟")) {
-      const updatedCustomers = customers.filter((c: any) => c.id !== id);
-      setCustomers(updatedCustomers);
-      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-      toast.success("تم حذف العميل بنجاح");
+    setIsSaving(true);
+    try {
+      const payload = { ...formData, entityId: currentEntity.id };
+      if (formData.contactType === "customer") {
+        await customersApi.create(payload);
+      } else if (formData.contactType === "supplier") {
+        await suppliersApi.create(payload);
+      } else {
+        await contactsApi.create(payload);
+      }
+      toast.success("تمت الإضافة بنجاح");
+      setIsAddOpen(false);
+      resetForm();
+      loadData();
+    } catch {
+      toast.error("فشلت الإضافة");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDeleteSupplier = (id: string) => {
-    if (confirm("هل أنت متأكد من حذف هذا المورد؟")) {
-      const updatedSuppliers = suppliers.filter((s: any) => s.id !== id);
-      setSuppliers(updatedSuppliers);
-      localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
-      toast.success("تم حذف المورد بنجاح");
+  const handleEdit = (item: any, type: string) => {
+    setEditingItem({ ...item, contactType: type });
+    setFormData({
+      name: item.name || "",
+      phone: item.phone || "",
+      email: item.email || "",
+      address: item.address || "",
+      contactType: type,
+      taxNumber: item.taxNumber || "",
+      status: item.status || "active",
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingItem) return;
+    setIsSaving(true);
+    try {
+      const payload = { ...formData };
+      if (editingItem.contactType === "customer") {
+        await customersApi.update(editingItem.id, payload);
+      } else if (editingItem.contactType === "supplier") {
+        await suppliersApi.update(editingItem.id, payload);
+      } else {
+        await contactsApi.update(editingItem.id, payload);
+      }
+      toast.success("تم التحديث بنجاح");
+      setIsEditOpen(false);
+      setEditingItem(null);
+      resetForm();
+      loadData();
+    } catch {
+      toast.error("فشل التحديث");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const openEditDialog = (contact: any) => {
-    setEditingContact({ ...contact });
-    setIsEditContactOpen(true);
+  const handleDelete = async (id: string, type: string) => {
+    if (!confirm("هل أنت متأكد من الحذف؟")) return;
+    try {
+      if (type === "customer") {
+        await customersApi.delete(id);
+      } else if (type === "supplier") {
+        await suppliersApi.delete(id);
+      } else {
+        await contactsApi.delete(id);
+      }
+      toast.success("تم الحذف بنجاح");
+      loadData();
+    } catch {
+      toast.error("فشل الحذف");
+    }
   };
+
+  const filterItems = (items: any[]) =>
+    items.filter(
+      (item: any) =>
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.phone?.includes(searchTerm) ||
+        item.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+  const renderTable = (items: any[], type: string) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>الاسم</TableHead>
+          <TableHead>الهاتف</TableHead>
+          <TableHead>البريد</TableHead>
+          <TableHead>العنوان</TableHead>
+          <TableHead>الرقم الضريبي</TableHead>
+          <TableHead>الحالة</TableHead>
+          <TableHead className="text-left">إجراءات</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {isLoading ? (
+          <TableRow>
+            <TableCell colSpan={7} className="text-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+            </TableCell>
+          </TableRow>
+        ) : filterItems(items).length === 0 ? (
+          <TableRow>
+            <TableCell
+              colSpan={7}
+              className="text-center py-8 text-muted-foreground"
+            >
+              لا توجد بيانات. قم بإضافة جديد.
+            </TableCell>
+          </TableRow>
+        ) : (
+          filterItems(items).map((item: any) => (
+            <TableRow key={item.id} className="hover:bg-muted/50">
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${item.name}`}
+                    />
+                    <AvatarFallback>{item.name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-semibold">{item.name}</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                {item.phone && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <Phone className="w-3 h-3" />
+                    {item.phone}
+                  </div>
+                )}
+              </TableCell>
+              <TableCell>
+                {item.email && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <Mail className="w-3 h-3" />
+                    {item.email}
+                  </div>
+                )}
+              </TableCell>
+              <TableCell className="text-sm">{item.address || "-"}</TableCell>
+              <TableCell className="text-sm">{item.taxNumber || "-"}</TableCell>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={
+                    item.status === "active"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-700"
+                  }
+                >
+                  {item.status === "active" ? "نشط" : "غير نشط"}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-left">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleEdit(item, type)}>
+                      <Pencil className="w-4 h-4 ml-2" />
+                      تعديل
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDelete(item.id, type)}
+                    >
+                      <Trash2 className="w-4 h-4 ml-2" />
+                      حذف
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  );
+
+  const formFields = (
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">الاسم *</Label>
+        <Input
+          value={formData.name}
+          onChange={e => setFormData({ ...formData, name: e.target.value })}
+          className="col-span-3"
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">الهاتف</Label>
+        <Input
+          value={formData.phone}
+          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+          className="col-span-3"
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">البريد</Label>
+        <Input
+          type="email"
+          value={formData.email}
+          onChange={e => setFormData({ ...formData, email: e.target.value })}
+          className="col-span-3"
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">العنوان</Label>
+        <Input
+          value={formData.address}
+          onChange={e => setFormData({ ...formData, address: e.target.value })}
+          className="col-span-3"
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">الرقم الضريبي</Label>
+        <Input
+          value={formData.taxNumber}
+          onChange={e =>
+            setFormData({ ...formData, taxNumber: e.target.value })
+          }
+          className="col-span-3"
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">الحالة</Label>
+        <Select
+          value={formData.status}
+          onValueChange={v => setFormData({ ...formData, status: v })}
+        >
+          <SelectTrigger className="col-span-3">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">نشط</SelectItem>
+            <SelectItem value="inactive">غير نشط</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">العملاء والموردين</h2>
+          <h2 className="text-3xl font-bold tracking-tight">جهات الاتصال</h2>
           <p className="text-muted-foreground mt-1">
-            إدارة بيانات الاتصال والأرصدة لـ <span className="font-bold text-primary">{currentEntity.name}</span>
+            إدارة العملاء والموردين لـ{" "}
+            <span className="font-bold" style={{ color: getThemeColor() }}>
+              {currentEntity.name}
+            </span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -226,134 +399,51 @@ export default function Contacts() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          
-          <Dialog open={isNewContactOpen} onOpenChange={setIsNewContactOpen}>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" onClick={() => setNewContact({...newContact, category: activeTab === "customers" ? "customer" : "supplier"})}>
+              <Button size="sm" style={{ backgroundColor: getThemeColor() }}>
                 <Plus className="w-4 h-4 ml-2" />
-                جهة اتصال جديدة
+                إضافة جديد
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>إضافة جهة اتصال جديدة</DialogTitle>
+                <DialogTitle>إضافة جهة اتصال</DialogTitle>
                 <DialogDescription>
-                  سيتم إضافة جهة الاتصال إلى: <span className="font-bold">{currentEntity.name}</span>
+                  إضافة عميل أو مورد أو جهة اتصال
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">التصنيف</Label>
-                  <Select 
-                    value={newContact.category} 
-                    onValueChange={(v) => setNewContact({...newContact, category: v})}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر التصنيف" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="customer">عميل</SelectItem>
-                      <SelectItem value="supplier">مورد</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">الاسم</Label>
-                  <Input 
-                    id="name" 
-                    value={newContact.name}
-                    onChange={(e) => setNewContact({...newContact, name: e.target.value})}
-                    className="col-span-3" 
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="type" className="text-right">النوع</Label>
-                  <Select 
-                    value={newContact.type} 
-                    onValueChange={(v) => setNewContact({...newContact, type: v})}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="اختر النوع" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="شركة">شركة</SelectItem>
-                      <SelectItem value="مؤسسة">مؤسسة</SelectItem>
-                      <SelectItem value="فرد">فرد</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">الهاتف</Label>
-                  <Input 
-                    id="phone" 
-                    value={newContact.phone}
-                    onChange={(e) => setNewContact({...newContact, phone: e.target.value})}
-                    className="col-span-3" 
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">البريد الإلكتروني</Label>
-                  <Input 
-                    id="email" 
-                    type="email"
-                    value={newContact.email}
-                    onChange={(e) => setNewContact({...newContact, email: e.target.value})}
-                    className="col-span-3" 
-                  />
-                </div>
+              <div className="grid grid-cols-4 items-center gap-4 pt-4">
+                <Label className="text-right">النوع</Label>
+                <Select
+                  value={formData.contactType}
+                  onValueChange={v =>
+                    setFormData({ ...formData, contactType: v })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="customer">عميل</SelectItem>
+                    <SelectItem value="supplier">مورد</SelectItem>
+                    <SelectItem value="contact">جهة اتصال</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              {formFields}
               <DialogFooter>
-                <Button onClick={handleAddContact}>
-                  <Save className="w-4 h-4 ml-2" />
-                  حفظ البيانات
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Edit Dialog */}
-          <Dialog open={isEditContactOpen} onOpenChange={setIsEditContactOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>تعديل بيانات جهة الاتصال</DialogTitle>
-                <DialogDescription>
-                  تعديل بيانات العميل أو المورد.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-name" className="text-right">الاسم</Label>
-                  <Input 
-                    id="edit-name" 
-                    value={editingContact?.name || ""}
-                    onChange={(e) => setEditingContact((prev: any) => prev ? {...prev, name: e.target.value} : null)}
-                    className="col-span-3" 
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-phone" className="text-right">الهاتف</Label>
-                  <Input 
-                    id="edit-phone" 
-                    value={editingContact?.phone || ""}
-                    onChange={(e) => setEditingContact((prev: any) => prev ? {...prev, phone: e.target.value} : null)}
-                    className="col-span-3" 
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-email" className="text-right">البريد الإلكتروني</Label>
-                  <Input 
-                    id="edit-email" 
-                    type="email"
-                    value={editingContact?.email || ""}
-                    onChange={(e) => setEditingContact((prev: any) => prev ? {...prev, email: e.target.value} : null)}
-                    className="col-span-3" 
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleEditContact}>
-                  <Save className="w-4 h-4 ml-2" />
-                  حفظ التعديلات
+                <Button
+                  onClick={handleAdd}
+                  disabled={isSaving}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 ml-2" />
+                  )}
+                  حفظ
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -361,206 +451,85 @@ export default function Contacts() {
         </div>
       </div>
 
-      <Tabs defaultValue="customers" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-          <TabsTrigger value="customers">العملاء</TabsTrigger>
-          <TabsTrigger value="suppliers">الموردين</TabsTrigger>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="bg-card p-4 rounded-lg border shadow-sm">
+          <div className="text-sm font-medium text-muted-foreground">
+            العملاء
+          </div>
+          <div className="text-2xl font-bold mt-2">{customers.length}</div>
+        </div>
+        <div className="bg-card p-4 rounded-lg border shadow-sm">
+          <div className="text-sm font-medium text-muted-foreground">
+            الموردين
+          </div>
+          <div className="text-2xl font-bold mt-2">{suppliers.length}</div>
+        </div>
+        <div className="bg-card p-4 rounded-lg border shadow-sm">
+          <div className="text-sm font-medium text-muted-foreground">
+            جهات الاتصال
+          </div>
+          <div className="text-2xl font-bold mt-2">{contacts.length}</div>
+        </div>
+      </div>
+
+      <Input
+        placeholder="بحث بالاسم أو الهاتف أو البريد..."
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
+      />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="customers">
+            العملاء ({customers.length})
+          </TabsTrigger>
+          <TabsTrigger value="suppliers">
+            الموردين ({suppliers.length})
+          </TabsTrigger>
+          <TabsTrigger value="contacts">
+            جهات الاتصال ({contacts.length})
+          </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="customers" className="mt-6">
+        <TabsContent value="customers">
           <div className="rounded-md border bg-card shadow-sm overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[250px]">الاسم</TableHead>
-                  <TableHead>النوع</TableHead>
-                  <TableHead>بيانات الاتصال</TableHead>
-                  <TableHead>الرصيد</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="text-left">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleCustomers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      لا يوجد عملاء مسجلين لـ {currentEntity.name}. قم بإضافة عميل جديد.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  visibleCustomers.map((customer: any) => (
-                    <TableRow key={customer.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${customer.name}`} />
-                            <AvatarFallback>{customer.name.substring(0, 2)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col">
-                            <span>{customer.name}</span>
-                            <span className="text-xs text-muted-foreground">{customer.id}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{customer.type}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-3 h-3 text-muted-foreground" />
-                            {customer.phone}
-                          </div>
-                          {customer.email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-3 h-3 text-muted-foreground" />
-                              {customer.email}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`font-bold ${customer.balance > 0 ? 'text-emerald-600' : customer.balance < 0 ? 'text-rose-600' : ''}`}>
-                          {customer.balance.toLocaleString()} ر.ي
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                          {customer.status === 'active' ? 'نشط' : 'غير نشط'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                            <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                            <DropdownMenuItem>إنشاء فاتورة</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => openEditDialog(customer)}>
-                              <Pencil className="w-4 h-4 ml-2" />
-                              تعديل البيانات
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteCustomer(customer.id)}
-                            >
-                              <Trash2 className="w-4 h-4 ml-2" />
-                              حذف
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            {renderTable(customers, "customer")}
           </div>
         </TabsContent>
-        
-        <TabsContent value="suppliers" className="mt-6">
+        <TabsContent value="suppliers">
           <div className="rounded-md border bg-card shadow-sm overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[250px]">الاسم</TableHead>
-                  <TableHead>النوع</TableHead>
-                  <TableHead>بيانات الاتصال</TableHead>
-                  <TableHead>الرصيد</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead className="text-left">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleSuppliers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      لا يوجد موردين مسجلين لـ {currentEntity.name}. قم بإضافة مورد جديد.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  visibleSuppliers.map((supplier: any) => (
-                    <TableRow key={supplier.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${supplier.name}`} />
-                            <AvatarFallback>{supplier.name.substring(0, 2)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col">
-                            <span>{supplier.name}</span>
-                            <span className="text-xs text-muted-foreground">{supplier.id}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{supplier.type}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-3 h-3 text-muted-foreground" />
-                            {supplier.phone}
-                          </div>
-                          {supplier.email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-3 h-3 text-muted-foreground" />
-                              {supplier.email}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`font-bold ${supplier.balance > 0 ? 'text-rose-600' : supplier.balance < 0 ? 'text-emerald-600' : ''}`}>
-                          {supplier.balance.toLocaleString()} ر.ي
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                          {supplier.status === 'active' ? 'نشط' : 'غير نشط'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                            <DropdownMenuItem>كشف حساب</DropdownMenuItem>
-                            <DropdownMenuItem>إنشاء أمر شراء</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => openEditDialog(supplier)}>
-                              <Pencil className="w-4 h-4 ml-2" />
-                              تعديل البيانات
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteSupplier(supplier.id)}
-                            >
-                              <Trash2 className="w-4 h-4 ml-2" />
-                              حذف
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            {renderTable(suppliers, "supplier")}
+          </div>
+        </TabsContent>
+        <TabsContent value="contacts">
+          <div className="rounded-md border bg-card shadow-sm overflow-hidden">
+            {renderTable(contacts, "contact")}
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تعديل</DialogTitle>
+            <DialogDescription>تحديث بيانات جهة الاتصال</DialogDescription>
+          </DialogHeader>
+          {formFields}
+          <DialogFooter>
+            <Button
+              onClick={handleUpdate}
+              disabled={isSaving}
+              style={{ backgroundColor: getThemeColor() }}
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 ml-2" />
+              )}
+              حفظ التغييرات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

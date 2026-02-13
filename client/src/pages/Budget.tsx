@@ -1,14 +1,27 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Download, MoreHorizontal, Coins, Calendar, TrendingUp, TrendingDown, Save, Pencil, Trash2, FileText } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Download,
+  MoreHorizontal,
+  Coins,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  Save,
+  Pencil,
+  Trash2,
+  FileText,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,10 +49,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-import { accountsApi } from "@/lib/api";
+import { accountsApi, budgetsApi } from "@/lib/api";
 
 interface BudgetItem {
   id: string;
@@ -51,18 +64,27 @@ interface BudgetItem {
   actualAmount: number;
   variance: number;
   variancePercent: number;
-  status: 'on_track' | 'over_budget' | 'under_budget';
+  status: "on_track" | "over_budget" | "under_budget";
 }
 
-const statusMap: Record<string, { label: string, color: string }> = {
-  on_track: { label: "في المسار", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  over_budget: { label: "تجاوز الميزانية", color: "bg-rose-100 text-rose-700 border-rose-200" },
-  under_budget: { label: "أقل من الميزانية", color: "bg-amber-100 text-amber-700 border-amber-200" },
+const statusMap: Record<string, { label: string; color: string }> = {
+  on_track: {
+    label: "في المسار",
+    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  },
+  over_budget: {
+    label: "تجاوز الميزانية",
+    color: "bg-rose-100 text-rose-700 border-rose-200",
+  },
+  under_budget: {
+    label: "أقل من الميزانية",
+    color: "bg-amber-100 text-amber-700 border-amber-200",
+  },
 };
 
 export default function Budget() {
   const { currentEntity, getThemeColor } = useEntity();
-  
+
   const [budgets, setBudgets] = useState<BudgetItem[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,10 +101,44 @@ export default function Budget() {
     budgetedAmount: 0,
   });
 
+  const loadData = useCallback(async () => {
+    if (!currentEntity) return;
+    try {
+      setLoading(true);
+      const [accountsData, budgetsData] = await Promise.all([
+        accountsApi.getByEntity(currentEntity.id).catch(() => []),
+        budgetsApi.getAll({ entityId: currentEntity.id }).catch(() => []),
+      ]);
+      setAccounts(accountsData.filter((acc: any) => !acc.isGroup));
+      const budgetsList = Array.isArray(budgetsData)
+        ? budgetsData
+        : (budgetsData as any)?.data || [];
+      const enrichedBudgets = budgetsList.map((budget: any) => {
+        const account = accountsData.find(
+          (acc: any) => acc.id === budget.accountId
+        );
+        return {
+          ...budget,
+          accountName: account?.name || "غير معروف",
+          accountCode: account?.id || "",
+          budgetedAmount: Number(budget.budgetedAmount || 0),
+          actualAmount: Number(budget.actualAmount || 0),
+          variance: Number(budget.variance || 0),
+          variancePercent: Number(budget.variancePercent || 0),
+        };
+      });
+      setBudgets(enrichedBudgets);
+    } catch (error) {
+      console.error("Failed to load data:", error);
+      toast.error("فشل تحميل البيانات");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentEntity]);
+
   useEffect(() => {
     loadData();
-   
-  }, [currentEntity]);
+  }, [loadData]);
 
   if (!currentEntity) {
     return (
@@ -92,39 +148,9 @@ export default function Budget() {
     );
   }
 
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const accountsData = await accountsApi.getByEntity(currentEntity.id);
-      setAccounts(accountsData.filter((acc: any) => !acc.isGroup));
-      
-      // Load budgets from localStorage
-      const savedBudgets = localStorage.getItem(`budgets-${currentEntity.id}`);
-      if (savedBudgets) {
-        const budgetsData = JSON.parse(savedBudgets);
-        // Enrich with account names
-        const enrichedBudgets = budgetsData.map((budget: BudgetItem) => {
-          const account = accountsData.find((acc: any) => acc.id === budget.accountId);
-          return {
-            ...budget,
-            accountName: account?.name || 'غير معروف',
-            accountCode: account?.id || '',
-          };
-        });
-        setBudgets(enrichedBudgets);
-      }
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      toast.error("فشل تحميل البيانات");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getCurrentYear = () => new Date().getFullYear();
   const _getCurrentQuarter = () => Math.floor((new Date().getMonth() + 3) / 3);
-  
+
   const generatePeriods = () => {
     const periods: string[] = [];
     const currentYear = getCurrentYear();
@@ -139,19 +165,23 @@ export default function Budget() {
   const calculateVariance = (budgeted: number, actual: number) => {
     const variance = actual - budgeted;
     const variancePercent = budgeted !== 0 ? (variance / budgeted) * 100 : 0;
-    let status: 'on_track' | 'over_budget' | 'under_budget' = 'on_track';
-    
+    let status: "on_track" | "over_budget" | "under_budget" = "on_track";
+
     if (variancePercent > 10) {
-      status = 'over_budget';
+      status = "over_budget";
     } else if (variancePercent < -10) {
-      status = 'under_budget';
+      status = "under_budget";
     }
-    
+
     return { variance, variancePercent, status };
   };
 
-  const handleAddBudget = () => {
-    if (!newBudget.accountId || !newBudget.period || newBudget.budgetedAmount <= 0) {
+  const handleAddBudget = async () => {
+    if (
+      !newBudget.accountId ||
+      !newBudget.period ||
+      newBudget.budgetedAmount <= 0
+    ) {
       toast.error("يرجى تعبئة جميع الحقول المطلوبة");
       return;
     }
@@ -162,23 +192,22 @@ export default function Budget() {
       return;
     }
 
-    const budget: BudgetItem = {
-      id: `BUD-${Date.now()}`,
-      accountId: newBudget.accountId,
-      accountName: account.name,
-      accountCode: account.id,
-      period: newBudget.period,
-      budgetedAmount: newBudget.budgetedAmount,
-      actualAmount: 0, // سيتم تحديثه من البيانات الفعلية لاحقاً
-      variance: -newBudget.budgetedAmount,
-      variancePercent: -100,
-      status: 'under_budget',
-    };
-
-    const updatedBudgets = [...budgets, budget];
-    setBudgets(updatedBudgets);
-    localStorage.setItem(`budgets-${currentEntity.id}`, JSON.stringify(updatedBudgets));
-    toast.success("تم إضافة الميزانية بنجاح");
+    try {
+      await budgetsApi.create({
+        entityId: currentEntity.id,
+        accountId: newBudget.accountId,
+        period: newBudget.period,
+        budgetedAmount: String(newBudget.budgetedAmount),
+        actualAmount: "0",
+        variance: String(-newBudget.budgetedAmount),
+        variancePercent: "-100",
+        status: "under_budget",
+      });
+      toast.success("تم إضافة الميزانية بنجاح");
+      loadData();
+    } catch {
+      toast.error("فشل إضافة الميزانية");
+    }
 
     setIsNewBudgetOpen(false);
     setNewBudget({
@@ -188,8 +217,13 @@ export default function Budget() {
     });
   };
 
-  const handleEditBudget = () => {
-    if (!editingBudget || !editingBudget.accountId || !editingBudget.period || editingBudget.budgetedAmount <= 0) {
+  const handleEditBudget = async () => {
+    if (
+      !editingBudget ||
+      !editingBudget.accountId ||
+      !editingBudget.period ||
+      editingBudget.budgetedAmount <= 0
+    ) {
       toast.error("يرجى تعبئة جميع الحقول المطلوبة");
       return;
     }
@@ -214,23 +248,35 @@ export default function Budget() {
       status,
     };
 
-    const updatedBudgets = budgets.map(b => 
-      b.id === updatedBudget.id ? updatedBudget : b
-    );
-    setBudgets(updatedBudgets);
-    localStorage.setItem(`budgets-${currentEntity.id}`, JSON.stringify(updatedBudgets));
-    toast.success("تم تحديث الميزانية بنجاح");
+    try {
+      await budgetsApi.update(updatedBudget.id, {
+        accountId: updatedBudget.accountId,
+        period: updatedBudget.period,
+        budgetedAmount: String(updatedBudget.budgetedAmount),
+        actualAmount: String(updatedBudget.actualAmount),
+        variance: String(variance),
+        variancePercent: String(variancePercent),
+        status,
+      });
+      toast.success("تم تحديث الميزانية بنجاح");
+      loadData();
+    } catch {
+      toast.error("فشل تحديث الميزانية");
+    }
 
     setIsEditBudgetOpen(false);
     setEditingBudget(null);
   };
 
-  const handleDeleteBudget = (id: string) => {
+  const handleDeleteBudget = async (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذه الميزانية؟")) {
-      const updatedBudgets = budgets.filter(b => b.id !== id);
-      setBudgets(updatedBudgets);
-      localStorage.setItem(`budgets-${currentEntity.id}`, JSON.stringify(updatedBudgets));
-      toast.success("تم حذف الميزانية بنجاح");
+      try {
+        await budgetsApi.delete(id);
+        toast.success("تم حذف الميزانية بنجاح");
+        loadData();
+      } catch {
+        toast.error("فشل حذف الميزانية");
+      }
     }
   };
 
@@ -240,28 +286,42 @@ export default function Budget() {
   };
 
   const filteredBudgets = budgets.filter(budget => {
-    const matchesSearch = 
+    const matchesSearch =
       budget.accountName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       budget.accountCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       budget.period.includes(searchTerm);
-    const matchesPeriod = filterPeriod === "all" || budget.period === filterPeriod;
-    const matchesAccount = filterAccount === "all" || budget.accountId === filterAccount;
+    const matchesPeriod =
+      filterPeriod === "all" || budget.period === filterPeriod;
+    const matchesAccount =
+      filterAccount === "all" || budget.accountId === filterAccount;
     return matchesSearch && matchesPeriod && matchesAccount;
   });
 
   const periods = generatePeriods();
-  const totalBudgeted = filteredBudgets.reduce((sum, b) => sum + b.budgetedAmount, 0);
-  const totalActual = filteredBudgets.reduce((sum, b) => sum + b.actualAmount, 0);
+  const totalBudgeted = filteredBudgets.reduce(
+    (sum, b) => sum + b.budgetedAmount,
+    0
+  );
+  const totalActual = filteredBudgets.reduce(
+    (sum, b) => sum + b.actualAmount,
+    0
+  );
   const totalVariance = totalActual - totalBudgeted;
-  const totalVariancePercent = totalBudgeted !== 0 ? (totalVariance / totalBudgeted) * 100 : 0;
+  const totalVariancePercent =
+    totalBudgeted !== 0 ? (totalVariance / totalBudgeted) * 100 : 0;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">الموازنة التقديرية</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            الموازنة التقديرية
+          </h2>
           <p className="text-muted-foreground mt-1">
-            إدارة الميزانيات التقديرية لـ <span className="font-bold" style={{ color: getThemeColor() }}>{currentEntity.name}</span>
+            إدارة الميزانيات التقديرية لـ{" "}
+            <span className="font-bold" style={{ color: getThemeColor() }}>
+              {currentEntity.name}
+            </span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -269,7 +329,7 @@ export default function Budget() {
             <Download className="w-4 h-4 ml-2" />
             تصدير
           </Button>
-          
+
           <Dialog open={isNewBudgetOpen} onOpenChange={setIsNewBudgetOpen}>
             <DialogTrigger asChild>
               <Button size="sm" style={{ backgroundColor: getThemeColor() }}>
@@ -289,13 +349,15 @@ export default function Budget() {
                   <Label>الحساب *</Label>
                   <Select
                     value={newBudget.accountId}
-                    onValueChange={(value) => setNewBudget({ ...newBudget, accountId: value })}
+                    onValueChange={value =>
+                      setNewBudget({ ...newBudget, accountId: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="اختر الحساب" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accounts.map((account) => (
+                      {accounts.map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.id} - {account.name}
                         </SelectItem>
@@ -307,13 +369,15 @@ export default function Budget() {
                   <Label>الفترة الزمنية *</Label>
                   <Select
                     value={newBudget.period}
-                    onValueChange={(value) => setNewBudget({ ...newBudget, period: value })}
+                    onValueChange={value =>
+                      setNewBudget({ ...newBudget, period: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="اختر الفترة" />
                     </SelectTrigger>
                     <SelectContent>
-                      {periods.map((period) => (
+                      {periods.map(period => (
                         <SelectItem key={period} value={period}>
                           {period}
                         </SelectItem>
@@ -326,14 +390,22 @@ export default function Budget() {
                   <Input
                     type="number"
                     value={newBudget.budgetedAmount}
-                    onChange={(e) => setNewBudget({ ...newBudget, budgetedAmount: parseFloat(e.target.value) || 0 })}
+                    onChange={e =>
+                      setNewBudget({
+                        ...newBudget,
+                        budgetedAmount: parseFloat(e.target.value) || 0,
+                      })
+                    }
                     min="0"
                     placeholder="0.00"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddBudget} style={{ backgroundColor: getThemeColor() }}>
+                <Button
+                  onClick={handleAddBudget}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
                   <Save className="w-4 h-4 ml-2" />
                   حفظ
                 </Button>
@@ -345,22 +417,24 @@ export default function Budget() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>تعديل الميزانية</DialogTitle>
-                <DialogDescription>
-                  تعديل الميزانية التقديرية
-                </DialogDescription>
+                <DialogDescription>تعديل الميزانية التقديرية</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label>الحساب *</Label>
                   <Select
                     value={editingBudget?.accountId || ""}
-                    onValueChange={(value) => setEditingBudget((prev) => prev ? {...prev, accountId: value} : null)}
+                    onValueChange={value =>
+                      setEditingBudget(prev =>
+                        prev ? { ...prev, accountId: value } : null
+                      )
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="اختر الحساب" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accounts.map((account) => (
+                      {accounts.map(account => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.id} - {account.name}
                         </SelectItem>
@@ -372,13 +446,17 @@ export default function Budget() {
                   <Label>الفترة الزمنية *</Label>
                   <Select
                     value={editingBudget?.period || ""}
-                    onValueChange={(value) => setEditingBudget((prev) => prev ? {...prev, period: value} : null)}
+                    onValueChange={value =>
+                      setEditingBudget(prev =>
+                        prev ? { ...prev, period: value } : null
+                      )
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="اختر الفترة" />
                     </SelectTrigger>
                     <SelectContent>
-                      {periods.map((period) => (
+                      {periods.map(period => (
                         <SelectItem key={period} value={period}>
                           {period}
                         </SelectItem>
@@ -391,7 +469,16 @@ export default function Budget() {
                   <Input
                     type="number"
                     value={editingBudget?.budgetedAmount || 0}
-                    onChange={(e) => setEditingBudget((prev) => prev ? {...prev, budgetedAmount: parseFloat(e.target.value) || 0} : null)}
+                    onChange={e =>
+                      setEditingBudget(prev =>
+                        prev
+                          ? {
+                              ...prev,
+                              budgetedAmount: parseFloat(e.target.value) || 0,
+                            }
+                          : null
+                      )
+                    }
                     min="0"
                   />
                 </div>
@@ -400,13 +487,25 @@ export default function Budget() {
                   <Input
                     type="number"
                     value={editingBudget?.actualAmount || 0}
-                    onChange={(e) => setEditingBudget((prev) => prev ? {...prev, actualAmount: parseFloat(e.target.value) || 0} : null)}
+                    onChange={e =>
+                      setEditingBudget(prev =>
+                        prev
+                          ? {
+                              ...prev,
+                              actualAmount: parseFloat(e.target.value) || 0,
+                            }
+                          : null
+                      )
+                    }
                     min="0"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleEditBudget} style={{ backgroundColor: getThemeColor() }}>
+                <Button
+                  onClick={handleEditBudget}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
                   <Save className="w-4 h-4 ml-2" />
                   حفظ التعديلات
                 </Button>
@@ -421,8 +520,12 @@ export default function Budget() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">إجمالي الميزانية</p>
-              <h3 className="text-2xl font-bold mt-1">{totalBudgeted.toLocaleString()} ر.س</h3>
+              <p className="text-sm font-medium text-muted-foreground">
+                إجمالي الميزانية
+              </p>
+              <h3 className="text-2xl font-bold mt-1">
+                {totalBudgeted.toLocaleString()} ر.س
+              </h3>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
               <Coins className="w-6 h-6" />
@@ -432,8 +535,12 @@ export default function Budget() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">الإجمالي الفعلي</p>
-              <h3 className="text-2xl font-bold mt-1">{totalActual.toLocaleString()} ر.س</h3>
+              <p className="text-sm font-medium text-muted-foreground">
+                الإجمالي الفعلي
+              </p>
+              <h3 className="text-2xl font-bold mt-1">
+                {totalActual.toLocaleString()} ر.س
+              </h3>
             </div>
             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
               <FileText className="w-6 h-6" />
@@ -443,21 +550,35 @@ export default function Budget() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">الانحراف</p>
-              <h3 className={`text-2xl font-bold mt-1 ${totalVariance >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+              <p className="text-sm font-medium text-muted-foreground">
+                الانحراف
+              </p>
+              <h3
+                className={`text-2xl font-bold mt-1 ${totalVariance >= 0 ? "text-rose-600" : "text-emerald-600"}`}
+              >
                 {totalVariance.toLocaleString()} ر.س
               </h3>
             </div>
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${totalVariance >= 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-              {totalVariance >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+            <div
+              className={`w-12 h-12 rounded-full flex items-center justify-center ${totalVariance >= 0 ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"}`}
+            >
+              {totalVariance >= 0 ? (
+                <TrendingUp className="w-6 h-6" />
+              ) : (
+                <TrendingDown className="w-6 h-6" />
+              )}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">نسبة الانحراف</p>
-              <h3 className={`text-2xl font-bold mt-1 ${Math.abs(totalVariancePercent) > 10 ? 'text-rose-600' : 'text-emerald-600'}`}>
+              <p className="text-sm font-medium text-muted-foreground">
+                نسبة الانحراف
+              </p>
+              <h3
+                className={`text-2xl font-bold mt-1 ${Math.abs(totalVariancePercent) > 10 ? "text-rose-600" : "text-emerald-600"}`}
+              >
                 {totalVariancePercent.toFixed(1)}%
               </h3>
             </div>
@@ -474,11 +595,11 @@ export default function Budget() {
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="relative w-full sm:w-96">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                placeholder="بحث بالحساب أو الفترة..." 
+              <Input
+                placeholder="بحث بالحساب أو الفترة..."
                 className="pr-9"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
@@ -488,7 +609,7 @@ export default function Budget() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع الفترات</SelectItem>
-                  {periods.map((period) => (
+                  {periods.map(period => (
                     <SelectItem key={period} value={period}>
                       {period}
                     </SelectItem>
@@ -501,7 +622,7 @@ export default function Budget() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع الحسابات</SelectItem>
-                  {accounts.map((account) => (
+                  {accounts.map(account => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.id} - {account.name}
                     </SelectItem>
@@ -540,32 +661,53 @@ export default function Budget() {
                 </TableRow>
               ) : filteredBudgets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={8}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     لا توجد ميزانيات مسجلة. قم بإضافة ميزانية جديدة للبدء.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredBudgets.map((budget) => {
+                filteredBudgets.map(budget => {
                   const status = statusMap[budget.status];
                   return (
-                    <TableRow key={budget.id} className="hover:bg-muted/50 transition-colors">
+                    <TableRow
+                      key={budget.id}
+                      className="hover:bg-muted/50 transition-colors"
+                    >
                       <TableCell>
                         <div>
                           <p className="font-semibold">{budget.accountName}</p>
-                          <p className="text-xs text-muted-foreground">{budget.accountCode}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {budget.accountCode}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>{budget.period}</TableCell>
-                      <TableCell className="font-medium">{budget.budgetedAmount.toLocaleString()} ر.س</TableCell>
-                      <TableCell className="font-medium">{budget.actualAmount.toLocaleString()} ر.س</TableCell>
-                      <TableCell className={`font-medium ${budget.variance >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {budget.variance >= 0 ? '+' : ''}{budget.variance.toLocaleString()} ر.س
+                      <TableCell className="font-medium">
+                        {budget.budgetedAmount.toLocaleString()} ر.س
                       </TableCell>
-                      <TableCell className={`font-medium ${Math.abs(budget.variancePercent) > 10 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {budget.variancePercent >= 0 ? '+' : ''}{budget.variancePercent.toFixed(1)}%
+                      <TableCell className="font-medium">
+                        {budget.actualAmount.toLocaleString()} ر.س
+                      </TableCell>
+                      <TableCell
+                        className={`font-medium ${budget.variance >= 0 ? "text-rose-600" : "text-emerald-600"}`}
+                      >
+                        {budget.variance >= 0 ? "+" : ""}
+                        {budget.variance.toLocaleString()} ر.س
+                      </TableCell>
+                      <TableCell
+                        className={`font-medium ${Math.abs(budget.variancePercent) > 10 ? "text-rose-600" : "text-emerald-600"}`}
+                      >
+                        {budget.variancePercent >= 0 ? "+" : ""}
+                        {budget.variancePercent.toFixed(1)}%
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`${status.color} font-normal`}>
+                        <Badge
+                          variant="outline"
+                          className={`${status.color} font-normal`}
+                        >
                           {status.label}
                         </Badge>
                       </TableCell>
@@ -578,12 +720,14 @@ export default function Budget() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => openEditDialog(budget)}>
+                            <DropdownMenuItem
+                              onClick={() => openEditDialog(budget)}
+                            >
                               <Pencil className="w-4 h-4 ml-2" />
                               تعديل
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleDeleteBudget(budget.id)}
                             >
@@ -604,7 +748,3 @@ export default function Budget() {
     </div>
   );
 }
-
-
-
-

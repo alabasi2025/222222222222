@@ -1,3 +1,4 @@
+/* global localStorage, window, CustomEvent, console */
 // Script to add custom account types to Hodeidah unit
 // Run this in browser console when on the AccountTypes page with UNIT-001 selected
 

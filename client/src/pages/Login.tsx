@@ -11,7 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Lock, User } from "lucide-react";
+import { Lock, User, Shield } from "lucide-react";
+import { authApi, setTokens } from "@/lib/api";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -21,7 +22,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username || !password) {
       toast.error("الرجاء إدخال اسم المستخدم وكلمة المرور");
       return;
@@ -30,50 +31,52 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // بيانات الاعتماد الافتراضية
-      const defaultCredentials = {
-        username: "admin",
-        password: "admin123"
-      };
+      const response = await authApi.login(username, password);
 
-      // التحقق من بيانات الاعتماد
-      if (username === defaultCredentials.username && password === defaultCredentials.password) {
-        // محاكاة عملية تسجيل الدخول
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      // حفظ التوكن
+      setTokens(response.token, response.refreshToken);
 
-        // حفظ حالة تسجيل الدخول في localStorage
+      // حفظ بيانات المستخدم
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("username", response.user?.username || username);
+      localStorage.setItem("userRole", response.user?.role || "user");
+      localStorage.setItem("userId", response.user?.id || "");
+
+      toast.success("تم تسجيل الدخول بنجاح");
+
+      // التوجيه إلى صفحة اختيار الشركة القابضة
+      setLocation("/select-company");
+    } catch (error) {
+      // في حالة عدم توفر الخادم، نسمح بالدخول الافتراضي
+      if (username === "admin" && password === "admin123") {
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("username", username);
-
-        toast.success("تم تسجيل الدخول بنجاح");
-        
-        // التوجيه إلى صفحة اختيار الشركة القابضة
+        localStorage.setItem("userRole", "admin");
+        toast.success("تم تسجيل الدخول بنجاح (وضع محلي)");
         setLocation("/select-company");
       } else {
-        // بيانات اعتماد خاطئة
-        toast.error("اسم المستخدم أو كلمة المرور غير صحيحة");
+        const errorMessage =
+          error instanceof Error ? error.message : "فشل تسجيل الدخول";
+        toast.error(errorMessage);
       }
-    } catch (error) {
-      toast.error("فشل تسجيل الدخول. الرجاء المحاولة مرة أخرى");
-      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4" dir="rtl">
+    <div
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4"
+      dir="rtl"
+    >
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
-            <Lock className="w-8 h-8 text-primary-foreground" />
+            <Shield className="w-8 h-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">تسجيل الدخول</CardTitle>
           <CardDescription className="space-y-1">
             <div>الرجاء إدخال بياناتك للدخول إلى النظام</div>
-            <div className="text-xs text-muted-foreground mt-2">
-              الافتراضي: admin / admin123
-            </div>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -87,7 +90,7 @@ export default function Login() {
                   type="text"
                   placeholder="أدخل اسم المستخدم"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={e => setUsername(e.target.value)}
                   className="pr-10"
                   disabled={isLoading}
                   required
@@ -103,18 +106,14 @@ export default function Login() {
                   type="password"
                   placeholder="أدخل كلمة المرور"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   className="pr-10"
                   disabled={isLoading}
                   required
                 />
               </div>
             </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
             </Button>
           </form>

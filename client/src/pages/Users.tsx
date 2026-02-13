@@ -1,14 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, MoreHorizontal, Mail, Save, Pencil, Trash2, Shield } from "lucide-react";
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Mail,
+  Save,
+  Pencil,
+  Trash2,
+  Shield,
+  Loader2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,47 +45,44 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {Avatar, AvatarFallback} from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-
-const initialUsers: any[] = [
-  {
-    id: "user-1",
-    username: "admin",
-    name: "مدير النظام",
-    email: "admin@example.com",
-    role: "admin",
-    isActive: true,
-    entityId: null,
-  }
-];
+import { authApi } from "@/lib/api";
 
 export default function Users() {
   const { currentEntity, getThemeColor } = useEntity();
-  
-  const loadFromStorage = () => {
-    try {
-      const savedUsers = localStorage.getItem('users');
-      if (savedUsers) {
-        return JSON.parse(savedUsers);
-      }
-      return initialUsers;
-    } catch {
-      return initialUsers;
-    }
-  };
 
-  const [users, setUsers] = useState(loadFromStorage);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isNewUserOpen, setIsNewUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const loadUsers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await authApi.getUsers();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch {
+      // If admin endpoint fails, try getting current user only
+      try {
+        const me = await authApi.me();
+        setUsers(me ? [me] : []);
+      } catch {
+        setUsers([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    setUsers(loadFromStorage());
-  }, [currentEntity]);
+    loadUsers();
+  }, [loadUsers, currentEntity]);
 
   const [newUser, setNewUser] = useState({
     username: "",
@@ -93,106 +100,130 @@ export default function Users() {
     );
   }
 
+  const visibleUsers = users
+    .filter((u: any) => {
+      if (currentEntity.type === "holding") return true;
+      return u.entityId === currentEntity.id || !u.entityId;
+    })
+    .filter((u: any) => {
+      const name = u.fullName || u.name || "";
+      const username = u.username || "";
+      const email = u.email || "";
+      return (
+        username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
 
-  const visibleUsers = users.filter((u: any) => {
-    if (currentEntity.type === 'holding') return true;
-    return u.entityId === currentEntity.id || !u.entityId;
-  }).filter((u: any) => 
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const handleAddUser = () => {
-    if (!newUser.username || !newUser.name || !newUser.email || !newUser.password) {
+  const handleAddUser = async () => {
+    if (
+      !newUser.username ||
+      !newUser.name ||
+      !newUser.email ||
+      !newUser.password
+    ) {
       toast.error("يرجى تعبئة جميع الحقول المطلوبة");
       return;
     }
 
-    // Check if username already exists
-    if (users.find((u: any) => u.username === newUser.username)) {
-      toast.error("اسم المستخدم موجود بالفعل");
-      return;
+    setIsSaving(true);
+    try {
+      await authApi.register({
+        username: newUser.username,
+        password: newUser.password,
+        fullName: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        entityId:
+          currentEntity.type === "holding" ? undefined : currentEntity.id,
+      });
+      toast.success("تم إضافة المستخدم بنجاح");
+      setIsNewUserOpen(false);
+      setNewUser({
+        username: "",
+        name: "",
+        email: "",
+        password: "",
+        role: "user",
+      });
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "فشل في إضافة المستخدم");
+    } finally {
+      setIsSaving(false);
     }
-
-    const user = {
-      id: `user-${Date.now()}`,
-      ...newUser,
-      entityId: currentEntity.type === 'holding' ? null : currentEntity.id,
-      isActive: true,
-    };
-
-    const updatedUsers = [...users, user];
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    toast.success("تم إضافة المستخدم بنجاح");
-    setIsNewUserOpen(false);
-    setNewUser({
-      username: "",
-      name: "",
-      email: "",
-      password: "",
-      role: "user",
-    });
   };
 
   const handleEditUser = (user: any) => {
-    setEditingUser(user);
+    setEditingUser({
+      ...user,
+      name: user.fullName || user.name || "",
+    });
     setIsEditUserOpen(true);
   };
 
-  const handleUpdateUser = () => {
-    if (!editingUser.username || !editingUser.name || !editingUser.email) {
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+    const name = editingUser.name || editingUser.fullName;
+    if (!editingUser.username || !name || !editingUser.email) {
       toast.error("يرجى تعبئة جميع الحقول المطلوبة");
       return;
     }
 
-    const updatedUsers = users.map((u: any) => 
-      u.id === editingUser.id ? { ...editingUser } : u
-    );
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    toast.success("تم تحديث المستخدم بنجاح");
-    setIsEditUserOpen(false);
-    setEditingUser(null);
+    setIsSaving(true);
+    try {
+      await authApi.updateUser(editingUser.id, {
+        fullName: name,
+        email: editingUser.email,
+        role: editingUser.role,
+        entityId: editingUser.entityId,
+      });
+      toast.success("تم تحديث المستخدم بنجاح");
+      setIsEditUserOpen(false);
+      setEditingUser(null);
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "فشل في تحديث المستخدم");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    if (userId === "user-1") {
-      toast.error("لا يمكن حذف المستخدم الافتراضي");
-      return;
+  const handleDeleteUser = async (userId: string) => {
+    // Prevent deleting yourself or default admin
+    try {
+      await authApi.updateUser(userId, { isActive: false });
+      toast.success("تم تعطيل المستخدم بنجاح");
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "فشل في حذف المستخدم");
     }
-
-    const updatedUsers = users.filter((u: any) => u.id !== userId);
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    toast.success("تم حذف المستخدم بنجاح");
   };
 
-  const handleToggleActive = (userId: string) => {
-    if (userId === "user-1") {
-      toast.error("لا يمكن تعطيل المستخدم الافتراضي");
-      return;
-    }
+  const handleToggleActive = async (userId: string) => {
+    const user = users.find((u: any) => u.id === userId);
+    if (!user) return;
 
-    const updatedUsers = users.map((u: any) => 
-      u.id === userId ? { ...u, isActive: !u.isActive } : u
-    );
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    toast.success(`تم ${updatedUsers.find((u: any) => u.id === userId)?.isActive ? 'تفعيل' : 'تعطيل'} المستخدم`);
+    try {
+      await authApi.updateUser(userId, { isActive: !user.isActive });
+      toast.success(`تم ${!user.isActive ? "تفعيل" : "تعطيل"} المستخدم`);
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "فشل في تغيير حالة المستخدم");
+    }
   };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'admin':
-        return 'مدير';
-      case 'manager':
-        return 'مدير فرع';
-      case 'user':
-        return 'مستخدم';
+      case "admin":
+        return "مدير";
+      case "manager":
+        return "مدير فرع";
+      case "accountant":
+        return "محاسب";
+      case "user":
+        return "مستخدم";
       default:
         return role;
     }
@@ -200,31 +231,46 @@ export default function Users() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'admin':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'manager':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'user':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case "admin":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      case "manager":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+      case "accountant":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+      case "user":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
     }
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    if (!name) return "??";
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
+
+  const getUserName = (user: any) =>
+    user.fullName || user.name || user.username;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">المستخدمين</h2>
-          <p className="text-muted-foreground mt-1">إدارة مستخدمي النظام والصلاحيات</p>
+          <p className="text-muted-foreground mt-1">
+            إدارة مستخدمي النظام والصلاحيات
+          </p>
         </div>
         <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
           <DialogTrigger asChild>
-            <Button style={{ backgroundColor: getThemeColor(currentEntity.id) }}>
+            <Button
+              style={{ backgroundColor: getThemeColor(currentEntity.id) }}
+            >
               <Plus className="w-4 h-4 ml-2" />
               إضافة مستخدم جديد
             </Button>
@@ -242,7 +288,9 @@ export default function Users() {
                 <Input
                   id="new-username"
                   value={newUser.username}
-                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                  onChange={e =>
+                    setNewUser({ ...newUser, username: e.target.value })
+                  }
                   placeholder="أدخل اسم المستخدم"
                 />
               </div>
@@ -251,7 +299,9 @@ export default function Users() {
                 <Input
                   id="new-name"
                   value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  onChange={e =>
+                    setNewUser({ ...newUser, name: e.target.value })
+                  }
                   placeholder="أدخل الاسم الكامل"
                 />
               </div>
@@ -261,7 +311,9 @@ export default function Users() {
                   id="new-email"
                   type="email"
                   value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  onChange={e =>
+                    setNewUser({ ...newUser, email: e.target.value })
+                  }
                   placeholder="example@domain.com"
                 />
               </div>
@@ -271,18 +323,26 @@ export default function Users() {
                   id="new-password"
                   type="password"
                   value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="أدخل كلمة المرور"
+                  onChange={e =>
+                    setNewUser({ ...newUser, password: e.target.value })
+                  }
+                  placeholder="أدخل كلمة المرور (6 أحرف على الأقل)"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-role">الصلاحية</Label>
-                <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
+                <Select
+                  value={newUser.role}
+                  onValueChange={value =>
+                    setNewUser({ ...newUser, role: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">مستخدم</SelectItem>
+                    <SelectItem value="accountant">محاسب</SelectItem>
                     <SelectItem value="manager">مدير فرع</SelectItem>
                     <SelectItem value="admin">مدير</SelectItem>
                   </SelectContent>
@@ -293,8 +353,12 @@ export default function Users() {
               <Button variant="outline" onClick={() => setIsNewUserOpen(false)}>
                 إلغاء
               </Button>
-              <Button onClick={handleAddUser}>
-                <Save className="w-4 h-4 ml-2" />
+              <Button onClick={handleAddUser} disabled={isSaving}>
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 ml-2" />
+                )}
                 حفظ
               </Button>
             </DialogFooter>
@@ -308,7 +372,7 @@ export default function Users() {
           <Input
             placeholder="بحث عن مستخدم..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
             className="pr-10"
           />
         </div>
@@ -326,30 +390,44 @@ export default function Users() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleUsers.length === 0 ? (
+            {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+                  <p className="text-muted-foreground mt-2">جاري التحميل...</p>
+                </TableCell>
+              </TableRow>
+            ) : visibleUsers.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   لا توجد مستخدمين
                 </TableCell>
               </TableRow>
             ) : (
-              visibleUsers.map(( user: any) => (
+              visibleUsers.map((user: any) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                        <AvatarFallback>
+                          {getInitials(getUserName(user))}
+                        </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-muted-foreground">@{user.username}</div>
+                        <div className="font-medium">{getUserName(user)}</div>
+                        <div className="text-sm text-muted-foreground">
+                          @{user.username}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-muted-foreground" />
-                      {user.email}
+                      {user.email || "-"}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -359,8 +437,12 @@ export default function Users() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.isActive ? "default" : "secondary"}>
-                      {user.isActive ? "نشط" : "غير نشط"}
+                    <Badge
+                      variant={
+                        user.isActive !== false ? "default" : "secondary"
+                      }
+                    >
+                      {user.isActive !== false ? "نشط" : "غير نشط"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -377,11 +459,13 @@ export default function Users() {
                           <Pencil className="w-4 h-4 ml-2" />
                           تعديل
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleActive(user.id)}>
-                          {user.isActive ? "تعطيل" : "تفعيل"}
+                        <DropdownMenuItem
+                          onClick={() => handleToggleActive(user.id)}
+                        >
+                          {user.isActive !== false ? "تعطيل" : "تفعيل"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => handleDeleteUser(user.id)}
                           className="text-destructive"
                         >
@@ -410,19 +494,29 @@ export default function Users() {
           {editingUser && (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-username">اسم المستخدم *</Label>
+                <Label htmlFor="edit-username">اسم المستخدم</Label>
                 <Input
                   id="edit-username"
                   value={editingUser.username}
-                  onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })}
+                  disabled
+                  className="bg-muted"
                 />
+                <p className="text-xs text-muted-foreground">
+                  لا يمكن تغيير اسم المستخدم
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-name">الاسم الكامل *</Label>
                 <Input
                   id="edit-name"
-                  value={editingUser.name}
-                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  value={editingUser.name || editingUser.fullName || ""}
+                  onChange={e =>
+                    setEditingUser({
+                      ...editingUser,
+                      name: e.target.value,
+                      fullName: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -430,21 +524,26 @@ export default function Users() {
                 <Input
                   id="edit-email"
                   type="email"
-                  value={editingUser.email}
-                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  value={editingUser.email || ""}
+                  onChange={e =>
+                    setEditingUser({ ...editingUser, email: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-role">الصلاحية</Label>
-                <Select 
-                  value={editingUser.role} 
-                  onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}
+                <Select
+                  value={editingUser.role}
+                  onValueChange={value =>
+                    setEditingUser({ ...editingUser, role: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">مستخدم</SelectItem>
+                    <SelectItem value="accountant">محاسب</SelectItem>
                     <SelectItem value="manager">مدير فرع</SelectItem>
                     <SelectItem value="admin">مدير</SelectItem>
                   </SelectContent>
@@ -456,8 +555,12 @@ export default function Users() {
             <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
               إلغاء
             </Button>
-            <Button onClick={handleUpdateUser}>
-              <Save className="w-4 h-4 ml-2" />
+            <Button onClick={handleUpdateUser} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 ml-2" />
+              )}
               حفظ التغييرات
             </Button>
           </DialogFooter>
