@@ -8,22 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  ArrowUpRight,
-  ArrowDownRight,
-  CreditCard,
-  Wallet,
-  Banknote,
-  AlertCircle,
-  AlertTriangle,
-  Pencil,
-  Trash2
-} from "lucide-react";
+import { Plus, Search, Filter, Download, MoreHorizontal, ArrowUpRight, ArrowDownRight, CreditCard, Wallet, Banknote, AlertCircle, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,6 +129,7 @@ export default function Payments() {
   useEffect(() => {
     loadAccounts();
     loadPayments();
+   
   }, [currentEntity?.id]);
 
   if (!currentEntity) {
@@ -297,7 +283,7 @@ export default function Payments() {
   };
 
   // Get filtered chart accounts by type and subtype (for current operation)
-  const getChartAccountsByTypeAndSubtype = (accountType?: string, accountSubtype?: string) => {
+  const _getChartAccountsByTypeAndSubtype = (accountType?: string, accountSubtype?: string) => {
     const type = accountType || currentOperation.accountType;
     const subtype = accountSubtype || currentOperation.accountSubtype;
     if (!type || !subtype) return [];
@@ -320,7 +306,7 @@ export default function Payments() {
   };
 
   // Get analytical accounts (child accounts) for selected chart account (for current operation)
-  const getAnalyticalAccounts = (chartAccountId?: string) => {
+  const _getAnalyticalAccounts = (chartAccountId?: string) => {
     const accountId = chartAccountId || currentOperation.chartAccount;
     if (!accountId) return [];
     const selectedAccount = chartAccounts.find(acc => acc.id === accountId);
@@ -921,6 +907,7 @@ export default function Payments() {
                       currentEntityId={currentEntity?.id}
                     />
 
+                    { }
                     {/* Old Form - Hidden for now */}
                     {false && (
                     <Card id="operation-form" className="p-6 bg-amber-50/50 border-2 border-dashed border-amber-300 shadow-sm rounded-lg">
@@ -1223,7 +1210,7 @@ export default function Payments() {
                     }
 
                     // Create payment voucher with all operations
-                    const selectedCashBox = cashBoxes.find(box => box.id === paymentFormData.cashBox);
+                    const _selectedCashBox = cashBoxes.find(box => box.id === paymentFormData.cashBox);
                     const totalAmount = paymentOperations.reduce((sum, op) => sum + parseFloat(op.amount || "0"), 0);
 
                     try {

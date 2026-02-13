@@ -111,7 +111,7 @@ const typeMap: Record<string, { label: string, color: string, icon: any }> = {
 export default function StockMovements() {
   const { currentEntity, getThemeColor } = useEntity();
   
-  const [, setLocation] = useLocation();
+  const [, _setLocation] = useLocation();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -142,6 +142,7 @@ export default function StockMovements() {
     if (currentEntity?.id) {
       loadData();
     }
+   
   }, [currentEntity]);
 
   const loadData = async () => {
@@ -271,6 +272,7 @@ export default function StockMovements() {
       setAvailableQuantity(0);
       setAvailablePrice(0);
     }
+   
   }, [newMovement.itemId, newMovement.warehouseId, newMovement.type]);
 
   if (!currentEntity) {
@@ -340,7 +342,7 @@ export default function StockMovements() {
       setAvailableQuantity(0);
       setAvailablePrice(0);
       loadData();
-    } catch (error) {
+    } catch {
       toast.error("فشل في تسجيل الحركة");
     }
   };

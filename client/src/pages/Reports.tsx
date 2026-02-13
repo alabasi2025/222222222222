@@ -1,13 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  FileText, 
-  PieChart, 
-  TrendingUp, 
-  BarChart3, 
-  ArrowRight,
-  Download
-} from "lucide-react";
+import { FileText, PieChart, TrendingUp, BarChart3, ArrowRight } from "lucide-react";
 
 const reports = [
   {

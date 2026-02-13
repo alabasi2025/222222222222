@@ -71,7 +71,7 @@ const customTypes: AccountType[] = [
 ];
 
 // Legacy defaultTypes for backward compatibility (only used when no entityId)
-const defaultTypes: AccountType[] = [...basicTypes, ...customTypes];
+const _defaultTypes: AccountType[] = [...basicTypes, ...customTypes];
 
 const STORAGE_KEY_PREFIX = 'account_types_';
 

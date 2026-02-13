@@ -7,16 +7,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  FileText, 
-  Download, 
-  Calendar,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  ArrowUpRight,
-  ArrowDownLeft
-} from "lucide-react";
+import { FileText, Download, AlertTriangle, CheckCircle, Clock, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 

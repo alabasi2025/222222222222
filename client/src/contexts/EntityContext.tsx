@@ -44,6 +44,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
   // Load entities from API on mount
   useEffect(() => {
     loadEntities();
+   
   }, []);
 
   const loadEntities = async () => {
@@ -102,6 +103,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.setProperty('--primary', hexToHSL(color));
     // Also update ring color for focus states
     document.documentElement.style.setProperty('--ring', hexToHSL(color));
+   
   }, [currentEntity]);
 
   // Helper to convert hex to HSL for Tailwind

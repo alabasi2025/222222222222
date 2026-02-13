@@ -56,7 +56,7 @@ import { useEntity } from "@/contexts/EntityContext";
 import { cashBoxesApi, accountsApi } from "@/lib/api";
 
 // Initial clean data
-const initialCashBoxes: any[] = [
+const _initialCashBoxes: any[] = [
   {
     id: "CB-001",
     entityId: "UNIT-001",
@@ -97,14 +97,14 @@ const initialCashBoxes: any[] = [
     lastTransaction: "-"
   }
 ];
-const recentTransactions: any[] = [];
+const _recentTransactions: any[] = [];
 
 export default function CashBoxes() {
   const { currentEntity } = useEntity();
   
   const [cashBoxes, setCashBoxes] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [isNewBoxOpen, setIsNewBoxOpen] = useState(false);
   const [isEditBoxOpen, setIsEditBoxOpen] = useState(false);
   const [editingBox, setEditingBox] = useState<any>(null);
@@ -122,6 +122,7 @@ export default function CashBoxes() {
   // Load data from API
   useEffect(() => {
     loadData();
+   
   }, [currentEntity?.id]);
 
   const loadData = async () => {
@@ -721,7 +722,7 @@ export default function CashBoxes() {
             ) : (
               visibleCashBoxes.map((box) => {
                 const currencies = box.currencies || (box.currency ? [box.currency] : ["YER", "SAR", "USD"]);
-                const currencyLabels: { [key: string]: string } = {
+                const _currencyLabels: { [key: string]: string } = {
                   YER: "ريال يمني",
                   SAR: "ريال سعودي",
                   USD: "دولار"

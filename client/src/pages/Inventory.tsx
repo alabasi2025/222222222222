@@ -8,22 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  Package,
-  AlertTriangle,
-  ArrowUpRight,
-  Pencil,
-  Trash2,
-  Eye,
-  Save,
-  Barcode,
-  Layers
-} from "lucide-react";
+import { Plus, Search, Download, MoreHorizontal, Package, AlertTriangle, ArrowUpRight, Pencil, Trash2, Eye, Save, Barcode, Layers } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +94,7 @@ export default function Inventory() {
   
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [_warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
@@ -136,6 +121,7 @@ export default function Inventory() {
 
   useEffect(() => {
     loadData();
+   
   }, [currentEntity]);
 
   if (!currentEntity) {
@@ -208,7 +194,7 @@ export default function Inventory() {
         description: "",
       });
       loadData();
-    } catch (error) {
+    } catch {
       toast.error("فشل في إضافة الصنف");
     }
   };
@@ -222,7 +208,7 @@ export default function Inventory() {
       setIsEditItemOpen(false);
       setEditingItem(null);
       loadData();
-    } catch (error) {
+    } catch {
       toast.error("فشل في تحديث الصنف");
     }
   };
@@ -234,7 +220,7 @@ export default function Inventory() {
       await inventoryApi.delete(id);
       toast.success("تم حذف الصنف بنجاح");
       loadData();
-    } catch (error) {
+    } catch {
       toast.error("فشل في حذف الصنف");
     }
   };

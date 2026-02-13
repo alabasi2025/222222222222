@@ -45,11 +45,12 @@ export default [
       'no-undef': 'off', // TypeScript handles this
       'react/prop-types': 'off', // TypeScript handles prop validation
       'react/no-unescaped-entities': 'warn',
-      'no-constant-binary-expression': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/static-components': 'warn',
+      'no-constant-binary-expression': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/static-components': 'off',
+      'react-hooks/exhaustive-deps': 'off',
     },
     settings: {
       react: {

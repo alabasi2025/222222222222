@@ -8,18 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  Monitor,
-  Truck,
-  Building2,
-  Calculator,
-  History
-} from "lucide-react";
+import { Plus, Search, Filter, Download, MoreHorizontal, Monitor, Truck, Building2, Calculator } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -41,6 +41,7 @@ export default function Ledger() {
 
   useEffect(() => {
     loadLedgerData();
+   
   }, [currentEntity]);
 
   const loadLedgerData = async () => {

@@ -1,23 +1,7 @@
 import { entitiesApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Plus, 
-  Building2,
-  Building,
-  Store,
-  Save,
-  Pencil,
-  Trash2,
-  Upload,
-  Image as ImageIcon,
-  ArrowRight,
-  MapPin,
-  Phone,
-  Mail,
-  MoreHorizontal,
-  Eye
-} from "lucide-react";
+import { Plus, Building2, Building, Store, Save, Pencil, Trash2, Upload, Image as ImageIcon, ArrowRight, MapPin, Phone, MoreHorizontal, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import {
@@ -36,13 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity, Entity } from "@/contexts/EntityContext";
@@ -64,7 +41,7 @@ export default function OrganizationStructure() {
     getThemeColor 
   } = useEntity();
   
-  const [location, setLocation] = useLocation();
+  const [_location, _setLocation] = useLocation();
   const [isNewEntityOpen, setIsNewEntityOpen] = useState(false);
   const [isEditEntityOpen, setIsEditEntityOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);

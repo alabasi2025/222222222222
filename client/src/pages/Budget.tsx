@@ -8,21 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Download, 
-  MoreHorizontal,
-  Coins,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  Save,
-  Pencil,
-  Trash2,
-  Filter,
-  FileText
-} from "lucide-react";
+import { Plus, Search, Download, MoreHorizontal, Coins, Calendar, TrendingUp, TrendingDown, Save, Pencil, Trash2, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,6 +81,7 @@ export default function Budget() {
 
   useEffect(() => {
     loadData();
+   
   }, [currentEntity]);
 
   if (!currentEntity) {
@@ -136,7 +123,7 @@ export default function Budget() {
   };
 
   const getCurrentYear = () => new Date().getFullYear();
-  const getCurrentQuarter = () => Math.floor((new Date().getMonth() + 3) / 3);
+  const _getCurrentQuarter = () => Math.floor((new Date().getMonth() + 3) / 3);
   
   const generatePeriods = () => {
     const periods: string[] = [];

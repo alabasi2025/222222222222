@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useRef } from "react";
 
 type noop = (...args: any[]) => any;

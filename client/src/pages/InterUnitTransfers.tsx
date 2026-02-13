@@ -129,7 +129,7 @@ export default function InterUnitTransfers() {
   };
 
   // الحصول على اسم الحساب
-  const getAccountName = (accountId: string) => {
+  const _getAccountName = (accountId: string) => {
     return accounts.find((a) => a.id === accountId)?.name || accountId;
   };
 

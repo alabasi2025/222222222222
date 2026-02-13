@@ -8,18 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Upload,
-  Landmark
-} from "lucide-react";
+import { Search, Filter, MoreHorizontal, CheckCircle2, XCircle, AlertCircle, Upload, Landmark } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,

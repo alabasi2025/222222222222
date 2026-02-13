@@ -9,18 +9,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  FileText,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Loader2
-} from "lucide-react";
+import { Plus, Search, Filter, Download, MoreHorizontal, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +46,7 @@ export default function JournalEntries() {
 
   useEffect(() => {
     loadJournals();
+   
   }, [currentEntity]);
 
   const loadJournals = async () => {

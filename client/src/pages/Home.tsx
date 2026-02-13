@@ -1,32 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  DollarSign, 
-  CreditCard, 
-  Activity,
-  TrendingUp,
-  TrendingDown,
-  Building2,
-  Building,
-  Store,
-  Plus,
-  Network,
-  ArrowRight,
-  ArrowLeft,
-  Wallet,
-  Receipt,
-  ShoppingCart,
-  Users,
-  FileText,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Sparkles
-} from "lucide-react";
+import { DollarSign, CreditCard, Activity, TrendingUp, TrendingDown, Building2, Building, Store, Plus, Network, ArrowLeft, Wallet, Receipt, ShoppingCart, Users, FileText, Clock, CheckCircle2, XCircle, AlertCircle, Sparkles } from "lucide-react";
 import { useEntity } from "@/contexts/EntityContext";
 
 export default function Home() {

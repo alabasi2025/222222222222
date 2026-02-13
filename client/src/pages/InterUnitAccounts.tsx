@@ -29,30 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { 
-  Building2, 
-  Wallet,
-  Edit,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  Equal,
-  AlertTriangle,
-  CheckCircle,
-  ArrowLeftRight,
-  Settings,
-  FileText
-} from "lucide-react";
+import { Building2, Wallet, Edit, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, ArrowLeftRight, FileText } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -81,9 +58,9 @@ interface InterUnitAccount {
 }
 
 export default function InterUnitAccounts() {
-  const { currentEntity, getThemeColor } = useEntity();
+  const { currentEntity: _currentEntity, getThemeColor } = useEntity();
   const { toast } = useToast();
-  const [interUnitAccounts, setInterUnitAccounts] = useState<InterUnitAccount[]>([]);
+  const [_interUnitAccounts, setInterUnitAccounts] = useState<InterUnitAccount[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +112,7 @@ export default function InterUnitAccounts() {
   };
 
   // الحصول على الوحدة المرتبطة من اسم الحساب
-  const getRelatedEntityFromAccount = (account: Account) => {
+  const _getRelatedEntityFromAccount = (account: Account) => {
     // اسم الحساب يكون مثل "جاري وحدة العباسي خاص"
     const match = account.name.match(/جاري (.+)/);
     if (match) {
@@ -146,7 +123,7 @@ export default function InterUnitAccounts() {
   };
 
   // حساب الرصيد الصافي بين وحدتين
-  const getNetBalance = (entityId: string, relatedEntityId: string) => {
+  const _getNetBalance = (entityId: string, relatedEntityId: string) => {
     const account1 = getIntercompanyAccounts().find(
       (acc) => acc.entityId === entityId && acc.name.includes(getEntityName(relatedEntityId))
     );

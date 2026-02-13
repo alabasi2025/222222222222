@@ -84,7 +84,7 @@ interface BankWalletAccount {
 }
 
 // Account interface for chart of accounts
-interface Account {
+interface _Account {
   id: string;
   name: string;
   type: string;
@@ -96,7 +96,7 @@ interface Account {
 }
 
 // Initial data for Al-Abbasi Unit
-const initialBanksWallets: BankWalletAccount[] = [];
+const _initialBanksWallets: BankWalletAccount[] = [];
 
 
 export default function BanksWallets() {
@@ -104,7 +104,7 @@ export default function BanksWallets() {
   
   const [banksWallets, setBanksWallets] = useState<BankWalletAccount[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BankWalletAccount | null>(null);
@@ -124,6 +124,7 @@ export default function BanksWallets() {
   // Load data from API
   useEffect(() => {
     loadData();
+   
   }, [currentEntity?.id]);
 
   // Load currencies from selected account when account is selected
@@ -155,6 +156,7 @@ export default function BanksWallets() {
         }
       }
     }
+   
   }, [newItem.type, accounts]);
 
   if (!currentEntity) {

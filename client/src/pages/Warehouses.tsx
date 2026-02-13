@@ -8,22 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Download, 
-  MoreHorizontal,
-  Warehouse,
-  MapPin,
-  Phone,
-  User,
-  Pencil,
-  Trash2,
-  Eye,
-  Save,
-  Package,
-  TrendingUp
-} from "lucide-react";
+import { Plus, Search, Download, MoreHorizontal, Warehouse, MapPin, User, Pencil, Trash2, Eye, Save, Package, TrendingUp } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +81,7 @@ export default function Warehouses() {
 
   useEffect(() => {
     loadData();
+   
   }, [currentEntity]);
 
   if (!currentEntity) {
@@ -148,7 +134,7 @@ export default function Warehouses() {
         type: "main",
       });
       loadData();
-    } catch (error) {
+    } catch {
       toast.error("فشل في إضافة المستودع");
     }
   };
@@ -162,7 +148,7 @@ export default function Warehouses() {
       setIsEditOpen(false);
       setEditingWarehouse(null);
       loadData();
-    } catch (error) {
+    } catch {
       toast.error("فشل في تحديث المستودع");
     }
   };
@@ -174,7 +160,7 @@ export default function Warehouses() {
       await warehousesApi.delete(id);
       toast.success("تم حذف المستودع بنجاح");
       loadData();
-    } catch (error) {
+    } catch {
       toast.error("فشل في حذف المستودع");
     }
   };

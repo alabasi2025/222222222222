@@ -8,22 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  ShoppingCart,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Truck,
-  Save,
-  Pencil,
-  Trash2,
-  Printer
-} from "lucide-react";
+import { Plus, Search, Filter, Download, MoreHorizontal, CheckCircle2, Clock, AlertCircle, Truck, Save, Pencil, Trash2, Printer } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,7 +42,7 @@ import { useEntity } from "@/contexts/EntityContext";
 import { stockMovementsApi, inventoryApi, warehousesApi, cashBoxesApi, banksWalletsApi } from "@/lib/api";
 
 // Initial clean data
-const purchases: any[] = [];
+const _purchases: any[] = [];
 
 const statusMap: Record<string, { label: string, color: string, icon: any }> = {
   received: { label: "تم الاستلام", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
@@ -95,6 +80,7 @@ export default function Purchases() {
     paymentMethod: "", // "cash", "bank", "exchange", "wallet"
     paymentAccountId: "", // ID of cash box, bank, exchange, or wallet
   });
+   
 
   useEffect(() => {
     loadData();
@@ -228,8 +214,8 @@ export default function Purchases() {
     }
 
     try {
-      const item = items.find(i => i.id === newPurchase.itemId);
-      const warehouse = warehouses.find(w => w.id === newPurchase.warehouseId);
+      const _item = items.find(i => i.id === newPurchase.itemId);
+      const _warehouse = warehouses.find(w => w.id === newPurchase.warehouseId);
 
       // Get supplier to find its chart account
       const supplier = suppliers.find(s => s.id === newPurchase.supplierId);

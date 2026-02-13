@@ -1,27 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  DollarSign, 
-  CreditCard, 
-  Activity,
-  TrendingUp,
-  FileText,
-  Wallet,
-  Loader2
-} from "lucide-react";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar
-} from "recharts";
+import { DollarSign, CreditCard, Activity, TrendingUp, FileText, Loader2 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { dashboardApi } from "../lib/api";
 
 export default function Dashboard() {

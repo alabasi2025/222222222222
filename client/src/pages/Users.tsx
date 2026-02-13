@@ -8,17 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  MoreHorizontal,
-  User,
-  Mail,
-  Save,
-  Pencil,
-  Trash2,
-  Shield
-} from "lucide-react";
+import { Plus, Search, MoreHorizontal, Mail, Save, Pencil, Trash2, Shield } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,

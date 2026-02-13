@@ -8,21 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  Users,
-  Phone,
-  Mail,
-  MapPin,
-  Building2,
-  Save,
-  Pencil,
-  Trash2
-} from "lucide-react";
+import { Plus, Download, MoreHorizontal, Phone, Mail, Save, Pencil, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +52,7 @@ export default function Contacts() {
   const loadFromStorage = () => {
     try {
       const savedCustomers = localStorage.getItem('customers');
-      const savedSuppliers = localStorage.getItem('suppliers');
+      const _savedSuppliers = localStorage.getItem('suppliers');
       if (savedCustomers) {
         return JSON.parse(savedCustomers);
       }

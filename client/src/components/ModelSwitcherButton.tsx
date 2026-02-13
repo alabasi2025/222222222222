@@ -34,7 +34,7 @@ const ModelSwitcherButton: React.FC = () => {
       } else {
         toast.error(data.error || 'خطأ في تبديل النموذج');
       }
-    } catch (e) {
+    } catch {
       toast.error('خطأ في الاتصال بالخادم');
     }
   };

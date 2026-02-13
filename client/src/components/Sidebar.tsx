@@ -1,45 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  Settings, 
-  PieChart,
-  Wallet,
-  BookOpen,
-  FolderTree,
-  Building2,
-  Target,
-  Landmark,
-  Calculator,
-  Network,
-  ChevronDown,
-  Building,
-  Store,
-  ChevronLeft,
-  Plus,
-  ChevronRight,
-  DollarSign,
-  Receipt,
-  CreditCard,
-  TrendingUp,
-  BarChart3,
-  Coins,
-  Layers,
-  Moon,
-  Sun,
-  Warehouse,
-  ArrowLeftRight,
-  UserCircle,
-  Truck,
-  ShieldCheck,
-  Tag,
-  List,
-  LogOut
-} from "lucide-react";
+import { LayoutDashboard, FileText, ShoppingCart, Package, Users, Settings, PieChart, Wallet, BookOpen, FolderTree, Building2, Target, Landmark, Calculator, Network, ChevronDown, Building, Store, ChevronLeft, Plus, DollarSign, Receipt, CreditCard, TrendingUp, BarChart3, Coins, Layers, Moon, Sun, Warehouse, ArrowLeftRight, UserCircle, Truck, ShieldCheck, Tag, List, LogOut } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 import {

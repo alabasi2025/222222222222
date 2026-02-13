@@ -8,51 +8,9 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  FolderTree,
-  ChevronRight,
-  ChevronDown,
-  Folder,
-  FileText,
-  Save,
-  Building,
-  Building2,
-  Store,
-  Wallet,
-  Landmark,
-  Users,
-  Package,
-  GripVertical,
-  Edit,
-  Trash2,
-  ChevronsDownUp,
-  ChevronsUpDown,
-  X,
-  TrendingUp,
-  TrendingDown
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Plus, Search, Filter, MoreHorizontal, FolderTree, ChevronRight, ChevronDown, Folder, FileText, Save, Building2, Edit, Trash2, ChevronsDownUp, ChevronsUpDown, X, TrendingUp, TrendingDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -108,7 +66,7 @@ import { getAccountTypes, getTypeMap, type AccountType } from "@/lib/accountType
 import { getAccountSubtypes } from "@/lib/accountSubtypes";
 
 export default function ChartOfAccounts() {
-  const { currentEntity, isEntityVisible, entities } = useEntity();
+  const { currentEntity, isEntityVisible: _isEntityVisible, entities } = useEntity();
   
   const [location, setLocation] = useLocation();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -133,6 +91,7 @@ export default function ChartOfAccounts() {
     if (currentEntity) {
       loadAccounts();
     }
+   
   }, [currentEntity]);
 
   // Load account types and update typeMap when entity changes

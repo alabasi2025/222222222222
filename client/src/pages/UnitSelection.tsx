@@ -33,6 +33,7 @@ export default function UnitSelection() {
   const unitEntities = selectedHoldingId 
     ? entities.filter(e => e.type === 'unit' && e.parentId === selectedHoldingId)
     : [];
+   
 
   // Load last selected unit from localStorage
   useEffect(() => {

@@ -20,7 +20,7 @@ export function OnyxStyleTable({
   operations,
   onOperationsChange,
   accountTypes,
-  accountSubtypes,
+  accountSubtypes: _accountSubtypes,
   chartAccounts,
   currency,
   getAccountSubtypes,
@@ -102,10 +102,10 @@ export function OnyxStyleTable({
           </TableHeader>
           <TableBody>
             {rows.map((row, index) => {
-              const accountType = accountTypes.find(t => t.id === row.accountType);
-              const accountSubtype = getAccountSubtypes(currentEntityId).find(s => s.value === row.accountSubtype);
-              const chartAccount = chartAccounts.find(acc => acc.id === row.chartAccount);
-              const analyticalAccount = row.analyticalAccount 
+              const _accountType = accountTypes.find(t => t.id === row.accountType);
+              const _accountSubtype = getAccountSubtypes(currentEntityId).find(s => s.value === row.accountSubtype);
+              const _chartAccount = chartAccounts.find(acc => acc.id === row.chartAccount);
+              const _analyticalAccount = row.analyticalAccount 
                 ? chartAccounts.find(acc => acc.id === row.analyticalAccount)
                 : null;
 
