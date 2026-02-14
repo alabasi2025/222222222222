@@ -29,17 +29,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  ArrowLeftRight, 
-  Plus, 
-  Building2, 
+import {
+  ArrowLeftRight,
+  Plus,
+  Building2,
   Wallet,
   Calendar,
   FileText,
   CheckCircle,
   XCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -117,25 +117,33 @@ export default function InterUnitTransfers() {
   // فلترة الحسابات حسب الوحدة
   const getAccountsForEntity = (entityId: string) => {
     return accounts.filter(
-      (acc) =>
+      acc =>
         acc.entityId === entityId &&
-        (acc.subtype === "cash" || acc.subtype === "bank" || acc.type === "asset")
+        (acc.subtype === "cash" ||
+          acc.subtype === "bank" ||
+          acc.type === "asset")
     );
   };
 
   // الحصول على اسم الوحدة
   const getEntityName = (entityId: string) => {
-    return entities.find((e) => e.id === entityId)?.name || entityId;
+    return entities.find(e => e.id === entityId)?.name || entityId;
   };
 
   // الحصول على اسم الحساب
   const _getAccountName = (accountId: string) => {
-    return accounts.find((a) => a.id === accountId)?.name || accountId;
+    return accounts.find(a => a.id === accountId)?.name || accountId;
   };
 
   // إنشاء تحويل جديد
   const handleSubmit = async () => {
-    if (!formData.fromEntityId || !formData.toEntityId || !formData.fromAccountId || !formData.toAccountId || !formData.amount) {
+    if (
+      !formData.fromEntityId ||
+      !formData.toEntityId ||
+      !formData.fromAccountId ||
+      !formData.toAccountId ||
+      !formData.amount
+    ) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول المطلوبة",
@@ -243,7 +251,10 @@ export default function InterUnitTransfers() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <ArrowLeftRight className="w-5 h-5" style={{ color: themeColor }} />
+                <ArrowLeftRight
+                  className="w-5 h-5"
+                  style={{ color: themeColor }}
+                />
                 تحويل بين الوحدات
               </DialogTitle>
             </DialogHeader>
@@ -257,15 +268,19 @@ export default function InterUnitTransfers() {
                 </Label>
                 <Select
                   value={formData.fromEntityId}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, fromEntityId: value, fromAccountId: "" });
+                  onValueChange={value => {
+                    setFormData({
+                      ...formData,
+                      fromEntityId: value,
+                      fromAccountId: "",
+                    });
                   }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر الوحدة المُحوِّلة" />
                   </SelectTrigger>
                   <SelectContent>
-                    {entities.map((entity) => (
+                    {entities.map(entity => (
                       <SelectItem key={entity.id} value={entity.id}>
                         {entity.name}
                       </SelectItem>
@@ -282,18 +297,22 @@ export default function InterUnitTransfers() {
                 </Label>
                 <Select
                   value={formData.fromAccountId}
-                  onValueChange={(value) => setFormData({ ...formData, fromAccountId: value })}
+                  onValueChange={value =>
+                    setFormData({ ...formData, fromAccountId: value })
+                  }
                   disabled={!formData.fromEntityId}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر الحساب المصدر" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAccountsForEntity(formData.fromEntityId).map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
+                    {getAccountsForEntity(formData.fromEntityId).map(
+                      account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -301,7 +320,10 @@ export default function InterUnitTransfers() {
               {/* سهم التحويل */}
               <div className="flex justify-center py-2">
                 <div className="bg-muted rounded-full p-2">
-                  <ArrowRight className="w-5 h-5 rotate-180" style={{ color: themeColor }} />
+                  <ArrowRight
+                    className="w-5 h-5 rotate-180"
+                    style={{ color: themeColor }}
+                  />
                 </div>
               </div>
 
@@ -313,8 +335,12 @@ export default function InterUnitTransfers() {
                 </Label>
                 <Select
                   value={formData.toEntityId}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, toEntityId: value, toAccountId: "" });
+                  onValueChange={value => {
+                    setFormData({
+                      ...formData,
+                      toEntityId: value,
+                      toAccountId: "",
+                    });
                   }}
                 >
                   <SelectTrigger>
@@ -322,8 +348,8 @@ export default function InterUnitTransfers() {
                   </SelectTrigger>
                   <SelectContent>
                     {entities
-                      .filter((e) => e.id !== formData.fromEntityId)
-                      .map((entity) => (
+                      .filter(e => e.id !== formData.fromEntityId)
+                      .map(entity => (
                         <SelectItem key={entity.id} value={entity.id}>
                           {entity.name}
                         </SelectItem>
@@ -340,14 +366,16 @@ export default function InterUnitTransfers() {
                 </Label>
                 <Select
                   value={formData.toAccountId}
-                  onValueChange={(value) => setFormData({ ...formData, toAccountId: value })}
+                  onValueChange={value =>
+                    setFormData({ ...formData, toAccountId: value })
+                  }
                   disabled={!formData.toEntityId}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر الحساب المستلم" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAccountsForEntity(formData.toEntityId).map((account) => (
+                    {getAccountsForEntity(formData.toEntityId).map(account => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name}
                       </SelectItem>
@@ -363,7 +391,9 @@ export default function InterUnitTransfers() {
                   type="number"
                   placeholder="0.00"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, amount: e.target.value })
+                  }
                 />
               </div>
 
@@ -376,7 +406,9 @@ export default function InterUnitTransfers() {
                 <Input
                   type="date"
                   value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, date: e.target.value })
+                  }
                 />
               </div>
 
@@ -389,7 +421,9 @@ export default function InterUnitTransfers() {
                 <Textarea
                   placeholder="وصف التحويل (اختياري)"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -398,8 +432,8 @@ export default function InterUnitTransfers() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 إلغاء
               </Button>
-              <Button 
-                onClick={handleSubmit} 
+              <Button
+                onClick={handleSubmit}
                 disabled={loading}
                 style={{ backgroundColor: themeColor }}
               >
@@ -416,7 +450,9 @@ export default function InterUnitTransfers() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">إجمالي التحويلات</p>
+                <p className="text-sm text-muted-foreground">
+                  إجمالي التحويلات
+                </p>
                 <p className="text-2xl font-bold">{transfers.length}</p>
               </div>
               <ArrowLeftRight className="w-8 h-8 text-muted-foreground" />
@@ -427,9 +463,11 @@ export default function InterUnitTransfers() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">التحويلات المكتملة</p>
+                <p className="text-sm text-muted-foreground">
+                  التحويلات المكتملة
+                </p>
                 <p className="text-2xl font-bold text-green-500">
-                  {transfers.filter((t) => t.status === "completed").length}
+                  {transfers.filter(t => t.status === "completed").length}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -440,13 +478,15 @@ export default function InterUnitTransfers() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">إجمالي المبالغ المحولة</p>
+                <p className="text-sm text-muted-foreground">
+                  إجمالي المبالغ المحولة
+                </p>
                 <p className="text-2xl font-bold" style={{ color: themeColor }}>
                   {transfers
-                    .filter((t) => t.status === "completed")
+                    .filter(t => t.status === "completed")
                     .reduce((sum, t) => sum + parseFloat(t.amount), 0)
                     .toLocaleString()}{" "}
-                  ر.س
+                  ر.ي
                 </p>
               </div>
               <Wallet className="w-8 h-8" style={{ color: themeColor }} />
@@ -475,14 +515,19 @@ export default function InterUnitTransfers() {
             <TableBody>
               {transfers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     لا توجد تحويلات بعد
                   </TableCell>
                 </TableRow>
               ) : (
-                transfers.map((transfer) => (
+                transfers.map(transfer => (
                   <TableRow key={transfer.id}>
-                    <TableCell className="font-medium">{transfer.transferNumber}</TableCell>
+                    <TableCell className="font-medium">
+                      {transfer.transferNumber}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-muted-foreground" />
@@ -495,8 +540,11 @@ export default function InterUnitTransfers() {
                         {getEntityName(transfer.toEntityId)}
                       </div>
                     </TableCell>
-                    <TableCell className="font-semibold" style={{ color: themeColor }}>
-                      {parseFloat(transfer.amount).toLocaleString()} ر.س
+                    <TableCell
+                      className="font-semibold"
+                      style={{ color: themeColor }}
+                    >
+                      {parseFloat(transfer.amount).toLocaleString()} ر.ي
                     </TableCell>
                     <TableCell>
                       {new Date(transfer.date).toLocaleDateString("ar-SA")}

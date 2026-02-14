@@ -372,7 +372,7 @@ export default function Warehouses() {
                 إجمالي القيمة
               </p>
               <h3 className="text-2xl font-bold mt-1 text-emerald-600">
-                {totalValue.toLocaleString()} ر.س
+                {totalValue.toLocaleString()} ر.ي
               </h3>
               <p className="text-xs text-muted-foreground">قيمة المخزون</p>
             </div>
@@ -475,7 +475,7 @@ export default function Warehouses() {
                       <TableCell>{wh.itemsCount}</TableCell>
                       <TableCell className="font-medium">
                         {wh.totalValue ? wh.totalValue.toLocaleString() : "-"}{" "}
-                        ر.س
+                        ر.ي
                       </TableCell>
                       <TableCell className="text-left">
                         <DropdownMenu>

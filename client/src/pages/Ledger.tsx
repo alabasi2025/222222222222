@@ -1,20 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { 
-  Search, 
-  Filter, 
-  Download, 
+import {
+  Search,
+  Filter,
+  Download,
   Calendar,
   BookOpen,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
@@ -41,17 +41,16 @@ export default function Ledger() {
 
   useEffect(() => {
     loadLedgerData();
-   
   }, [currentEntity]);
 
   const loadLedgerData = async () => {
     try {
       setLoading(true);
       // Get journal entries with lines for current entity
-      const entries = currentEntity?.id 
+      const entries = currentEntity?.id
         ? await journalEntriesApi.getByEntity(currentEntity.id)
         : await journalEntriesApi.getAll();
-      
+
       // Flatten entries to ledger lines
       const lines: LedgerLine[] = [];
       entries.forEach((entry: any) => {
@@ -61,19 +60,21 @@ export default function Ledger() {
               id: line.id,
               date: entry.date,
               entryId: entry.id,
-              account: line.account?.name || 'غير معروف',
+              account: line.account?.name || "غير معروف",
               accountId: line.accountId,
-              description: line.description || entry.description || '',
+              description: line.description || entry.description || "",
               debit: Number(line.debit || 0),
               credit: Number(line.credit || 0),
             });
           });
         }
       });
-      
+
       // Sort by date descending
-      lines.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+      lines.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
       setLedgerLines(lines);
     } catch (error) {
       console.error("Failed to load ledger data:", error);
@@ -89,17 +90,22 @@ export default function Ledger() {
   const entriesCount = new Set(ledgerLines.map(line => line.entryId)).size;
 
   // Filter lines by search term
-  const filteredLines = ledgerLines.filter(line =>
-    line.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    line.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    line.entryId.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredLines = ledgerLines.filter(
+    line =>
+      line.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      line.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      line.entryId.toLowerCase().includes(searchTerm.toLowerCase())
   );
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">دفتر الأستاذ العام</h2>
-          <p className="text-muted-foreground mt-1">سجل جميع القيود المحاسبية والحركات المالية</p>
+          <h2 className="text-3xl font-bold tracking-tight">
+            دفتر الأستاذ العام
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            سجل جميع القيود المحاسبية والحركات المالية
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
@@ -120,7 +126,9 @@ export default function Ledger() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalDebit.toLocaleString()} ر.س</div>
+            <div className="text-2xl font-bold">
+              {totalDebit.toLocaleString()} ر.ي
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -129,7 +137,9 @@ export default function Ledger() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCredit.toLocaleString()} ر.س</div>
+            <div className="text-2xl font-bold">
+              {totalCredit.toLocaleString()} ر.ي
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -146,11 +156,11 @@ export default function Ledger() {
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
         <div className="relative w-full sm:w-96">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="بحث في الوصف أو الحساب..." 
+          <Input
+            placeholder="بحث في الوصف أو الحساب..."
             className="pr-9"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -188,17 +198,27 @@ export default function Ledger() {
               </TableRow>
             ) : filteredLines.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  {ledgerLines.length === 0 
-                    ? "لا توجد حركات في دفتر الأستاذ" 
+                <TableCell
+                  colSpan={6}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  {ledgerLines.length === 0
+                    ? "لا توجد حركات في دفتر الأستاذ"
                     : "لا توجد نتائج للبحث"}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredLines.map((line) => (
-                <TableRow key={line.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell>{new Date(line.date).toLocaleDateString('ar-SA')}</TableCell>
-                  <TableCell className="font-medium text-xs text-muted-foreground">{line.entryId}</TableCell>
+              filteredLines.map(line => (
+                <TableRow
+                  key={line.id}
+                  className="hover:bg-muted/50 transition-colors"
+                >
+                  <TableCell>
+                    {new Date(line.date).toLocaleDateString("ar-SA")}
+                  </TableCell>
+                  <TableCell className="font-medium text-xs text-muted-foreground">
+                    {line.entryId}
+                  </TableCell>
                   <TableCell className="font-medium">{line.account}</TableCell>
                   <TableCell>{line.description}</TableCell>
                   <TableCell className="text-left font-mono">

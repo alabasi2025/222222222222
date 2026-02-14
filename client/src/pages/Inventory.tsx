@@ -1,14 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Download, MoreHorizontal, Package, AlertTriangle, ArrowUpRight, Pencil, Trash2, Eye, Save, Barcode, Layers } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Download,
+  MoreHorizontal,
+  Package,
+  AlertTriangle,
+  ArrowUpRight,
+  Pencil,
+  Trash2,
+  Eye,
+  Save,
+  Barcode,
+  Layers,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {Card, CardContent} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +54,12 @@ import {
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useEntity } from "@/contexts/EntityContext";
-import { inventoryApi, warehousesApi, itemCategoriesApi } from "@/lib/api";
+import {
+  inventoryApi,
+  warehousesApi,
+  itemCategoriesApi,
+  accountsApi,
+} from "@/lib/api";
 
 interface Item {
   id: string;
@@ -52,7 +71,7 @@ interface Item {
   categoryName?: string;
   unitId?: string;
   unitName?: string;
-  type: 'stock' | 'service' | 'consumable';
+  type: "stock" | "service" | "consumable";
   purchasePrice: number;
   salePrice: number;
   minStock: number;
@@ -77,24 +96,47 @@ interface Warehouse {
   code: string;
 }
 
-const statusMap: Record<string, { label: string, color: string }> = {
-  in_stock: { label: "متوفر", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  low_stock: { label: "منخفض", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  out_of_stock: { label: "نفذت الكمية", color: "bg-rose-100 text-rose-700 border-rose-200" },
+interface Account {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+}
+
+const statusMap: Record<string, { label: string; color: string }> = {
+  in_stock: {
+    label: "متوفر",
+    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  },
+  low_stock: {
+    label: "منخفض",
+    color: "bg-amber-100 text-amber-700 border-amber-200",
+  },
+  out_of_stock: {
+    label: "نفذت الكمية",
+    color: "bg-rose-100 text-rose-700 border-rose-200",
+  },
 };
 
-const typeMap: Record<string, { label: string, color: string }> = {
+const typeMap: Record<string, { label: string; color: string }> = {
   stock: { label: "مخزون", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  service: { label: "خدمة", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  consumable: { label: "مستهلك", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  service: {
+    label: "خدمة",
+    color: "bg-purple-100 text-purple-700 border-purple-200",
+  },
+  consumable: {
+    label: "مستهلك",
+    color: "bg-orange-100 text-orange-700 border-orange-200",
+  },
 };
 
 export default function Inventory() {
   const { currentEntity, getThemeColor } = useEntity();
-  
+
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [_warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [accountsList, setAccountsList] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
@@ -117,11 +159,13 @@ export default function Inventory() {
     reorderPoint: 0,
     taxRate: 15,
     description: "",
+    accountId: "",
+    cogsAccountId: "",
+    revenueAccountId: "",
   });
 
   useEffect(() => {
     loadData();
-   
   }, [currentEntity]);
 
   if (!currentEntity) {
@@ -132,20 +176,22 @@ export default function Inventory() {
     );
   }
 
-
   const loadData = async () => {
     try {
       setLoading(true);
-      const [itemsData, categoriesData, warehousesData] = await Promise.all([
-        inventoryApi.getByEntity(currentEntity.id),
-        itemCategoriesApi.getByEntity(currentEntity.id),
-        warehousesApi.getByEntity(currentEntity.id),
-      ]);
+      const [itemsData, categoriesData, warehousesData, accountsData] =
+        await Promise.all([
+          inventoryApi.getByEntity(currentEntity.id),
+          itemCategoriesApi.getByEntity(currentEntity.id),
+          warehousesApi.getByEntity(currentEntity.id),
+          accountsApi.getByEntity(currentEntity.id),
+        ]);
       setItems(itemsData);
       setCategories(categoriesData);
       setWarehouses(warehousesData);
+      setAccountsList(Array.isArray(accountsData) ? accountsData : []);
     } catch (error) {
-      console.error('Failed to load inventory data:', error);
+      console.error("Failed to load inventory data:", error);
       toast.error("فشل تحميل بيانات المخزون");
     } finally {
       setLoading(false);
@@ -153,10 +199,10 @@ export default function Inventory() {
   };
 
   const getStockStatus = (item: Item) => {
-    if (item.type === 'service') return null;
-    if (item.currentStock <= 0) return 'out_of_stock';
-    if (item.currentStock <= item.reorderPoint) return 'low_stock';
-    return 'in_stock';
+    if (item.type === "service") return null;
+    if (item.currentStock <= 0) return "out_of_stock";
+    if (item.currentStock <= item.reorderPoint) return "low_stock";
+    return "in_stock";
   };
 
   const handleAddItem = async () => {
@@ -174,7 +220,7 @@ export default function Inventory() {
         stockValue: 0,
         isActive: true,
       };
-      
+
       await inventoryApi.create(itemData);
       toast.success("تم إضافة الصنف بنجاح");
       setIsNewItemOpen(false);
@@ -192,6 +238,9 @@ export default function Inventory() {
         reorderPoint: 0,
         taxRate: 15,
         description: "",
+        accountId: "",
+        cogsAccountId: "",
+        revenueAccountId: "",
       });
       loadData();
     } catch {
@@ -227,20 +276,25 @@ export default function Inventory() {
 
   // Filter items
   const filteredItems = items.filter(item => {
-    const matchesSearch = item.name.includes(searchTerm) || 
-                         item.code.includes(searchTerm) ||
-                         (item.barcode && item.barcode.includes(searchTerm));
-    const matchesCategory = filterCategory === "all" || item.categoryId === filterCategory;
+    const matchesSearch =
+      item.name.includes(searchTerm) ||
+      item.code.includes(searchTerm) ||
+      (item.barcode && item.barcode.includes(searchTerm));
+    const matchesCategory =
+      filterCategory === "all" || item.categoryId === filterCategory;
     const matchesType = filterType === "all" || item.type === filterType;
     return matchesSearch && matchesCategory && matchesType;
   });
 
   // Statistics
   const totalItems = items.length;
-  const totalStockValue = items.reduce((sum, item) => sum + (item.stockValue || 0), 0);
+  const totalStockValue = items.reduce(
+    (sum, item) => sum + (item.stockValue || 0),
+    0
+  );
   const lowStockItems = items.filter(item => {
     const status = getStockStatus(item);
-    return status === 'low_stock' || status === 'out_of_stock';
+    return status === "low_stock" || status === "out_of_stock";
   }).length;
 
   return (
@@ -250,7 +304,10 @@ export default function Inventory() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">المخزون</h2>
           <p className="text-muted-foreground mt-1">
-            إدارة الأصناف والمنتجات لـ <span className="font-bold" style={{ color: getThemeColor() }}>{currentEntity.name}</span>
+            إدارة الأصناف والمنتجات لـ{" "}
+            <span className="font-bold" style={{ color: getThemeColor() }}>
+              {currentEntity.name}
+            </span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -268,9 +325,7 @@ export default function Inventory() {
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>إضافة صنف جديد</DialogTitle>
-                <DialogDescription>
-                  أدخل بيانات الصنف الجديد
-                </DialogDescription>
+                <DialogDescription>أدخل بيانات الصنف الجديد</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -279,7 +334,9 @@ export default function Inventory() {
                     <Input
                       id="code"
                       value={newItem.code}
-                      onChange={(e) => setNewItem({ ...newItem, code: e.target.value })}
+                      onChange={e =>
+                        setNewItem({ ...newItem, code: e.target.value })
+                      }
                       placeholder="SKU-001"
                     />
                   </div>
@@ -288,7 +345,9 @@ export default function Inventory() {
                     <Input
                       id="barcode"
                       value={newItem.barcode}
-                      onChange={(e) => setNewItem({ ...newItem, barcode: e.target.value })}
+                      onChange={e =>
+                        setNewItem({ ...newItem, barcode: e.target.value })
+                      }
                       placeholder="6281234567890"
                     />
                   </div>
@@ -299,7 +358,9 @@ export default function Inventory() {
                     <Input
                       id="name"
                       value={newItem.name}
-                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                      onChange={e =>
+                        setNewItem({ ...newItem, name: e.target.value })
+                      }
                       placeholder="اسم الصنف"
                     />
                   </div>
@@ -308,7 +369,9 @@ export default function Inventory() {
                     <Input
                       id="nameEn"
                       value={newItem.nameEn}
-                      onChange={(e) => setNewItem({ ...newItem, nameEn: e.target.value })}
+                      onChange={e =>
+                        setNewItem({ ...newItem, nameEn: e.target.value })
+                      }
                       placeholder="Item Name"
                       dir="ltr"
                     />
@@ -319,14 +382,18 @@ export default function Inventory() {
                     <Label htmlFor="category">الفئة</Label>
                     <Select
                       value={newItem.categoryId}
-                      onValueChange={(value) => setNewItem({ ...newItem, categoryId: value })}
+                      onValueChange={value =>
+                        setNewItem({ ...newItem, categoryId: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="اختر الفئة" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -335,7 +402,9 @@ export default function Inventory() {
                     <Label htmlFor="type">نوع الصنف</Label>
                     <Select
                       value={newItem.type}
-                      onValueChange={(value) => setNewItem({ ...newItem, type: value })}
+                      onValueChange={value =>
+                        setNewItem({ ...newItem, type: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -355,7 +424,12 @@ export default function Inventory() {
                       id="purchasePrice"
                       type="number"
                       value={newItem.purchasePrice}
-                      onChange={(e) => setNewItem({ ...newItem, purchasePrice: parseFloat(e.target.value) || 0 })}
+                      onChange={e =>
+                        setNewItem({
+                          ...newItem,
+                          purchasePrice: parseFloat(e.target.value) || 0,
+                        })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -364,7 +438,12 @@ export default function Inventory() {
                       id="salePrice"
                       type="number"
                       value={newItem.salePrice}
-                      onChange={(e) => setNewItem({ ...newItem, salePrice: parseFloat(e.target.value) || 0 })}
+                      onChange={e =>
+                        setNewItem({
+                          ...newItem,
+                          salePrice: parseFloat(e.target.value) || 0,
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -375,7 +454,12 @@ export default function Inventory() {
                       id="minStock"
                       type="number"
                       value={newItem.minStock}
-                      onChange={(e) => setNewItem({ ...newItem, minStock: parseFloat(e.target.value) || 0 })}
+                      onChange={e =>
+                        setNewItem({
+                          ...newItem,
+                          minStock: parseFloat(e.target.value) || 0,
+                        })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -384,7 +468,12 @@ export default function Inventory() {
                       id="maxStock"
                       type="number"
                       value={newItem.maxStock}
-                      onChange={(e) => setNewItem({ ...newItem, maxStock: parseFloat(e.target.value) || 0 })}
+                      onChange={e =>
+                        setNewItem({
+                          ...newItem,
+                          maxStock: parseFloat(e.target.value) || 0,
+                        })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -393,7 +482,12 @@ export default function Inventory() {
                       id="reorderPoint"
                       type="number"
                       value={newItem.reorderPoint}
-                      onChange={(e) => setNewItem({ ...newItem, reorderPoint: parseFloat(e.target.value) || 0 })}
+                      onChange={e =>
+                        setNewItem({
+                          ...newItem,
+                          reorderPoint: parseFloat(e.target.value) || 0,
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -403,7 +497,12 @@ export default function Inventory() {
                     id="taxRate"
                     type="number"
                     value={newItem.taxRate}
-                    onChange={(e) => setNewItem({ ...newItem, taxRate: parseFloat(e.target.value) || 0 })}
+                    onChange={e =>
+                      setNewItem({
+                        ...newItem,
+                        taxRate: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -411,13 +510,84 @@ export default function Inventory() {
                   <Input
                     id="description"
                     value={newItem.description}
-                    onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                    onChange={e =>
+                      setNewItem({ ...newItem, description: e.target.value })
+                    }
                     placeholder="وصف الصنف"
                   />
                 </div>
+                {/* حسابات الصنف المحاسبية */}
+                <div className="border-t pt-4 mt-2">
+                  <p className="text-sm font-semibold mb-3">الربط المحاسبي</p>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label>حساب المخزون (أصول)</Label>
+                      <Select
+                        value={newItem.accountId}
+                        onValueChange={value =>
+                          setNewItem({ ...newItem, accountId: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر حساب المخزون" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accountsList.map(acc => (
+                            <SelectItem key={acc.id} value={acc.id}>
+                              {acc.code} - {acc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>حساب تكلفة البضاعة المباعة (مصروفات)</Label>
+                      <Select
+                        value={newItem.cogsAccountId}
+                        onValueChange={value =>
+                          setNewItem({ ...newItem, cogsAccountId: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر حساب التكلفة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accountsList.map(acc => (
+                            <SelectItem key={acc.id} value={acc.id}>
+                              {acc.code} - {acc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>حساب الإيرادات</Label>
+                      <Select
+                        value={newItem.revenueAccountId}
+                        onValueChange={value =>
+                          setNewItem({ ...newItem, revenueAccountId: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر حساب الإيرادات" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accountsList.map(acc => (
+                            <SelectItem key={acc.id} value={acc.id}>
+                              {acc.code} - {acc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddItem} style={{ backgroundColor: getThemeColor() }}>
+                <Button
+                  onClick={handleAddItem}
+                  style={{ backgroundColor: getThemeColor() }}
+                >
                   <Save className="w-4 h-4 ml-2" />
                   حفظ
                 </Button>
@@ -432,7 +602,9 @@ export default function Inventory() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">إجمالي الأصناف</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                إجمالي الأصناف
+              </p>
               <h3 className="text-2xl font-bold mt-1">{totalItems}</h3>
               <p className="text-xs text-muted-foreground">صنف مسجل</p>
             </div>
@@ -444,8 +616,12 @@ export default function Inventory() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">قيمة المخزون</p>
-              <h3 className="text-2xl font-bold mt-1 text-emerald-600">{totalStockValue.toLocaleString()} ر.س</h3>
+              <p className="text-sm font-medium text-muted-foreground">
+                قيمة المخزون
+              </p>
+              <h3 className="text-2xl font-bold mt-1 text-emerald-600">
+                {totalStockValue.toLocaleString()} ر.ي
+              </h3>
               <p className="text-xs text-muted-foreground">إجمالي القيمة</p>
             </div>
             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
@@ -456,8 +632,12 @@ export default function Inventory() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">تنبيهات المخزون</p>
-              <h3 className="text-2xl font-bold mt-1 text-amber-600">{lowStockItems}</h3>
+              <p className="text-sm font-medium text-muted-foreground">
+                تنبيهات المخزون
+              </p>
+              <h3 className="text-2xl font-bold mt-1 text-amber-600">
+                {lowStockItems}
+              </h3>
               <p className="text-xs text-muted-foreground">صنف يحتاج تعبئة</p>
             </div>
             <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600">
@@ -468,7 +648,9 @@ export default function Inventory() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">الفئات</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                الفئات
+              </p>
               <h3 className="text-2xl font-bold mt-1">{categories.length}</h3>
               <p className="text-xs text-muted-foreground">فئة مسجلة</p>
             </div>
@@ -485,11 +667,11 @@ export default function Inventory() {
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="relative w-full sm:w-96">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                placeholder="بحث باسم الصنف أو الرمز أو الباركود..." 
+              <Input
+                placeholder="بحث باسم الصنف أو الرمز أو الباركود..."
                 className="pr-9"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
@@ -499,8 +681,10 @@ export default function Inventory() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع الفئات</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -548,20 +732,31 @@ export default function Inventory() {
                 </TableRow>
               ) : filteredItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                    لا توجد أصناف مسجلة لـ {currentEntity.name}. قم بإضافة صنف جديد.
+                  <TableCell
+                    colSpan={9}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    لا توجد أصناف مسجلة لـ {currentEntity.name}. قم بإضافة صنف
+                    جديد.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredItems.map((item) => {
+                filteredItems.map(item => {
                   const stockStatus = getStockStatus(item);
                   const status = stockStatus ? statusMap[stockStatus] : null;
                   const type = typeMap[item.type];
-                  const stockPercentage = item.maxStock ? Math.min((item.currentStock / item.maxStock) * 100, 100) : 0;
-                  
+                  const stockPercentage = item.maxStock
+                    ? Math.min((item.currentStock / item.maxStock) * 100, 100)
+                    : 0;
+
                   return (
-                    <TableRow key={item.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-mono text-sm">{item.code}</TableCell>
+                    <TableRow
+                      key={item.id}
+                      className="hover:bg-muted/50 transition-colors"
+                    >
+                      <TableCell className="font-mono text-sm">
+                        {item.code}
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="font-semibold">{item.name}</p>
@@ -573,19 +768,31 @@ export default function Inventory() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{item.categoryName || '-'}</TableCell>
+                      <TableCell>{item.categoryName || "-"}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`${type.color} font-normal`}>
+                        <Badge
+                          variant="outline"
+                          className={`${type.color} font-normal`}
+                        >
                           {type.label}
                         </Badge>
                       </TableCell>
-                      <TableCell>{item.purchasePrice.toLocaleString()} ر.س</TableCell>
-                      <TableCell>{item.salePrice.toLocaleString()} ر.س</TableCell>
                       <TableCell>
-                        {item.type === 'stock' ? (
+                        {item.purchasePrice.toLocaleString()} ر.ي
+                      </TableCell>
+                      <TableCell>
+                        {item.salePrice.toLocaleString()} ر.ي
+                      </TableCell>
+                      <TableCell>
+                        {item.type === "stock" ? (
                           <div className="flex items-center gap-2">
-                            <span className="w-10 text-sm font-medium">{item.currentStock}</span>
-                            <Progress value={stockPercentage} className="w-16 h-2" />
+                            <span className="w-10 text-sm font-medium">
+                              {item.currentStock}
+                            </span>
+                            <Progress
+                              value={stockPercentage}
+                              className="w-16 h-2"
+                            />
                           </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -593,7 +800,10 @@ export default function Inventory() {
                       </TableCell>
                       <TableCell>
                         {status ? (
-                          <Badge variant="outline" className={`${status.color} font-normal`}>
+                          <Badge
+                            variant="outline"
+                            className={`${status.color} font-normal`}
+                          >
                             {status.label}
                           </Badge>
                         ) : (
@@ -609,10 +819,12 @@ export default function Inventory() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => {
-                              setEditingItem(item);
-                              setIsEditItemOpen(true);
-                            }}>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingItem(item);
+                                setIsEditItemOpen(true);
+                              }}
+                            >
                               <Pencil className="w-4 h-4 ml-2" />
                               تعديل
                             </DropdownMenuItem>
@@ -621,7 +833,7 @@ export default function Inventory() {
                               عرض التفاصيل
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleDeleteItem(item.id)}
                             >
@@ -645,9 +857,7 @@ export default function Inventory() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>تعديل الصنف</DialogTitle>
-            <DialogDescription>
-              تعديل بيانات الصنف
-            </DialogDescription>
+            <DialogDescription>تعديل بيانات الصنف</DialogDescription>
           </DialogHeader>
           {editingItem && (
             <div className="grid gap-4 py-4">
@@ -656,14 +866,21 @@ export default function Inventory() {
                   <Label>رمز الصنف</Label>
                   <Input
                     value={editingItem.code}
-                    onChange={(e) => setEditingItem({ ...editingItem, code: e.target.value })}
+                    onChange={e =>
+                      setEditingItem({ ...editingItem, code: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>الباركود</Label>
                   <Input
                     value={editingItem.barcode || ""}
-                    onChange={(e) => setEditingItem({ ...editingItem, barcode: e.target.value })}
+                    onChange={e =>
+                      setEditingItem({
+                        ...editingItem,
+                        barcode: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -672,14 +889,18 @@ export default function Inventory() {
                   <Label>اسم الصنف (عربي)</Label>
                   <Input
                     value={editingItem.name}
-                    onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                    onChange={e =>
+                      setEditingItem({ ...editingItem, name: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>اسم الصنف (إنجليزي)</Label>
                   <Input
                     value={editingItem.nameEn || ""}
-                    onChange={(e) => setEditingItem({ ...editingItem, nameEn: e.target.value })}
+                    onChange={e =>
+                      setEditingItem({ ...editingItem, nameEn: e.target.value })
+                    }
                     dir="ltr"
                   />
                 </div>
@@ -690,7 +911,12 @@ export default function Inventory() {
                   <Input
                     type="number"
                     value={editingItem.purchasePrice}
-                    onChange={(e) => setEditingItem({ ...editingItem, purchasePrice: parseFloat(e.target.value) || 0 })}
+                    onChange={e =>
+                      setEditingItem({
+                        ...editingItem,
+                        purchasePrice: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -698,7 +924,12 @@ export default function Inventory() {
                   <Input
                     type="number"
                     value={editingItem.salePrice}
-                    onChange={(e) => setEditingItem({ ...editingItem, salePrice: parseFloat(e.target.value) || 0 })}
+                    onChange={e =>
+                      setEditingItem({
+                        ...editingItem,
+                        salePrice: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -708,7 +939,12 @@ export default function Inventory() {
                   <Input
                     type="number"
                     value={editingItem.minStock}
-                    onChange={(e) => setEditingItem({ ...editingItem, minStock: parseFloat(e.target.value) || 0 })}
+                    onChange={e =>
+                      setEditingItem({
+                        ...editingItem,
+                        minStock: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -716,7 +952,12 @@ export default function Inventory() {
                   <Input
                     type="number"
                     value={editingItem.maxStock || 0}
-                    onChange={(e) => setEditingItem({ ...editingItem, maxStock: parseFloat(e.target.value) || 0 })}
+                    onChange={e =>
+                      setEditingItem({
+                        ...editingItem,
+                        maxStock: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -724,14 +965,22 @@ export default function Inventory() {
                   <Input
                     type="number"
                     value={editingItem.reorderPoint}
-                    onChange={(e) => setEditingItem({ ...editingItem, reorderPoint: parseFloat(e.target.value) || 0 })}
+                    onChange={e =>
+                      setEditingItem({
+                        ...editingItem,
+                        reorderPoint: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button onClick={handleEditItem} style={{ backgroundColor: getThemeColor() }}>
+            <Button
+              onClick={handleEditItem}
+              style={{ backgroundColor: getThemeColor() }}
+            >
               <Save className="w-4 h-4 ml-2" />
               حفظ التعديلات
             </Button>

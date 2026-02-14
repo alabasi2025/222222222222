@@ -524,7 +524,7 @@ export default function Budget() {
                 إجمالي الميزانية
               </p>
               <h3 className="text-2xl font-bold mt-1">
-                {totalBudgeted.toLocaleString()} ر.س
+                {totalBudgeted.toLocaleString()} ر.ي
               </h3>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
@@ -539,7 +539,7 @@ export default function Budget() {
                 الإجمالي الفعلي
               </p>
               <h3 className="text-2xl font-bold mt-1">
-                {totalActual.toLocaleString()} ر.س
+                {totalActual.toLocaleString()} ر.ي
               </h3>
             </div>
             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
@@ -556,7 +556,7 @@ export default function Budget() {
               <h3
                 className={`text-2xl font-bold mt-1 ${totalVariance >= 0 ? "text-rose-600" : "text-emerald-600"}`}
               >
-                {totalVariance.toLocaleString()} ر.س
+                {totalVariance.toLocaleString()} ر.ي
               </h3>
             </div>
             <div
@@ -686,16 +686,16 @@ export default function Budget() {
                       </TableCell>
                       <TableCell>{budget.period}</TableCell>
                       <TableCell className="font-medium">
-                        {budget.budgetedAmount.toLocaleString()} ر.س
+                        {budget.budgetedAmount.toLocaleString()} ر.ي
                       </TableCell>
                       <TableCell className="font-medium">
-                        {budget.actualAmount.toLocaleString()} ر.س
+                        {budget.actualAmount.toLocaleString()} ر.ي
                       </TableCell>
                       <TableCell
                         className={`font-medium ${budget.variance >= 0 ? "text-rose-600" : "text-emerald-600"}`}
                       >
                         {budget.variance >= 0 ? "+" : ""}
-                        {budget.variance.toLocaleString()} ر.س
+                        {budget.variance.toLocaleString()} ر.ي
                       </TableCell>
                       <TableCell
                         className={`font-medium ${Math.abs(budget.variancePercent) > 10 ? "text-rose-600" : "text-emerald-600"}`}

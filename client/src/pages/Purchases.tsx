@@ -102,6 +102,8 @@ export default function Purchases() {
   const [purchases, setPurchases] = useState<any[]>([]);
   const [cashBoxes, setCashBoxes] = useState<any[]>([]);
   const [banksWallets, setBanksWallets] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   const [newPurchase, setNewPurchase] = useState({
     supplierId: "",
@@ -1170,6 +1172,8 @@ export default function Purchases() {
           <Input
             placeholder="بحث برقم الفاتورة أو اسم المورد..."
             className="pr-9"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -1177,12 +1181,17 @@ export default function Purchases() {
             <Filter className="w-4 h-4 ml-2" />
             تصفية
           </Button>
-          <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-            <option>جميع الحالات</option>
-            <option>تم الاستلام</option>
-            <option>قيد الانتظار</option>
-            <option>تم الطلب</option>
-          </select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="الحالة" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الحالات</SelectItem>
+              <SelectItem value="received">تم الاستلام</SelectItem>
+              <SelectItem value="pending">قيد الانتظار</SelectItem>
+              <SelectItem value="ordered">تم الطلب</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -1200,7 +1209,19 @@ export default function Purchases() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {purchases.length === 0 ? (
+            {(() => {
+              const filteredPurchases = purchases.filter(p => {
+                const matchesSearch =
+                  !searchTerm ||
+                  p.id?.includes(searchTerm) ||
+                  p.reference?.includes(searchTerm) ||
+                  p.supplier?.includes(searchTerm);
+                const matchesStatus =
+                  filterStatus === "all" || p.status === filterStatus;
+                return matchesSearch && matchesStatus;
+              });
+              return filteredPurchases;
+            })().length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={7}
@@ -1210,7 +1231,19 @@ export default function Purchases() {
                 </TableCell>
               </TableRow>
             ) : (
-              purchases.map(purchase => {
+              (() => {
+                const filteredPurchases = purchases.filter(p => {
+                  const matchesSearch =
+                    !searchTerm ||
+                    p.id?.includes(searchTerm) ||
+                    p.reference?.includes(searchTerm) ||
+                    p.supplier?.includes(searchTerm);
+                  const matchesStatus =
+                    filterStatus === "all" || p.status === filterStatus;
+                  return matchesSearch && matchesStatus;
+                });
+                return filteredPurchases;
+              })().map(purchase => {
                 const status = statusMap[purchase.status];
                 const StatusIcon = status.icon;
 
