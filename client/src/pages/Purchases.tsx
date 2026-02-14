@@ -1261,7 +1261,7 @@ export default function Purchases() {
                       {purchase.currency === "YER"
                         ? "ر.ي"
                         : purchase.currency === "SAR"
-                          ? "ر.س"
+                          ? "ر.ي"
                           : purchase.currency === "USD"
                             ? "$"
                             : purchase.currency || "ر.ي"}
@@ -1360,7 +1360,7 @@ export default function Purchases() {
                     {viewingPurchase.currency === "YER"
                       ? "ر.ي"
                       : viewingPurchase.currency === "SAR"
-                        ? "ر.س"
+                        ? "ر.ي"
                         : viewingPurchase.currency === "USD"
                           ? "$"
                           : viewingPurchase.currency || "ر.ي"}

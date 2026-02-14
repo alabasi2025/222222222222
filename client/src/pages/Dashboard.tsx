@@ -32,7 +32,15 @@ export default function Dashboard() {
     warehousesCount: 0,
     bankAccountsCount: 0,
     totalBankBalance: 0,
+    cashBoxesCount: 0,
+    totalCashBalance: 0,
+    accountsCount: 0,
+    journalCount: 0,
+    paymentsCount: 0,
+    entitiesCount: 0,
     recentActivity: [] as any[],
+    recentJournalEntries: [] as any[],
+    recentPayments: [] as any[],
   });
   const [revenueData, setRevenueData] = useState<any[]>([]);
 
@@ -122,14 +130,63 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">نشاط المخزون</CardTitle>
+            <CardTitle className="text-sm font-medium">رصيد الصناديق</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.recentActivity.length}
+              {Number(stats.totalCashBalance).toLocaleString()} ر.ي
             </div>
-            <p className="text-xs text-muted-foreground mt-1">حركات أخيرة</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              في {stats.cashBoxesCount} صندوق
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              القيود اليومية
+            </CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.journalCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">قيد محاسبي</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              سندات الصرف/القبض
+            </CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.paymentsCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">سند</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">شجرة الحسابات</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.accountsCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">حساب</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">الكيانات</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.entitiesCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">كيان / وحدة</p>
           </CardContent>
         </Card>
       </div>
@@ -139,7 +196,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>نظرة عامة</CardTitle>
             <CardDescription>
-              الإيرادات والمصروفات (بيانات توضيحية)
+              الإيرادات والمصروفات الشهرية من القيود اليومية
             </CardDescription>
           </CardHeader>
           <CardContent className="pl-2">

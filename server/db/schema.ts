@@ -343,8 +343,42 @@ export const items = pgTable(
     entityIdx: index("idx_items_entity").on(table.entityId),
     categoryIdx: index("idx_items_category").on(table.categoryId),
     codeIdx: index("idx_items_code").on(table.code),
+    unitIdx: index("idx_items_unit").on(table.unitId),
+    accountIdx: index("idx_items_account").on(table.accountId),
+    cogsAccountIdx: index("idx_items_cogs_account").on(table.cogsAccountId),
+    revenueAccountIdx: index("idx_items_revenue_account").on(
+      table.revenueAccountId
+    ),
   })
 );
+
+export const itemCategoriesRelations = relations(itemCategories, ({ one }) => ({
+  entity: one(entities, {
+    fields: [itemCategories.entityId],
+    references: [entities.id],
+  }),
+}));
+
+export const itemsRelations = relations(items, ({ one, many }) => ({
+  entity: one(entities, {
+    fields: [items.entityId],
+    references: [entities.id],
+  }),
+  category: one(itemCategories, {
+    fields: [items.categoryId],
+    references: [itemCategories.id],
+  }),
+  unit: one(units, {
+    fields: [items.unitId],
+    references: [units.id],
+  }),
+  account: one(accounts, {
+    fields: [items.accountId],
+    references: [accounts.id],
+  }),
+  stock: many(itemStock),
+  movements: many(stockMovements),
+}));
 
 // ===== جدول أرصدة المخزون =====
 export const itemStock = pgTable(
@@ -373,6 +407,17 @@ export const itemStock = pgTable(
     warehouseIdx: index("idx_item_stock_warehouse").on(table.warehouseId),
   })
 );
+
+export const itemStockRelations = relations(itemStock, ({ one }) => ({
+  item: one(items, {
+    fields: [itemStock.itemId],
+    references: [items.id],
+  }),
+  warehouse: one(warehouses, {
+    fields: [itemStock.warehouseId],
+    references: [warehouses.id],
+  }),
+}));
 
 // ===== جدول حركات المخزون =====
 export const stockMovements = pgTable(
@@ -411,8 +456,34 @@ export const stockMovements = pgTable(
     ),
     entityIdx: index("idx_stock_movements_entity").on(table.entityId),
     dateIdx: index("idx_stock_movements_date").on(table.date),
+    toWarehouseIdx: index("idx_stock_movements_to_warehouse").on(
+      table.toWarehouseId
+    ),
+    toAccountIdx: index("idx_stock_movements_to_account").on(table.toAccountId),
+    journalEntryIdx: index("idx_stock_movements_journal_entry").on(
+      table.journalEntryId
+    ),
   })
 );
+
+export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
+  entity: one(entities, {
+    fields: [stockMovements.entityId],
+    references: [entities.id],
+  }),
+  item: one(items, {
+    fields: [stockMovements.itemId],
+    references: [items.id],
+  }),
+  warehouse: one(warehouses, {
+    fields: [stockMovements.warehouseId],
+    references: [warehouses.id],
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [stockMovements.journalEntryId],
+    references: [journalEntries.id],
+  }),
+}));
 
 // ===== جدول التحويلات بين الوحدات =====
 export const interUnitTransfers = pgTable(
@@ -454,6 +525,44 @@ export const interUnitTransfers = pgTable(
     toEntityIdx: index("idx_inter_unit_transfers_to_entity").on(
       table.toEntityId
     ),
+    fromAccountIdx: index("idx_inter_unit_transfers_from_account").on(
+      table.fromAccountId
+    ),
+    toAccountIdx: index("idx_inter_unit_transfers_to_account").on(
+      table.toAccountId
+    ),
+    fromJournalEntryIdx: index("idx_inter_unit_transfers_from_journal").on(
+      table.fromJournalEntryId
+    ),
+    toJournalEntryIdx: index("idx_inter_unit_transfers_to_journal").on(
+      table.toJournalEntryId
+    ),
+  })
+);
+
+export const interUnitTransfersRelations = relations(
+  interUnitTransfers,
+  ({ one }) => ({
+    fromEntity: one(entities, {
+      fields: [interUnitTransfers.fromEntityId],
+      references: [entities.id],
+      relationName: "transferFromEntity",
+    }),
+    toEntity: one(entities, {
+      fields: [interUnitTransfers.toEntityId],
+      references: [entities.id],
+      relationName: "transferToEntity",
+    }),
+    fromAccount: one(accounts, {
+      fields: [interUnitTransfers.fromAccountId],
+      references: [accounts.id],
+      relationName: "transferFromAccount",
+    }),
+    toAccount: one(accounts, {
+      fields: [interUnitTransfers.toAccountId],
+      references: [accounts.id],
+      relationName: "transferToAccount",
+    }),
   })
 );
 
@@ -483,6 +592,26 @@ export const interUnitAccounts = pgTable(
     relatedEntityIdx: index("idx_inter_unit_accounts_related_entity").on(
       table.relatedEntityId
     ),
+  })
+);
+
+export const interUnitAccountsRelations = relations(
+  interUnitAccounts,
+  ({ one }) => ({
+    entity: one(entities, {
+      fields: [interUnitAccounts.entityId],
+      references: [entities.id],
+      relationName: "iuaEntity",
+    }),
+    relatedEntity: one(entities, {
+      fields: [interUnitAccounts.relatedEntityId],
+      references: [entities.id],
+      relationName: "iuaRelatedEntity",
+    }),
+    account: one(accounts, {
+      fields: [interUnitAccounts.accountId],
+      references: [accounts.id],
+    }),
   })
 );
 
@@ -887,6 +1016,9 @@ export const fixedAssets = pgTable(
     entityIdx: index("idx_fixed_assets_entity").on(table.entityId),
     categoryIdx: index("idx_fixed_assets_category").on(table.category),
     accountIdx: index("idx_fixed_assets_account").on(table.accountId),
+    depreciationAccountIdx: index("idx_fixed_assets_depreciation_account").on(
+      table.depreciationAccountId
+    ),
     statusIdx: index("idx_fixed_assets_status").on(table.status),
   })
 );
