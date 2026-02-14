@@ -12,13 +12,71 @@ import {
   banksWallets,
   suppliers,
 } from "../db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
+import { z } from "zod";
+import { validate } from "../validation";
+
+// Zod schema for stock movements
+const stockMovementSchema = z.object({
+  entityId: z.string().min(1, "معرف الكيان مطلوب"),
+  itemId: z.string().min(1, "معرف الصنف مطلوب"),
+  warehouseId: z.string().min(1, "معرف المستودع مطلوب"),
+  toWarehouseId: z.string().nullable().optional(),
+  type: z.enum(["in", "out", "transfer", "adjustment", "return"], {
+    required_error: "نوع الحركة مطلوب",
+  }),
+  quantity: z
+    .union([z.string(), z.number()])
+    .refine(v => parseFloat(String(v)) > 0, "الكمية يجب أن تكون أكبر من صفر"),
+  unitCost: z.union([z.string(), z.number()]).nullable().optional(),
+  totalCost: z.union([z.string(), z.number()]).nullable().optional(),
+  reference: z.string().nullable().optional(),
+  referenceType: z.string().nullable().optional(),
+  toAccountId: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  date: z.string().min(1, "التاريخ مطلوب"),
+  paymentAccountId: z.string().nullable().optional(),
+  supplierId: z.string().nullable().optional(),
+});
 
 const router = Router();
 
-// Get all stock movements
-router.get("/", async (_req, res) => {
+// Get all stock movements with optional pagination
+router.get("/", async (req, res) => {
   try {
+    const { page, limit: qLimit } = req.query;
+
+    if (page || qLimit) {
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(
+        200,
+        Math.max(1, parseInt(qLimit as string) || 50)
+      );
+      const offset = (pageNum - 1) * limitNum;
+
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(stockMovements);
+      const total = Number(countResult[0]?.count || 0);
+
+      const data = await db
+        .select()
+        .from(stockMovements)
+        .orderBy(desc(stockMovements.date))
+        .limit(limitNum)
+        .offset(offset);
+
+      return res.json({
+        data,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    }
+
     const allMovements = await db.select().from(stockMovements);
     res.json(allMovements);
   } catch (error) {
@@ -87,7 +145,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // Create new stock movement and update stock levels (with database transaction)
-router.post("/", async (req, res) => {
+router.post("/", validate(stockMovementSchema), async (req, res) => {
   try {
     const {
       itemId,

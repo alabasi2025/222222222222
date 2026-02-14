@@ -1,14 +1,47 @@
 import { Router } from "express";
 import { db } from "../db/index";
 import { warehouses } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import { validate, warehouseSchema } from "../validation";
 
 const router = Router();
 
-// Get all warehouses
-router.get("/", async (_req, res) => {
+// Get all warehouses with optional pagination
+router.get("/", async (req, res) => {
   try {
+    const { page, limit: qLimit } = req.query;
+
+    if (page || qLimit) {
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(
+        200,
+        Math.max(1, parseInt(qLimit as string) || 50)
+      );
+      const offset = (pageNum - 1) * limitNum;
+
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(warehouses);
+      const total = Number(countResult[0]?.count || 0);
+
+      const data = await db
+        .select()
+        .from(warehouses)
+        .orderBy(desc(warehouses.createdAt))
+        .limit(limitNum)
+        .offset(offset);
+
+      return res.json({
+        data,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    }
+
     const allWarehouses = await db.select().from(warehouses);
     res.json(allWarehouses);
   } catch (error) {

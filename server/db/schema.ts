@@ -387,10 +387,10 @@ export const itemStock = pgTable(
     id: text("id").primaryKey().$defaultFn(generateId),
     itemId: text("item_id")
       .notNull()
-      .references(() => items.id),
+      .references(() => items.id, { onDelete: "cascade" }),
     warehouseId: text("warehouse_id")
       .notNull()
-      .references(() => warehouses.id),
+      .references(() => warehouses.id, { onDelete: "cascade" }),
     quantity: decimal("quantity", { precision: 15, scale: 3 })
       .default("0")
       .notNull(),
@@ -442,7 +442,8 @@ export const stockMovements = pgTable(
     referenceType: text("reference_type"),
     toAccountId: text("to_account_id").references(() => accounts.id),
     journalEntryId: text("journal_entry_id").references(
-      () => journalEntries.id
+      () => journalEntries.id,
+      { onDelete: "set null" }
     ),
     notes: text("notes"),
     date: timestamp("date").notNull(),
@@ -509,10 +510,12 @@ export const interUnitTransfers = pgTable(
     date: timestamp("date").notNull(),
     status: text("status").default("completed").notNull(),
     fromJournalEntryId: text("from_journal_entry_id").references(
-      () => journalEntries.id
+      () => journalEntries.id,
+      { onDelete: "set null" }
     ),
     toJournalEntryId: text("to_journal_entry_id").references(
-      () => journalEntries.id
+      () => journalEntries.id,
+      { onDelete: "set null" }
     ),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

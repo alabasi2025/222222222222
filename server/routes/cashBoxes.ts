@@ -1,141 +1,181 @@
-import { Router } from 'express';
-import { db } from '../db/index';
-import { cashBoxes } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import { validate, cashBoxSchema } from '../validation';
+import { Router } from "express";
+import { db } from "../db/index";
+import { cashBoxes } from "../db/schema";
+import { eq, sql, desc } from "drizzle-orm";
+import { validate, cashBoxSchema } from "../validation";
 
 const router = Router();
 
-// Get all cash boxes
-router.get('/', async (req, res) => {
+// Helper: normalize cash box currencies
+function normalizeCashBox(box: any) {
+  if (box.currency && (!box.currencies || !Array.isArray(box.currencies))) {
+    return {
+      ...box,
+      currencies: [box.currency],
+      defaultCurrency: box.defaultCurrency || box.currency,
+    };
+  }
+  if (!box.currencies || !Array.isArray(box.currencies)) {
+    return {
+      ...box,
+      currencies: ["YER", "SAR", "USD"],
+      defaultCurrency: box.defaultCurrency || "YER",
+    };
+  }
+  return box;
+}
+
+// Get all cash boxes with optional pagination
+router.get("/", async (req, res) => {
   try {
-    const { entityId } = req.query;
-    let query: any = db.select().from(cashBoxes);
-    
-    if (entityId) {
-      query = query.where(eq(cashBoxes.entityId, entityId as string));
+    const { entityId, page, limit: qLimit } = req.query;
+    const whereClause = entityId
+      ? eq(cashBoxes.entityId, entityId as string)
+      : undefined;
+
+    if (page || qLimit) {
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(
+        200,
+        Math.max(1, parseInt(qLimit as string) || 50)
+      );
+      const offset = (pageNum - 1) * limitNum;
+
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(cashBoxes)
+        .where(whereClause);
+      const total = Number(countResult[0]?.count || 0);
+
+      const data = await db
+        .select()
+        .from(cashBoxes)
+        .where(whereClause)
+        .orderBy(desc(cashBoxes.createdAt))
+        .limit(limitNum)
+        .offset(offset);
+
+      return res.json({
+        data: data.map(normalizeCashBox),
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
     }
-    
-    const allCashBoxes = await query;
-    
-    // Normalize old format (currency) to new format (currencies)
-    const normalized = allCashBoxes.map((box: any) => {
-      if (box.currency && (!box.currencies || !Array.isArray(box.currencies))) {
-        return {
-          ...box,
-          currencies: [box.currency],
-          defaultCurrency: box.defaultCurrency || box.currency
-        };
-      }
-      if (!box.currencies || !Array.isArray(box.currencies)) {
-        return {
-          ...box,
-          currencies: ["YER", "SAR", "USD"],
-          defaultCurrency: box.defaultCurrency || "YER"
-        };
-      }
-      return box;
-    });
-    
-    res.json(normalized);
+
+    const allCashBoxes = await db.select().from(cashBoxes).where(whereClause);
+    res.json(allCashBoxes.map(normalizeCashBox));
   } catch (error) {
-    console.error('Error fetching cash boxes:', error);
-    res.status(500).json({ error: 'Failed to fetch cash boxes' });
+    console.error("Error fetching cash boxes:", error);
+    res.status(500).json({ error: "Failed to fetch cash boxes" });
   }
 });
 
 // Get cash box by ID
-router.get('/:id', async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
-    const cashBox = await db.select().from(cashBoxes).where(eq(cashBoxes.id, req.params.id));
+    const cashBox = await db
+      .select()
+      .from(cashBoxes)
+      .where(eq(cashBoxes.id, req.params.id));
     if (cashBox.length === 0) {
-      return res.status(404).json({ error: 'Cash box not found' });
+      return res.status(404).json({ error: "Cash box not found" });
     }
     res.json(cashBox[0]);
   } catch (error) {
-    console.error('Error fetching cash box:', error);
-    res.status(500).json({ error: 'Failed to fetch cash box' });
+    console.error("Error fetching cash box:", error);
+    res.status(500).json({ error: "Failed to fetch cash box" });
   }
 });
 
 // Create new cash box
-router.post('/', validate(cashBoxSchema), async (req, res) => {
+router.post("/", validate(cashBoxSchema), async (req, res) => {
   try {
     const body = { ...req.body };
-    
+
     // Transform currency to currencies if needed (backward compatibility)
     if (body.currency && !body.currencies) {
       body.currencies = [body.currency];
       body.defaultCurrency = body.currency;
       delete body.currency;
     }
-    
+
     // Ensure currencies is an array
     if (!body.currencies || !Array.isArray(body.currencies)) {
       body.currencies = ["YER", "SAR", "USD"];
     }
-    
+
     // Set defaultCurrency if not provided
     if (!body.defaultCurrency && body.currencies.length > 0) {
       body.defaultCurrency = body.currencies[0];
     }
-    
+
     // ID auto-generated by schema
     const newCashBox = await db.insert(cashBoxes).values(body).returning();
     res.status(201).json(newCashBox[0]);
   } catch (error: any) {
-    console.error('Error creating cash box:', error);
-    console.error('Error details:', error.message, error.stack);
-    res.status(500).json({ error: error.message || 'Failed to create cash box' });
+    console.error("Error creating cash box:", error);
+    console.error("Error details:", error.message, error.stack);
+    res
+      .status(500)
+      .json({ error: error.message || "Failed to create cash box" });
   }
 });
 
 // Update cash box
-router.put('/:id', async (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const body = { ...req.body };
-    
+
     // Transform currency to currencies if needed (backward compatibility)
     if (body.currency && !body.currencies) {
       body.currencies = [body.currency];
       body.defaultCurrency = body.currency;
       delete body.currency;
     }
-    
+
     // Ensure currencies is an array
     if (body.currencies && !Array.isArray(body.currencies)) {
       body.currencies = ["YER", "SAR", "USD"];
     }
-    
-    console.log('Updating cash box with data:', body);
+
+    console.log("Updating cash box with data:", body);
     const updated = await db
       .update(cashBoxes)
       .set({ ...body, updatedAt: new Date() })
       .where(eq(cashBoxes.id, req.params.id))
       .returning();
-    
+
     if (updated.length === 0) {
-      return res.status(404).json({ error: 'Cash box not found' });
+      return res.status(404).json({ error: "Cash box not found" });
     }
     res.json(updated[0]);
   } catch (error: any) {
-    console.error('Error updating cash box:', error);
-    console.error('Error details:', error.message, error.stack);
-    res.status(500).json({ error: error.message || 'Failed to update cash box' });
+    console.error("Error updating cash box:", error);
+    console.error("Error details:", error.message, error.stack);
+    res
+      .status(500)
+      .json({ error: error.message || "Failed to update cash box" });
   }
 });
 
 // Delete cash box
-router.delete('/:id', async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await db.delete(cashBoxes).where(eq(cashBoxes.id, req.params.id)).returning();
+    const deleted = await db
+      .delete(cashBoxes)
+      .where(eq(cashBoxes.id, req.params.id))
+      .returning();
     if (deleted.length === 0) {
-      return res.status(404).json({ error: 'Cash box not found' });
+      return res.status(404).json({ error: "Cash box not found" });
     }
-    res.json({ message: 'Cash box deleted successfully' });
+    res.json({ message: "Cash box deleted successfully" });
   } catch (error) {
-    console.error('Error deleting cash box:', error);
-    res.status(500).json({ error: 'Failed to delete cash box' });
+    console.error("Error deleting cash box:", error);
+    res.status(500).json({ error: "Failed to delete cash box" });
   }
 });
 
